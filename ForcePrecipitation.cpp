@@ -262,20 +262,19 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
     };
 
     // Group thresholds (relative to cam Y)
-    // Group thresholds
     const float nearMin = camPos.y - 9999.0f;
-    const float nearMax = camPos.y + 15.0f;
-    const float midMax = camPos.y + 45.0f;
-    const float farMax = camPos.y + 9999.0f;
+    const float nearMax = camPos.y - 100.0f;
+    const float midMax  = camPos.y + 45.0f;
+    const float farMax  = camPos.y + 9999.0f;
 
     // Render: near = fewer, smaller, blend
-    RenderGroup(nearMin, nearMax, true, 255); // Enable alpha blending
+    RenderGroup(nearMin, nearMax, true, 180);  // Enable alpha blending
 
     // Render: mid = moderate size/density, opaque
-    RenderGroup(nearMax, midMax, false, 255);
+    RenderGroup(nearMax, midMax, false, 220);
 
     // Render: far = faint and small, opaque
-    RenderGroup(midMax, farMax, false, 255);
+    RenderGroup(midMax, farMax, false, 192);
 
     device->SetTexture(0, nullptr);
     device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
