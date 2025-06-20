@@ -1,6 +1,7 @@
 #include "ForcePrecipitation.h"
-#include <algorithm>
 #include "RainConfigController.h"
+#include <algorithm>
+#include <d3d9.h>
 
 // #ifdef GAME_PS
 // #include "NFSPS_PreFEngHook.h"
@@ -118,10 +119,99 @@ void ForcePrecipitation::ScaleSettingsForIntensity(float intensity)
     m_rainSettings[2].windSway = 0.5f;
 }
 
+
+bool IsFormatSupported(IDirect3DDevice9* device, D3DFORMAT targetFormat)
+{
+    D3DDEVICE_CREATION_PARAMETERS params;
+    if (FAILED(device->GetCreationParameters(&params)))
+        return false;
+
+    IDirect3D9* d3d = Direct3DCreate9(D3D_SDK_VERSION);
+    if (!d3d)
+        return false;
+
+    HRESULT hr = d3d->CheckDeviceFormat(
+        params.AdapterOrdinal,
+        params.DeviceType,
+        D3DFMT_X8R8G8B8, // assumed backbuffer format
+        0,               // no usage flags (standard texture)
+        D3DRTYPE_TEXTURE,
+        targetFormat);
+
+    d3d->Release();
+    return SUCCEEDED(hr);
+}
+
+D3DFORMAT GetSupportedRainTextureFormat(IDirect3DDevice9* device)
+{
+    D3DDEVICE_CREATION_PARAMETERS params;
+    if (FAILED(device->GetCreationParameters(&params)))
+        return D3DFMT_UNKNOWN;
+
+    IDirect3D9* d3d = Direct3DCreate9(D3D_SDK_VERSION);
+    if (!d3d)
+        return D3DFMT_UNKNOWN;
+
+    // Adapter format (usually backbuffer format)
+    D3DFORMAT adapterFormat = D3DFMT_X8R8G8B8;
+
+    // List of candidate formats in priority order
+    D3DFORMAT formatsToCheck[] = {
+        D3DFMT_A8R8G8B8,      // Most compatible
+        D3DFMT_X8R8G8B8,      // No alpha fallback
+        D3DFMT_R5G6B5,        // 16-bit fallback
+        D3DFMT_A4R4G4B4       // 16-bit with alpha
+    };
+
+    D3DFORMAT supportedFormat = D3DFMT_UNKNOWN;
+
+    for (D3DFORMAT format : formatsToCheck)
+    {
+        HRESULT hr = d3d->CheckDeviceFormat(
+            params.AdapterOrdinal,
+            params.DeviceType,
+            adapterFormat,
+            0,                  // No special usage
+            D3DRTYPE_TEXTURE,
+            format);
+
+        if (SUCCEEDED(hr))
+        {
+            supportedFormat = format;
+            break;
+        }
+    }
+
+    d3d->Release();
+    return supportedFormat;
+}
+
 bool ForcePrecipitation::IsCreatedRainTexture(IDirect3DDevice9* device)
 {
-    device->CreateTexture(16, 512, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &m_rainTex, nullptr);
-    // device->CreateTexture(64, 1024, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &m_rainTex, nullptr);
+    D3DFORMAT chosenFormat = D3DFMT_A8R8G8B8;
+#ifndef GAME_PS
+    chosenFormat = GetSupportedRainTextureFormat(device);
+    if (chosenFormat == D3DFMT_UNKNOWN)
+    {
+        OutputDebugStringA("[RainTex] No supported texture format found\n");
+        return false;
+    }
+
+    chosenFormat = D3DFMT_R8G8_B8G8;
+
+    if (!m_rainTex)
+    {
+        if (FAILED(D3DXCreateTextureFromFileA(device, "scripts\\raindrop.dds", &m_rainTex)))
+        {
+            OutputDebugStringA("[RainController] Failed to load raindrop.dds\n");
+            return false;
+        }
+    }
+#endif
+
+    if (!m_rainTex)
+        device->CreateTexture(16, 512, 1, 0, chosenFormat, D3DPOOL_MANAGED, &m_rainTex, nullptr);
+    
     D3DLOCKED_RECT rect;
     bool result = SUCCEEDED(m_rainTex->LockRect(0, &rect, nullptr, 0));
     if (result)
@@ -223,8 +313,8 @@ void ForcePrecipitation::Render2DRainOverlay(IDirect3DDevice9* device, const D3D
         }
 
         D3DXVECTOR2 verts[2] = {
-            { drop.position.x, drop.position.y },
-            { drop.position.x, drop.position.y + drop.length }
+            {drop.position.x, drop.position.y},
+            {drop.position.x, drop.position.y + drop.length}
         };
         if (FAILED(line->Draw(verts, 2, D3DCOLOR_ARGB(alpha, 255, 255, 255))))
             OutputDebugStringA("line->Draw failed\n");
@@ -239,7 +329,10 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
     if (!m_active || !m_precip.active || !device)
         return;
 
-    device->BeginScene(); // DXVK workaround
+    static bool useDXVKFix = core::IsDXVKAdapter();
+
+    if (useDXVKFix)
+        device->BeginScene(); // DXVK workaround
 
     if (!m_rainTex && !IsCreatedRainTexture(device))
         return;
@@ -319,11 +412,11 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
     // Group thresholds (relative to cam Y)
     const float nearMin = camPos.y - 9999.0f;
     const float nearMax = camPos.y - 100.0f;
-    const float midMax  = camPos.y + 45.0f;
-    const float farMax  = camPos.y + 9999.0f;
+    const float midMax = camPos.y + 45.0f;
+    const float farMax = camPos.y + 9999.0f;
 
     // Render: near = fewer, smaller, blend
-    RenderGroup(nearMin, nearMax, true, 180);  // Enable alpha blending
+    RenderGroup(nearMin, nearMax, true, 180); // Enable alpha blending
 
     // Render: mid = moderate size/density, opaque
     RenderGroup(nearMax, midMax, false, 220);
@@ -333,5 +426,7 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
 
     device->SetTexture(0, nullptr);
     device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-    device->EndScene(); // DXVK workaround
+
+    if (useDXVKFix)
+        device->EndScene(); // DXVK workaround
 }

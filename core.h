@@ -7,6 +7,7 @@ struct IDirect3DDevice9;
 
 namespace core
 {
+    bool IsDXVKAdapter();
     using VoidCallback = std::function<void()>;
     using D3DCallback = std::function<void(IDirect3DDevice9*)>;
 

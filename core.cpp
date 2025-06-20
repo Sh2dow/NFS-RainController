@@ -9,6 +9,27 @@ static std::vector<core::D3DCallback> d3dCallbacks;
 static std::mutex coreMutex;
 static bool running = true;
 
+bool core::IsDXVKAdapter()
+{
+    IDirect3D9* d3d = Direct3DCreate9(D3D_SDK_VERSION);
+    if (!d3d) return false;
+
+    D3DADAPTER_IDENTIFIER9 id = {};
+    bool isDXVK = false;
+
+    if (SUCCEEDED(d3d->GetAdapterIdentifier(D3DADAPTER_DEFAULT, 0, &id)))
+    {
+        if (strstr(id.Description, "DXVK"))
+        {
+            OutputDebugStringA("DXVK detected\n");
+            isDXVK = true;
+        }
+    }
+
+    d3d->Release();
+    return isDXVK;
+}
+
 void core::AddLoop(VoidCallback cb)
 {
     std::scoped_lock lock(coreMutex);
