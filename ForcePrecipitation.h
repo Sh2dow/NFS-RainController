@@ -5,6 +5,8 @@
 class ForcePrecipitation : public ngg::common::Feature
 {
 public:
+    LPDIRECT3DTEXTURE9 m_rainTex{nullptr};
+
     static ForcePrecipitation* Get()
     {
         static ForcePrecipitation instance;
@@ -20,15 +22,22 @@ public:
 private:
     struct Drop
     {
-        float x{0.0f};
-        float y{0.0f};
-        float speed{0.0f};
+        D3DXVECTOR3 position;  // World position
+        D3DXVECTOR3 velocity;
         float length;
-        bool initialized = false;
     };
 
     std::vector<Drop> m_drops;
     bool m_active{false};
+
+    
+    struct Vertex
+    {
+        float x, y, z, rhw;
+        float u, v;
+        DWORD color;
+    };
+
 
     void Update(IDirect3DDevice9* device);
 

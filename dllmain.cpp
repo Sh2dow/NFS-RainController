@@ -17,30 +17,26 @@
 
 using namespace ngg::common;
 
-// TODO: Port full initialization logic from sub_10077220
 static std::vector<std::unique_ptr<ngg::common::Feature>> g_features;
+static bool g_hookTransferred = false;
+static bool triedInit = false;
+typedef HRESULT (APIENTRY*PresentFn)(IDirect3DDevice9*, CONST RECT*, CONST RECT*, HWND, CONST RGNDATA*);
+PresentFn g_originalPresent = nullptr;
+PresentFn g_originalDummyPresent = nullptr;
 
 static void SetupFeatures()
 {
     g_features.emplace_back(std::make_unique<ForcePrecipitation>());
 }
 
-bool triedInit = false;
-
-// Original Present function pointer
-typedef HRESULT (APIENTRY*PresentFn)(IDirect3DDevice9*, CONST RECT*, CONST RECT*, HWND, CONST RGNDATA*);
-PresentFn g_originalPresent = nullptr;
-
 static void Initialize()
 {
-    using namespace ngg::common::features;
-
     if (g_features.empty())
         SetupFeatures();
 
     OutputDebugStringA("[Initialize] Setting up hooks\n");
 
-    RainConfigController::Load(); // Load INI config once at startup 
+    RainConfigController::Load();
 
     for (const auto& feature : g_features)
     {
@@ -63,7 +59,7 @@ static void Initialize()
         }
         else
         {
-            feature->enable(); // regular features
+            feature->enable();
         }
     }
 }
@@ -85,8 +81,8 @@ void hk_OnPresent()
 {
     static bool lastState = false;
     bool pressed = (GetAsyncKeyState(RainConfigController::toggleKey) & 0x8000) != 0;
-
     static bool toggled = false;
+
     if (pressed && !lastState)
     {
         toggled = !toggled;
@@ -102,21 +98,120 @@ void hk_OnPresent()
     lastState = pressed;
 }
 
-// Hooked Present
 HRESULT APIENTRY HookedPresent(IDirect3DDevice9* device, CONST RECT* src, CONST RECT* dest, HWND wnd,
                                CONST RGNDATA* dirty)
 {
-    OnPresent(); // <- trigger Initialize logic
-    hk_OnPresent(); // Toggle state BEFORE rendering
-    core::CallDirectX9Callbacks(device); // ← your D3D drawing (rain, overlays, etc.)
+    static bool inCall = false;
+    if (inCall)
+    {
+        char buf[256];
+        sprintf(buf, "[Present] Calling original at %p (inCall=%d)\n", g_originalPresent, inCall);
+        OutputDebugStringA(buf);
 
-    return g_originalPresent(device, src, dest, wnd, dirty);
+        return g_originalPresent ? g_originalPresent(device, src, dest, wnd, dirty) : D3D_OK;
+    }
+    inCall = true;
+
+    if (!g_hookTransferred)
+    {
+        void** realVTable = *reinterpret_cast<void***>(device);
+        void* realPresent = realVTable[17];
+
+        char dbg[256];
+        sprintf(dbg, "[HookTransfer] realPresent = %p | HookedPresent = %p\n", realPresent, &HookedPresent);
+        OutputDebugStringA(dbg);
+
+        if (realPresent != reinterpret_cast<void*>(&HookedPresent))
+        {
+            MH_DisableHook(reinterpret_cast<void*>(g_originalDummyPresent));
+            MH_RemoveHook(reinterpret_cast<void*>(g_originalDummyPresent));
+
+            PresentFn realOriginal = nullptr;
+            MH_CreateHook(realPresent, &HookedPresent, reinterpret_cast<void**>(&realOriginal));
+            MH_EnableHook(realPresent);
+            g_originalPresent = realOriginal;
+
+            OutputDebugStringA("[HookTransfer] Hooked real game Present\n");
+            g_hookTransferred = true;
+        }
+    }
+
+    HRESULT result = D3D_OK;
+
+    __try
+    {
+        OnPresent();
+        hk_OnPresent();
+
+        // Draw red debug square (screen-space at top-left)
+        if (device)
+        {
+            D3DVIEWPORT9 vp{};
+            if (SUCCEEDED(device->GetViewport(&vp)))
+            {
+                struct Vertex
+                {
+                    float x, y, z, rhw;
+                    DWORD color;
+                };
+                Vertex quad[4] = {
+                    {0.0f, 0.0f, 0.5f, 1.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
+                    {200.0f, 0.0f, 0.5f, 1.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
+                    {200.0f, 200.0f, 0.5f, 1.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
+                    {0.0f, 200.0f, 0.5f, 1.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
+                };
+
+                device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
+                device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, quad, sizeof(Vertex));
+            }
+        }
+
+        PresentFn toCall = nullptr;
+
+        if (g_hookTransferred)
+            toCall = (g_originalPresent && g_originalPresent != &HookedPresent) ? g_originalPresent : nullptr;
+        else
+            toCall = (g_originalDummyPresent && g_originalDummyPresent != &HookedPresent) ? g_originalDummyPresent : nullptr;
+
+        char log[256];
+        sprintf(log, "[Present] toCall = %p | g_originalPresent = %p | g_originalDummyPresent = %p | HookedPresent = %p\n",
+                toCall, g_originalPresent, g_originalDummyPresent, &HookedPresent);
+
+        OutputDebugStringA(log);
+
+        if (toCall && toCall != &HookedPresent)
+            result = toCall(device, src, dest, wnd, dirty);
+        else
+            OutputDebugStringA("[!!] Skipping Present to avoid recursion\n");
+
+        core::CallDirectX9Callbacks(device);
+    }
+    __finally
+    {
+        inCall = false;
+    }
+
+    return result;
 }
 
+void HookPresentFromRuntimeDevice(IDirect3DDevice9* device)
+{
+    void** vtable = *reinterpret_cast<void***>(device);
+    g_originalPresent = reinterpret_cast<PresentFn>(vtable[17]);
+
+    MH_Initialize();
+    MH_CreateHook(vtable[17], &HookedPresent, reinterpret_cast<void**>(&g_originalPresent));
+    MH_EnableHook(vtable[17]);
+
+    OutputDebugStringA("[RainController] Hooked real Present from game device\n");
+}
+
+// HookPresent
 void HookPresent()
 {
-    // Create dummy device to get vtable
     IDirect3D9* d3d = Direct3DCreate9(D3D_SDK_VERSION);
+    if (!d3d) return;
+
     D3DPRESENT_PARAMETERS pp = {};
     pp.Windowed = TRUE;
     pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
@@ -131,11 +226,14 @@ void HookPresent()
     }
 
     void** vtable = *reinterpret_cast<void***>(dummyDevice);
-    g_originalPresent = reinterpret_cast<PresentFn>(vtable[17]); // Present is index 17
+    void* dummyPresent = vtable[17];
 
-    MH_Initialize();
-    MH_CreateHook(vtable[17], &HookedPresent, reinterpret_cast<void**>(&g_originalPresent));
-    MH_EnableHook(vtable[17]);
+    // ✅ Assign actual vtable[17] directly
+    g_originalDummyPresent = reinterpret_cast<PresentFn>(dummyPresent);
+
+    // 🛑 Don't override g_originalDummyPresent again!
+    MH_CreateHook(dummyPresent, &HookedPresent, nullptr);  // We don't care about the trampoline here
+    MH_EnableHook(dummyPresent);
 
     dummyDevice->Release();
     d3d->Release();
@@ -147,14 +245,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID)
 {
     if (reason == DLL_PROCESS_ATTACH)
     {
+        MH_Initialize();
         DisableThreadLibraryCalls(hModule);
 
         CreateThread(nullptr, 0, [](LPVOID) -> DWORD
         {
-            // while (!ngg::common::GetExeBase())
-            // std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-            HookPresent(); // <--- Just hook Present, defer actual init
+            HookPresent();
             return 0;
         }, nullptr, 0, nullptr);
     }

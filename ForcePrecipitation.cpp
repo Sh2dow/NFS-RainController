@@ -1,5 +1,4 @@
 #include "ForcePrecipitation.h"
-#include <d3dx9.h>
 #include "RainConfigController.h"
 
 #ifdef GAME_PS
@@ -57,20 +56,20 @@ void ForcePrecipitation::enable()
     m_precip.fogPercent = RainConfigController::fogIntensity;
 
     m_active = true;
-    PatchRainSettings(RainConfigController::enabled);
+    PatchRainSettings(1);
 
     m_drops.resize(250);
-    for (auto& d : m_drops)
-    {
-        d.x = 0.0f;
-        d.y = 0.0f;
-        d.speed = 200.0f + static_cast<float>(rand() % 400);
-    }
 
     if (!m_registered)
     {
-        OutputDebugStringA("Registering DX9 loop\n");
-        core::AddDirectX9Loop([this](IDirect3DDevice9* device) { ForcePrecipitation::Update(device); });
+        OutputDebugStringA("[RainController] Registering DX9 loop\n");
+
+        // FIX: This lambda will now run every frame
+        core::AddDirectX9Loop([](IDirect3DDevice9* device)
+        {
+            ForcePrecipitation::Get()->Update(device);
+        });
+
         m_registered = true;
     }
 }
@@ -83,14 +82,9 @@ void ForcePrecipitation::disable()
     m_active = false;
     m_drops.clear();
     RainConfigController::enabled = false;
-    ForcePrecipitation::PatchRainSettings(0);
+    PatchRainSettings(0);
 
-    if (m_callbackId != static_cast<size_t>(-1))
-    {
-        core::RemoveDirectX9Loop(m_callbackId);
-        m_callbackId = static_cast<size_t>(-1);
-        m_registered = false;
-    }
+    // NOTE: We don't remove the loop callback anymore — just stop updating
 }
 
 void ForcePrecipitation::Update(IDirect3DDevice9* device)
@@ -98,65 +92,96 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
     if (!m_active || !device)
         return;
 
-    D3DVIEWPORT9 vp{};
-    if (FAILED(device->GetViewport(&vp)))
+    // Load raindrop texture if not already loaded
+    if (!m_rainTex)
     {
-        OutputDebugStringA("Failed to get viewport\n");
-        return;
+        if (FAILED(D3DXCreateTextureFromFileA(device, "scripts\\raindrop.dds", &m_rainTex)))
+        {
+            OutputDebugStringA("[RainController] Failed to load raindrop.dds\n");
+            return;
+        }
     }
 
-    float width = static_cast<float>(vp.Width);
-    float height = static_cast<float>(vp.Height);
-    float wind = sinf(timeGetTime() * 0.001f) * 30.0f; // oscillating wind
+    // Get viewport and transforms
+    D3DVIEWPORT9 vp{};
+    device->GetViewport(&vp);
 
-    // Initialize and update drop positions
+    D3DXMATRIX matView, matProj, matWorld;
+    device->GetTransform(D3DTS_VIEW, &matView);
+    device->GetTransform(D3DTS_PROJECTION, &matProj);
+    device->GetTransform(D3DTS_WORLD, &matWorld); // usually identity
+
+    // Initialize drops if empty
+    if (m_drops.empty())
+    {
+        m_drops.resize(300);
+        for (auto& d : m_drops)
+        {
+            float x = float(rand() % 200 - 100);
+            float y = float(rand() % 50 + 10);
+            float z = float(rand() % 200 + 10);
+            d.position = D3DXVECTOR3(x, y, z);
+            d.velocity = D3DXVECTOR3(0.0f, -200.0f - rand() % 100, 0.0f);
+            d.length = 8.0f + rand() % 12;
+        }
+    }
+
+    // Update drop physics
+    float dt = 0.016f; // Approx 60 FPS fixed timestep
     for (auto& d : m_drops)
     {
-        if (!d.initialized)
-        {
-            d.x = static_cast<float>(rand() % static_cast<int>(width));
-            d.y = static_cast<float>(rand() % static_cast<int>(height));
-            d.speed = 200.0f + m_precip.rainPercent * 600.0f;
-            d.length = 10.0f + m_precip.rainPercent * 20.0f;
-            d.initialized = true;
-        }
+        d.position += d.velocity * dt;
 
-        d.y += d.speed * 0.016f;
-        d.x += wind * 0.016f; // Apply wind every frame
-
-        if (d.y > height)
+        if (d.position.y < -10.0f)
         {
-            d.x = static_cast<float>(rand() % static_cast<int>(width));
-            d.y = -d.length;
+            d.position.x = float(rand() % 200 - 100);
+            d.position.y = float(rand() % 50 + 10);
+            d.position.z = float(rand() % 200 + 10);
         }
     }
 
-    // Render rain
+    // Setup rendering states
     device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
     device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
     device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
-    device->SetTexture(0, nullptr);
+    device->SetRenderState(D3DRS_ZENABLE, FALSE);
+    device->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+    device->SetRenderState(D3DRS_LIGHTING, FALSE);
+    device->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
 
-    ID3DXLine* line = nullptr;
-    if (FAILED(D3DXCreateLine(device, &line)))
+    device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+    device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+    device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+
+    device->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1 | D3DFVF_DIFFUSE);
+    device->SetTexture(0, m_rainTex);
+
+    // Draw each drop
+    for (const auto& d : m_drops)
     {
-        OutputDebugStringA("D3DXCreateLine failed\n");
-        return;
+        D3DXVECTOR3 screenPos;
+        if (FAILED(D3DXVec3Project(&screenPos, &d.position, &vp, &matProj, &matView, &matWorld)))
+            continue;
+
+        if (screenPos.z > 1.0f)
+            continue; // behind camera
+
+        float width = 2.0f;
+        float height = d.length;
+        int alpha = 160 + (rand() % 64);
+        DWORD color = D3DCOLOR_ARGB(alpha, 255, 255, 255);
+
+        Vertex quad[4] = {
+            {0, 0, 0.5f, 1.0f, 0.0f, 0.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
+            {800, 0, 0.5f, 1.0f, 1.0f, 0.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
+            {800, 600, 0.5f, 1.0f, 1.0f, 1.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
+            {0, 600, 0.5f, 1.0f, 0.0f, 1.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
+        };
+
+        device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+        device->SetRenderState(D3DRS_ZENABLE, FALSE);
+        device->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1 | D3DFVF_DIFFUSE);
+        device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, quad, sizeof(Vertex));
     }
-
-    line->SetWidth(1.5f);
-    line->SetAntialias(TRUE);
-    line->Begin();
-
-    for (auto& d : m_drops)
-    {
-        D3DXVECTOR2 verts[2] = {{d.x, d.y}, {d.x, d.y + d.length}};
-        HRESULT result = line->Draw(verts, 2, D3DCOLOR_ARGB(128, 255, 255, 255));
-        if (FAILED(result))
-            OutputDebugStringA("line->Draw failed\n");
-    }
-
-    line->End();
-    line->Release();
 }
-

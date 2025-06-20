@@ -1,5 +1,6 @@
 #pragma once
 #include <windows.h>
+#include <d3dx9.h>
 #include <functional>
 
 struct IDirect3DDevice9;
