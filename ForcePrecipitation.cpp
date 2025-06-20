@@ -1,4 +1,5 @@
 #include "ForcePrecipitation.h"
+#include <algorithm>
 #include "RainConfigController.h"
 
 // #ifdef GAME_PS
@@ -43,6 +44,18 @@ void ForcePrecipitation::enable()
         drop.length = 8.0f + (rand() % 8);
     }
 
+    m_rainSettings[0] = {20, 2.0f, 1.5f, 0.2f, true}; // Near: small, slow, few
+    m_rainSettings[1] = {40, 3.5f, 2.0f, 0.3f, false}; // Mid: moderate
+    m_rainSettings[2] = {60, 1.5f, 2.5f, 0.5f, false}; // Far: tiny, fast, dense
+
+    m_drops.clear();
+    for (int group = 0; group < 3; ++group)
+    {
+        const RainGroupSettings& settings = m_rainSettings[group];
+        for (int i = 0; i < settings.dropCount; ++i)
+            m_drops.push_back(RespawnDrop(settings, 0.0f));
+    }
+
     if (!m_registered)
     {
         OutputDebugStringA("[RainController] Registering DX9 loop\n");
@@ -65,41 +78,97 @@ void ForcePrecipitation::disable()
     }
 }
 
+ForcePrecipitation::Drop ForcePrecipitation::RespawnDrop(const RainGroupSettings& settings, float camY)
+{
+    Drop drop;
+    drop.length = settings.dropSize;
+    drop.velocity = D3DXVECTOR3(settings.windSway, -settings.speed, 0);
+    drop.position = D3DXVECTOR3(
+        static_cast<float>((rand() % 200) - 100),
+        camY + 100.0f,
+        static_cast<float>((rand() % 200) + 50)
+    );
+    return drop;
+}
+
+const ForcePrecipitation::RainGroupSettings* ForcePrecipitation::ChooseGroupByY(float y)
+{
+    float relY = y - m_cameraY;
+    if (relY > 85.0f) return &m_rainSettings[0]; // near
+    if (relY > 55.0f) return &m_rainSettings[1]; // mid
+    return &m_rainSettings[2]; // far
+}
+
+void ForcePrecipitation::ScaleSettingsForIntensity(float intensity)
+{
+    m_rainSettings[0].dropCount = static_cast<int>(10 + 30 * intensity);
+    m_rainSettings[1].dropCount = static_cast<int>(20 + 50 * intensity);
+    m_rainSettings[2].dropCount = static_cast<int>(30 + 70 * intensity);
+
+    m_rainSettings[0].speed = 1.5f + intensity * 1.0f;
+    m_rainSettings[1].speed = 2.0f + intensity * 1.0f;
+    m_rainSettings[2].speed = 2.5f + intensity * 1.0f;
+
+    m_rainSettings[0].dropSize = 2.0f;
+    m_rainSettings[1].dropSize = 3.5f;
+    m_rainSettings[2].dropSize = 1.5f;
+
+    m_rainSettings[0].windSway = 0.2f;
+    m_rainSettings[1].windSway = 0.3f;
+    m_rainSettings[2].windSway = 0.5f;
+}
+
 bool ForcePrecipitation::IsCreatedRainTexture(IDirect3DDevice9* device)
 {
     device->CreateTexture(16, 512, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &m_rainTex, nullptr);
+    // device->CreateTexture(64, 1024, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &m_rainTex, nullptr);
     D3DLOCKED_RECT rect;
     bool result = SUCCEEDED(m_rainTex->LockRect(0, &rect, nullptr, 0));
     if (result)
     {
-        // Clear all pixels to transparent
-        for (int y = 0; y < 256; ++y)
+        // First pass: thin rain lines (near group with fewer & smaller streaks)
+        for (int x = 6; x < 26; x += 16)
         {
-            DWORD* row = reinterpret_cast<DWORD*>((BYTE*)rect.pBits + y * rect.Pitch);
-            for (int x = 0; x < 16; ++x)
-                row[x] = 0x80FFFFFF; // semi-transparent white
+            int startY = rand() % (256 - 12);
+            for (int y = 0; y < 12; ++y)
+            {
+                DWORD* row = reinterpret_cast<DWORD*>((BYTE*)rect.pBits + (startY + y) * rect.Pitch);
+                BYTE alpha = static_cast<BYTE>(min(255, 192 - y * 6));
+                row[x] = (alpha << 24) | 0xFFFFFF;
+            }
         }
 
-        // Draw sparse vertical streaks
-        for (int x = 0; x < 16; x += 8)
+        // Second pass: thick core streaks (mid group)
+        for (int x = 10; x < 22; x += 10)
         {
-            if (rand() % 2 == 0)
+            int startY = rand() % (256 - 32);
+            for (int y = 0; y < 32; ++y)
             {
-                int startY = rand() % (256 - 8); // random Y start
-                for (int y = 0; y < 8; ++y) // vertical streak of 8px
-                {
-                    DWORD* row = reinterpret_cast<DWORD*>((BYTE*)rect.pBits + (startY + y) * rect.Pitch);
-                    BYTE alpha = 0x80 - (y * 8); // fading downward
+                DWORD* row = reinterpret_cast<DWORD*>((BYTE*)rect.pBits + (startY + y) * rect.Pitch);
+                float normY = static_cast<float>(startY + y) / 256.0f;
+                float fade = 1.0f - std::clamp(normY / (2.0f / 3.0f), 0.0f, 1.0f);
+                BYTE alpha = static_cast<BYTE>(min(255.0f, (224 - y * 3) * fade * 2.0f));
 
-                    if ((x % 8 == 0) && (rand() % 3 == 0))
-                    {
-                        row[x] = (alpha << 24) | 0x00FFFFFF;
-                    }
-                    else
-                    {
-                        row[x] = 0x00000000; // transparent
-                    }
-                }
+                if (x > 0) row[x - 1] = (alpha / 2 << 24) | 0xFFFFFF;
+                row[x] = (alpha << 24) | 0xFFFFFF;
+                if (x + 1 < 32) row[x + 1] = (alpha / 2 << 24) | 0xFFFFFF;
+            }
+        }
+
+        // Third pass: high-alpha streaks (far group, smaller & faint)
+        for (int x = 0; x < 32; x += 6)
+        {
+            int startY = rand() % (256 - 8);
+            for (int y = 0; y < 8; ++y)
+            {
+                DWORD* row = reinterpret_cast<DWORD*>((BYTE*)rect.pBits + (startY + y) * rect.Pitch);
+                float normY = static_cast<float>(startY + y) / 256.0f;
+                float fade = 1.0f - std::clamp(normY / 0.5f, 0.0f, 1.0f);
+                BYTE alpha = static_cast<BYTE>((160 - y * 2) * fade);
+
+                row[x] = (alpha << 24) | 0xFFFFFF;
+                if (x > 0) row[x - 1] = ((alpha / 2) << 24) | 0xFFFFFF;
+                if (x + 1 < 32) row[x + 1] = ((alpha / 2) << 24) | 0xFFFFFF;
             }
         }
 
@@ -117,90 +186,98 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
     if (!m_active || !m_precip.active || !device)
         return;
 
-    device->BeginScene(); // render correction for dxvk
+    device->BeginScene(); // DXVK workaround
 
-    // Initialize rain texture if needed
-    if (!m_rainTex)
-    {
-        // if (FAILED(D3DXCreateTextureFromFileA(device, "scripts\\raindrop.dds", &m_rainTex)))
-        {
-            // OutputDebugStringA("[RainController] Failed to load raindrop.dds\n");
-            if (!IsCreatedRainTexture(device))
-                return;
-        }
-    }
+    if (!m_rainTex && !IsCreatedRainTexture(device))
+        return;
 
     D3DVIEWPORT9 viewport{};
     if (FAILED(device->GetViewport(&viewport)))
         return;
 
-    D3DXMATRIX matProj, matView, matWorld;
-    D3DXMatrixIdentity(&matWorld);
+    D3DXMATRIX matProj, matView;
     device->GetTransform(D3DTS_VIEW, &matView);
 
-    // Fallback perspective matrix (60° FOV, 16:9 aspect, near/far = 0.1, 1000)
     float aspect = static_cast<float>(viewport.Width) / static_cast<float>(viewport.Height);
     D3DXMatrixPerspectiveFovLH(&matProj, D3DXToRadian(60.0f), aspect, 0.1f, 1000.0f);
 
-    // Estimated camera position (replace this with actual camera lookup if possible)
-    D3DXVECTOR3 camPos(0, 0, 0); // TODO: Replace with real camera pos if found
+    D3DXVECTOR3 camPos(0, 0, 0); // replace with actual camera if possible
 
-    // Drop logic
+    // Move drops
     for (auto& drop : m_drops)
     {
-        drop.position += drop.velocity;
+        const RainGroupSettings* group = ChooseGroupByY(drop.position.y); // assign group based on vertical distance
 
+        // Move down by speed and sway left/right
+        drop.position.y -= group->speed;
+        drop.position.x += sinf(drop.position.y * 0.05f) * group->windSway;
+
+        // Respawn if too far below camera
         if (drop.position.y < camPos.y - 100.0f)
-        {
-            // Reset above camera
-            drop.position = camPos + D3DXVECTOR3(
-                static_cast<float>((rand() % 200) - 100),
-                100.0f,
-                static_cast<float>((rand() % 200) + 50)
-            );
-        }
+            drop = RespawnDrop(*group, camPos.y); // use group index
     }
 
+    // Setup shared render state
     device->SetRenderState(D3DRS_ZENABLE, FALSE);
-    device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+
+    // device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+
+    device->SetRenderState(D3DRS_ALPHAREF, 32);
+    device->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL);
     device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
     device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
     device->SetTexture(0, m_rainTex);
+    device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
 
-    struct Vertex
+    auto RenderGroup = [&](float minY, float maxY, bool enableBlend, BYTE alpha)
     {
-        float x, y, z, rhw;
-        DWORD color;
-        float u, v;
+        device->SetRenderState(D3DRS_ALPHABLENDENABLE, enableBlend);
+
+        for (const auto& drop : m_drops)
+        {
+            if (drop.position.y < minY || drop.position.y >= maxY)
+                continue;
+
+            D3DXVECTOR3 screen;
+            D3DXMATRIX identity;
+            D3DXMatrixIdentity(&identity);
+            D3DXVec3Project(&screen, &drop.position, &viewport, &matProj, &matView, &identity);
+
+            if (screen.z < 0.0f || screen.z > 1.0f)
+                continue;
+
+            float size = drop.length * 4.0f;
+            float half = size * 0.5f;
+            DWORD color = D3DCOLOR_ARGB(alpha, 255, 255, 255);
+
+            Vertex quad[4] = {
+                {screen.x - half, screen.y - half, screen.z, 1.0f, color, 0.0f, 0.0f},
+                {screen.x + half, screen.y - half, screen.z, 1.0f, color, 1.0f, 0.0f},
+                {screen.x + half, screen.y + half, screen.z, 1.0f, color, 1.0f, 1.0f},
+                {screen.x - half, screen.y + half, screen.z, 1.0f, color, 0.0f, 1.0f},
+            };
+
+            device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, quad, sizeof(Vertex));
+        }
     };
 
-    for (const auto& drop : m_drops)
-    {
-        D3DXVECTOR3 screen{};
-        D3DXMATRIX identity;
-        D3DXMatrixIdentity(&identity);
-        D3DXVec3Project(&screen, &drop.position, &viewport, &matProj, &matView, &identity);
+    // Group thresholds (relative to cam Y)
+    // Group thresholds
+    const float nearMin = camPos.y - 9999.0f;
+    const float nearMax = camPos.y + 15.0f;
+    const float midMax = camPos.y + 45.0f;
+    const float farMax = camPos.y + 9999.0f;
 
-        if (screen.z < 0.0f || screen.z > 1.0f)
-            continue;
+    // Render: near = fewer, smaller, blend
+    RenderGroup(nearMin, nearMax, true, 255); // Enable alpha blending
 
-        float size = drop.length;
-        float half = size * 0.5f;
+    // Render: mid = moderate size/density, opaque
+    RenderGroup(nearMax, midMax, false, 255);
 
-        Vertex quad[4] = {
-            {screen.x - half, screen.y - half, screen.z, 1.0f, D3DCOLOR_ARGB(128, 255, 255, 255), 0.0f, 0.0f},
-            {screen.x + half, screen.y - half, screen.z, 1.0f, D3DCOLOR_ARGB(128, 255, 255, 255), 1.0f, 0.0f},
-            {screen.x + half, screen.y + half, screen.z, 1.0f, D3DCOLOR_ARGB(128, 255, 255, 255), 1.0f, 1.0f},
-            {screen.x - half, screen.y + half, screen.z, 1.0f, D3DCOLOR_ARGB(128, 255, 255, 255), 0.0f, 1.0f},
-        };
+    // Render: far = faint and small, opaque
+    RenderGroup(midMax, farMax, false, 255);
 
-        device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
-        device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, quad, sizeof(Vertex));
-    }
-
-    // Clean up render state
     device->SetTexture(0, nullptr);
     device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-
-    device->EndScene(); // render correction for dxvk
+    device->EndScene(); // DXVK workaround
 }
