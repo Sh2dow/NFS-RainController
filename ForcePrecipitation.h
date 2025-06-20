@@ -33,7 +33,7 @@ private:
     struct PrecipitationData
     {
         bool active{false};
-        float rainPercent{1.0f};
+        float rainPercent{2.0f};
         float fogPercent{0.5f};
     } m_precip{};
 

@@ -38,10 +38,9 @@ static void Initialize()
     if (g_features.empty())
         SetupFeatures();
 
-    OutputDebugStringA("[RainController] Setting up hooks\n");
+    OutputDebugStringA("[Initialize] Setting up hooks\n");
 
-    // Load INI config once at startup
-    RainConfigController::Load();
+    RainConfigController::Load(); // Load INI config once at startup 
 
     for (const auto& feature : g_features)
     {
@@ -54,12 +53,12 @@ static void Initialize()
             if (RainConfigController::enabled)
             {
                 feature->enable();
-                OutputDebugStringA("[RainController] Precipitation enabled\n");
+                OutputDebugStringA("[Initialize] Precipitation enabled\n");
             }
             else
             {
                 ForcePrecipitation::Get()->PatchRainSettings(0); // Static! Doesn't touch .Get()
-                OutputDebugStringA("[RainController] Precipitation disabled in config\n");
+                OutputDebugStringA("[Initialize] Precipitation disabled in config\n");
             }
         }
         else
@@ -97,7 +96,7 @@ void hk_OnPresent()
         else
             ForcePrecipitation::Get()->disable();
 
-        OutputDebugStringA(toggled ? "[RainController] Rain enabled\n" : "[RainController] Rain disabled\n");
+        OutputDebugStringA(toggled ? "[hk_OnPresent] Rain enabled\n" : "[hk_OnPresent] Rain disabled\n");
     }
 
     lastState = pressed;

@@ -116,7 +116,7 @@
 
     <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_PS|Win32' Or '$(Configuration)|$(Platform)'=='Release_UC|Win32'">
         <ClCompile>
-            <PrecompiledHeader>Use</PrecompiledHeader>
+            <PrecompiledHeader>NotUsing</PrecompiledHeader>
             <WarningLevel>Level4</WarningLevel>
             <Optimization>MaxSpeed</Optimization>
             <FunctionLevelLinking>true</FunctionLevelLinking>

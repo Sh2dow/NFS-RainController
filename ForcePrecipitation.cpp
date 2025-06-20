@@ -10,56 +10,6 @@
 
 using namespace ngg::common;
 
-static void ForceDisableRain()
-{
-    // Clear all known rain-related memory immediately
-    DWORD oldProtect;
-
-    // cfRainIntensity
-    if (float* rainIntensity = reinterpret_cast<float*>(RAIN_CF_INTENSITY_ADDR);
-        VirtualProtect(rainIntensity, sizeof(float), PAGE_EXECUTE_READWRITE, &oldProtect))
-    {
-        *rainIntensity = 0.0f;
-        VirtualProtect(rainIntensity, sizeof(float), oldProtect, &oldProtect);
-    }
-
-    // RAINDROPOFFSET
-    if (float* rainDropOffset = reinterpret_cast<float*>(RAIN_DROP_OFFSET_ADDR);
-        VirtualProtect(rainDropOffset, sizeof(float), PAGE_EXECUTE_READWRITE, &oldProtect))
-    {
-        *rainDropOffset = 0.0f;
-        VirtualProtect(rainDropOffset, sizeof(float), oldProtect, &oldProtect);
-    }
-
-    // RAINDROPALPHA
-    if (float* rainDropAlpha = reinterpret_cast<float*>(RAIN_DROP_ALPHA_ADDR);
-        VirtualProtect(rainDropAlpha, sizeof(float), PAGE_EXECUTE_READWRITE, &oldProtect))
-    {
-        *rainDropAlpha = 0.0f;
-        VirtualProtect(rainDropAlpha, sizeof(float), oldProtect, &oldProtect);
-    }
-
-    // SkyFogFalloff
-    if (float* skyFogFalloff = reinterpret_cast<float*>(FOG_SKY_FALLOFF_ADDR);
-        VirtualProtect(skyFogFalloff, sizeof(float), PAGE_EXECUTE_READWRITE, &oldProtect))
-    {
-        *skyFogFalloff = 0.0f;
-        VirtualProtect(skyFogFalloff, sizeof(float), oldProtect, &oldProtect);
-    }
-
-    // g_RainEnable registry override (optional)
-    HKEY hKey;
-    DWORD rainEnable = 0;
-    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "Software\\EA Games\\Need for Speed ProStreet", 0, KEY_SET_VALUE, &hKey) ==
-        ERROR_SUCCESS)
-    {
-        RegSetValueExA(hKey, "g_RainEnable", 0, REG_DWORD, reinterpret_cast<const BYTE*>(&rainEnable), sizeof(DWORD));
-        RegCloseKey(hKey);
-    }
-
-    OutputDebugStringA("[RainController] ForceDisableRain applied at startup\n");
-}
-
 void ForcePrecipitation::PatchRainSettings(DWORD rainEnable)
 {
     // Always zero the registry (may not affect runtime)
@@ -87,10 +37,10 @@ void ForcePrecipitation::PatchRainSettings(DWORD rainEnable)
     patch(RAIN_DROP_ALPHA_ADDR, rainEnable ? m_precip.rainPercent : 0.0f); // RAINDROPALPHA
     patch(FOG_SKY_FALLOFF_ADDR, rainEnable ? m_precip.fogPercent * 0.5f : 0.0f); // cfSkyFogFalloff
 
-    patch(RAIN_PARAM_A_ADDR, rainEnable ? 1.0f : 0.0f); // Additional rain param A
-    patch(FOG_BLEND_PARAM_ADDR, rainEnable ? 1.0f : 0.0f); // Maybe fog falloff / blend param
+    patch(RAIN_PARAM_A_ADDR, rainEnable ? 1.5f : 0.0f); // Additional rain param A
+    patch(FOG_BLEND_PARAM_ADDR, rainEnable ? 0.5f : 0.0f); // Maybe fog falloff / blend param
 
-    OutputDebugStringA(rainEnable ? "[RainController] Patching rain ON\n" : "[RainController] Patching rain OFF\n");
+    OutputDebugStringA(rainEnable ? "[PatchRainSettings] Patching rain ON\n" : "[PatchRainSettings] Patching rain OFF\n");
 }
 
 void ForcePrecipitation::enable()
@@ -107,12 +57,12 @@ void ForcePrecipitation::enable()
     m_active = true;
     PatchRainSettings(RainConfigController::enabled);
 
-    m_drops.resize(200);
+    m_drops.resize(250);
     for (auto& d : m_drops)
     {
         d.x = 0.0f;
         d.y = 0.0f;
-        d.speed = 300.0f + static_cast<float>(rand() % 300);
+        d.speed = 200.0f + static_cast<float>(rand() % 400);
     }
 
     if (!m_registered)
@@ -178,7 +128,7 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
     // Update rain drop positions
     for (auto& d : m_drops)
     {
-        d.y += d.speed * 0.016f;
+        d.y += d.speed * 0.05f;
         if (d.y > height)
         {
             d.x = static_cast<float>(rand() % static_cast<int>(width));
@@ -199,7 +149,7 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
         return;
     }
 
-    line->SetWidth(1.0f);
+    line->SetWidth(2.0f);
     line->SetAntialias(TRUE);
     line->Begin();
 

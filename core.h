@@ -1,4 +1,5 @@
 #pragma once
+#include <windows.h>
 #include <functional>
 
 struct IDirect3DDevice9;
