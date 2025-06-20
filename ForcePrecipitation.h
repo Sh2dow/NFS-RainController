@@ -19,10 +19,15 @@ public:
     void enable() override;
     void disable() override;
 
+    void Update(IDirect3DDevice9* device);
+    bool IsActive() const;
+
 private:
+    size_t m_callbackId = static_cast<size_t>(-1);
+
     struct Drop
     {
-        D3DXVECTOR3 position;  // World position
+        D3DXVECTOR3 position; // World position
         D3DXVECTOR3 velocity;
         float length;
     };
@@ -30,16 +35,13 @@ private:
     std::vector<Drop> m_drops;
     bool m_active{false};
 
-    
+
     struct Vertex
     {
         float x, y, z, rhw;
         float u, v;
         DWORD color;
     };
-
-
-    void Update(IDirect3DDevice9* device);
 
     struct PrecipitationData
     {

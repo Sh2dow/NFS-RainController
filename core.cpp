@@ -29,10 +29,11 @@ static void CoreLoop()
     }
 }
 
-void core::AddDirectX9Loop(D3DCallback cb)
+size_t core::AddDirectX9Loop(D3DCallback cb)
 {
     std::scoped_lock lock(coreMutex);
     d3dCallbacks.push_back(cb);
+    return d3dCallbacks.size() - 1; // store this in m_callbackId
 }
 
 void core::CallDirectX9Callbacks(IDirect3DDevice9* device)
@@ -45,8 +46,8 @@ void core::CallDirectX9Callbacks(IDirect3DDevice9* device)
 void core::RemoveDirectX9Loop(size_t id)
 {
     std::scoped_lock lock(coreMutex);
-    if (id < loopCallbacks.size())
-        loopCallbacks.erase(loopCallbacks.begin() + id);
+    if (id < d3dCallbacks.size())
+        d3dCallbacks.erase(d3dCallbacks.begin() + id);
 }
 
 void core::Initializing()

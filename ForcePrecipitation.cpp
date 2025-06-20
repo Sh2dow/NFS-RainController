@@ -44,12 +44,17 @@ void ForcePrecipitation::PatchRainSettings(DWORD rainEnable)
         rainEnable ? "[PatchRainSettings] Patching rain ON\n" : "[PatchRainSettings] Patching rain OFF\n");
 }
 
+bool ForcePrecipitation::IsActive() const
+{
+    return m_active && m_precip.active;
+}
+
 void ForcePrecipitation::enable()
 {
     if (m_active)
         return;
 
-    RainConfigController::Load(); // Load from INI
+    RainConfigController::Load();
 
     m_precip.active = true;
     m_precip.rainPercent = RainConfigController::rainIntensity;
@@ -60,21 +65,27 @@ void ForcePrecipitation::enable()
 
     m_drops.resize(250);
 
+    // Default camera-relative origin if actual camera can't be read
+    D3DXVECTOR3 camPos(0, 0, 0);
+
+    for (auto& drop : m_drops)
+    {
+        drop.position = camPos + D3DXVECTOR3(
+            static_cast<float>((rand() % 200) - 100),
+            static_cast<float>((rand() % 100)),
+            static_cast<float>((rand() % 200) + 50)
+        );
+        drop.velocity = D3DXVECTOR3(0.0f, -1.0f, 0.0f);
+        drop.length = 8.0f + (rand() % 8);
+    }
+
     if (!m_registered)
     {
         OutputDebugStringA("[RainController] Registering DX9 loop\n");
-
-        // FIX: This lambda will now run every frame
-        core::AddDirectX9Loop([](IDirect3DDevice9* device)
-        {
-            ForcePrecipitation::Get()->Update(device);
-        });
-
+        m_callbackId = core::AddDirectX9Loop(std::bind(&ForcePrecipitation::Update, this, std::placeholders::_1));
         m_registered = true;
     }
 }
-
-size_t m_callbackId = static_cast<size_t>(-1);
 
 void ForcePrecipitation::disable()
 {
@@ -84,104 +95,110 @@ void ForcePrecipitation::disable()
     RainConfigController::enabled = false;
     PatchRainSettings(0);
 
-    // NOTE: We don't remove the loop callback anymore — just stop updating
+    if (m_callbackId != size_t(-1))
+    {
+        core::RemoveDirectX9Loop(m_callbackId);
+        m_callbackId = -1;
+    }
 }
 
 void ForcePrecipitation::Update(IDirect3DDevice9* device)
 {
-    if (!m_active || !device)
+    if (!m_active || !m_precip.active || !device)
         return;
 
-    // Load raindrop texture if not already loaded
+    device->BeginScene(); // 👈 Add this
+
+    // Initialize rain texture if needed
     if (!m_rainTex)
     {
-        if (FAILED(D3DXCreateTextureFromFileA(device, "scripts\\raindrop.dds", &m_rainTex)))
+        device->CreateTexture(4, 4, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &m_rainTex, nullptr);
+        D3DLOCKED_RECT rect;
+        if (SUCCEEDED(m_rainTex->LockRect(0, &rect, nullptr, 0)))
         {
-            OutputDebugStringA("[RainController] Failed to load raindrop.dds\n");
-            return;
+            DWORD* pixels = static_cast<DWORD*>(rect.pBits);
+            for (int i = 0; i < 16; ++i)
+                pixels[i] = 0x80FFFFFF; // semi-transparent white
+            m_rainTex->UnlockRect(0);
+            OutputDebugStringA("[Rain] Procedural fallback rain texture created\n");
         }
     }
 
-    // Get viewport and transforms
-    D3DVIEWPORT9 vp{};
-    device->GetViewport(&vp);
+    D3DVIEWPORT9 viewport{};
+    if (FAILED(device->GetViewport(&viewport)))
+        return;
 
-    D3DXMATRIX matView, matProj, matWorld;
+    D3DXMATRIX matProj, matView, matWorld;
+    D3DXMatrixIdentity(&matWorld);
     device->GetTransform(D3DTS_VIEW, &matView);
-    device->GetTransform(D3DTS_PROJECTION, &matProj);
-    device->GetTransform(D3DTS_WORLD, &matWorld); // usually identity
 
-    // Initialize drops if empty
-    if (m_drops.empty())
+    // Fallback perspective matrix (60° FOV, 16:9 aspect, near/far = 0.1, 1000)
+    float aspect = static_cast<float>(viewport.Width) / static_cast<float>(viewport.Height);
+    D3DXMatrixPerspectiveFovLH(&matProj, D3DXToRadian(60.0f), aspect, 0.1f, 1000.0f);
+
+    char buf[256];
+    sprintf(buf, "Proj: %f %f %f %f\n", matProj._11, matProj._22, matProj._33, matProj._43);
+    OutputDebugStringA(buf);
+
+    // Estimated camera position (replace this with actual camera lookup if possible)
+    D3DXVECTOR3 camPos(0, 0, 0); // TODO: Replace with real camera pos if found
+
+    // Drop logic
+    for (auto& drop : m_drops)
     {
-        m_drops.resize(300);
-        for (auto& d : m_drops)
+        drop.position += drop.velocity;
+
+        if (drop.position.y < camPos.y - 100.0f)
         {
-            float x = float(rand() % 200 - 100);
-            float y = float(rand() % 50 + 10);
-            float z = float(rand() % 200 + 10);
-            d.position = D3DXVECTOR3(x, y, z);
-            d.velocity = D3DXVECTOR3(0.0f, -200.0f - rand() % 100, 0.0f);
-            d.length = 8.0f + rand() % 12;
+            // Reset above camera
+            drop.position = camPos + D3DXVECTOR3(
+                static_cast<float>((rand() % 200) - 100),
+                100.0f,
+                static_cast<float>((rand() % 200) + 50)
+            );
         }
     }
 
-    // Update drop physics
-    float dt = 0.016f; // Approx 60 FPS fixed timestep
-    for (auto& d : m_drops)
-    {
-        d.position += d.velocity * dt;
-
-        if (d.position.y < -10.0f)
-        {
-            d.position.x = float(rand() % 200 - 100);
-            d.position.y = float(rand() % 50 + 10);
-            d.position.z = float(rand() % 200 + 10);
-        }
-    }
-
-    // Setup rendering states
+    device->SetRenderState(D3DRS_ZENABLE, FALSE);
     device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
     device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
     device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
-    device->SetRenderState(D3DRS_ZENABLE, FALSE);
-    device->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
-    device->SetRenderState(D3DRS_LIGHTING, FALSE);
-    device->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-
-    device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-    device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-    device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-    device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
-
-    device->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1 | D3DFVF_DIFFUSE);
     device->SetTexture(0, m_rainTex);
 
-    // Draw each drop
-    for (const auto& d : m_drops)
+    struct Vertex
     {
-        D3DXVECTOR3 screenPos;
-        if (FAILED(D3DXVec3Project(&screenPos, &d.position, &vp, &matProj, &matView, &matWorld)))
+        float x, y, z, rhw;
+        DWORD color;
+        float u, v;
+    };
+
+    for (const auto& drop : m_drops)
+    {
+        D3DXVECTOR3 screen{};
+        D3DXMATRIX identity;
+        D3DXMatrixIdentity(&identity);
+        D3DXVec3Project(&screen, &drop.position, &viewport, &matProj, &matView, &identity);
+
+        if (screen.z < 0.0f || screen.z > 1.0f)
             continue;
 
-        if (screenPos.z > 1.0f)
-            continue; // behind camera
-
-        float width = 2.0f;
-        float height = d.length;
-        int alpha = 160 + (rand() % 64);
-        DWORD color = D3DCOLOR_ARGB(alpha, 255, 255, 255);
+        float size = drop.length;
+        float half = size * 0.5f;
 
         Vertex quad[4] = {
-            {0, 0, 0.5f, 1.0f, 0.0f, 0.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
-            {800, 0, 0.5f, 1.0f, 1.0f, 0.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
-            {800, 600, 0.5f, 1.0f, 1.0f, 1.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
-            {0, 600, 0.5f, 1.0f, 0.0f, 1.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
+            {screen.x - half, screen.y - half, screen.z, 1.0f, D3DCOLOR_ARGB(128, 255, 255, 255), 0.0f, 0.0f},
+            {screen.x + half, screen.y - half, screen.z, 1.0f, D3DCOLOR_ARGB(128, 255, 255, 255), 1.0f, 0.0f},
+            {screen.x + half, screen.y + half, screen.z, 1.0f, D3DCOLOR_ARGB(128, 255, 255, 255), 1.0f, 1.0f},
+            {screen.x - half, screen.y + half, screen.z, 1.0f, D3DCOLOR_ARGB(128, 255, 255, 255), 0.0f, 1.0f},
         };
 
-        device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-        device->SetRenderState(D3DRS_ZENABLE, FALSE);
-        device->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1 | D3DFVF_DIFFUSE);
+        device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
         device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, quad, sizeof(Vertex));
     }
+
+    // Clean up render state
+    device->SetTexture(0, nullptr);
+    device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+
+    device->EndScene(); // 👈 And this
 }

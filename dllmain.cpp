@@ -1,4 +1,4 @@
-// Minimal reimplementation of the NFS-RainController plugin.
+// DXVK-compatible rain plugin patch for NFS ProStreet / UC
 #include <windows.h>
 #include <vector>
 #include <memory>
@@ -98,29 +98,18 @@ void hk_OnPresent()
     lastState = pressed;
 }
 
-HRESULT APIENTRY HookedPresent(IDirect3DDevice9* device, CONST RECT* src, CONST RECT* dest, HWND wnd,
-                               CONST RGNDATA* dirty)
+HRESULT APIENTRY HookedPresent(IDirect3DDevice9* device, CONST RECT* src, CONST RECT* dest, HWND wnd, CONST RGNDATA* dirty)
 {
     static bool inCall = false;
     if (inCall)
-    {
-        char buf[256];
-        sprintf(buf, "[Present] Calling original at %p (inCall=%d)\n", g_originalPresent, inCall);
-        OutputDebugStringA(buf);
-
         return g_originalPresent ? g_originalPresent(device, src, dest, wnd, dirty) : D3D_OK;
-    }
+
     inCall = true;
 
     if (!g_hookTransferred)
     {
         void** realVTable = *reinterpret_cast<void***>(device);
         void* realPresent = realVTable[17];
-
-        char dbg[256];
-        sprintf(dbg, "[HookTransfer] realPresent = %p | HookedPresent = %p\n", realPresent, &HookedPresent);
-        OutputDebugStringA(dbg);
-
         if (realPresent != reinterpret_cast<void*>(&HookedPresent))
         {
             MH_DisableHook(reinterpret_cast<void*>(g_originalDummyPresent));
@@ -136,61 +125,26 @@ HRESULT APIENTRY HookedPresent(IDirect3DDevice9* device, CONST RECT* src, CONST 
         }
     }
 
+    OnPresent();
+    hk_OnPresent();
+
+    if (ForcePrecipitation::Get()->IsActive())
+    {
+        ForcePrecipitation::Get()->Update(device); // draw rain last
+    }
+
     HRESULT result = D3D_OK;
+    PresentFn toCall = (g_hookTransferred && g_originalPresent != &HookedPresent)
+        ? g_originalPresent
+        : (g_originalDummyPresent != &HookedPresent ? g_originalDummyPresent : nullptr);
 
-    __try
-    {
-        OnPresent();
-        hk_OnPresent();
+    if (toCall)
+        result = toCall(device, src, dest, wnd, dirty);
+    else
+        OutputDebugStringA("[!!] Skipping Present to avoid recursion\n");
 
-        // Draw red debug square (screen-space at top-left)
-        if (device)
-        {
-            D3DVIEWPORT9 vp{};
-            if (SUCCEEDED(device->GetViewport(&vp)))
-            {
-                struct Vertex
-                {
-                    float x, y, z, rhw;
-                    DWORD color;
-                };
-                Vertex quad[4] = {
-                    {0.0f, 0.0f, 0.5f, 1.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
-                    {200.0f, 0.0f, 0.5f, 1.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
-                    {200.0f, 200.0f, 0.5f, 1.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
-                    {0.0f, 200.0f, 0.5f, 1.0f, D3DCOLOR_ARGB(255, 255, 0, 0)},
-                };
-
-                device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
-                device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, quad, sizeof(Vertex));
-            }
-        }
-
-        PresentFn toCall = nullptr;
-
-        if (g_hookTransferred)
-            toCall = (g_originalPresent && g_originalPresent != &HookedPresent) ? g_originalPresent : nullptr;
-        else
-            toCall = (g_originalDummyPresent && g_originalDummyPresent != &HookedPresent) ? g_originalDummyPresent : nullptr;
-
-        char log[256];
-        sprintf(log, "[Present] toCall = %p | g_originalPresent = %p | g_originalDummyPresent = %p | HookedPresent = %p\n",
-                toCall, g_originalPresent, g_originalDummyPresent, &HookedPresent);
-
-        OutputDebugStringA(log);
-
-        if (toCall && toCall != &HookedPresent)
-            result = toCall(device, src, dest, wnd, dirty);
-        else
-            OutputDebugStringA("[!!] Skipping Present to avoid recursion\n");
-
-        core::CallDirectX9Callbacks(device);
-    }
-    __finally
-    {
-        inCall = false;
-    }
-
+    core::CallDirectX9Callbacks(device);
+    inCall = false;
     return result;
 }
 
@@ -206,7 +160,6 @@ void HookPresentFromRuntimeDevice(IDirect3DDevice9* device)
     OutputDebugStringA("[RainController] Hooked real Present from game device\n");
 }
 
-// HookPresent
 void HookPresent()
 {
     IDirect3D9* d3d = Direct3DCreate9(D3D_SDK_VERSION);
@@ -228,11 +181,8 @@ void HookPresent()
     void** vtable = *reinterpret_cast<void***>(dummyDevice);
     void* dummyPresent = vtable[17];
 
-    // ✅ Assign actual vtable[17] directly
     g_originalDummyPresent = reinterpret_cast<PresentFn>(dummyPresent);
-
-    // 🛑 Don't override g_originalDummyPresent again!
-    MH_CreateHook(dummyPresent, &HookedPresent, nullptr);  // We don't care about the trampoline here
+    MH_CreateHook(dummyPresent, &HookedPresent, nullptr);
     MH_EnableHook(dummyPresent);
 
     dummyDevice->Release();
