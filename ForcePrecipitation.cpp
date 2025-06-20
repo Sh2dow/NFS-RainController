@@ -1,48 +1,13 @@
 #include "ForcePrecipitation.h"
 #include "RainConfigController.h"
 
-#ifdef GAME_PS
-#include "NFSPS_PreFEngHook.h"
-#elif GAME_UC
-#include "NFSUC_PreFEngHook.h"
-#endif
+// #ifdef GAME_PS
+// #include "NFSPS_PreFEngHook.h"
+// #elif GAME_UC
+// #include "NFSUC_PreFEngHook.h"
+// #endif
 
 using namespace ngg::common;
-
-void ForcePrecipitation::PatchRainSettings(DWORD rainEnable)
-{
-    // Always zero the registry (may not affect runtime)
-    HKEY hKey;
-    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "Software\\EA Games\\Need for Speed ProStreet", 0, KEY_SET_VALUE, &hKey) ==
-        ERROR_SUCCESS)
-    {
-        RegSetValueExA(hKey, "g_RainEnable", 0, REG_DWORD, reinterpret_cast<const BYTE*>(&rainEnable), sizeof(DWORD));
-        RegCloseKey(hKey);
-    }
-
-    DWORD oldProtect;
-    auto patch = [&](DWORD addr, float value)
-    {
-        if (float* ptr = reinterpret_cast<float*>(addr);
-            VirtualProtect(ptr, sizeof(float), PAGE_EXECUTE_READWRITE, &oldProtect))
-        {
-            *ptr = value;
-            VirtualProtect(ptr, sizeof(float), oldProtect, &oldProtect);
-        }
-    };
-
-    // Probably a leftover stuff, doesn't work either
-    // patch(RAIN_CF_INTENSITY_ADDR, rainEnable ? m_precip.rainPercent : 0.0f); // cfRainIntensity
-    // patch(RAIN_DROP_OFFSET_ADDR, rainEnable ? -10.0f : 0.0f); // RAINDROPOFFSET
-    // patch(RAIN_DROP_ALPHA_ADDR, rainEnable ? m_precip.rainPercent : 0.0f); // RAINDROPALPHA
-    // patch(FOG_SKY_FALLOFF_ADDR, rainEnable ? m_precip.fogPercent * 0.5f : 0.0f); // cfSkyFogFalloff
-    //
-    // patch(RAIN_PARAM_A_ADDR, rainEnable ? 1.5f : 0.0f); // Additional rain param A
-    // patch(FOG_BLEND_PARAM_ADDR, rainEnable ? 0.5f : 0.0f); // Maybe fog falloff / blend param
-
-    OutputDebugStringA(
-        rainEnable ? "[PatchRainSettings] Patching rain ON\n" : "[PatchRainSettings] Patching rain OFF\n");
-}
 
 bool ForcePrecipitation::IsActive() const
 {
@@ -61,7 +26,6 @@ void ForcePrecipitation::enable()
     m_precip.fogPercent = RainConfigController::fogIntensity;
 
     m_active = true;
-    PatchRainSettings(1);
 
     m_drops.resize(250);
 
@@ -93,7 +57,6 @@ void ForcePrecipitation::disable()
     m_active = false;
     m_drops.clear();
     RainConfigController::enabled = false;
-    PatchRainSettings(0);
 
     if (m_callbackId != size_t(-1))
     {
@@ -102,25 +65,68 @@ void ForcePrecipitation::disable()
     }
 }
 
+bool ForcePrecipitation::IsCreatedRainTexture(IDirect3DDevice9* device)
+{
+    device->CreateTexture(16, 512, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &m_rainTex, nullptr);
+    D3DLOCKED_RECT rect;
+    bool result = SUCCEEDED(m_rainTex->LockRect(0, &rect, nullptr, 0));
+    if (result)
+    {
+        // Clear all pixels to transparent
+        for (int y = 0; y < 256; ++y)
+        {
+            DWORD* row = reinterpret_cast<DWORD*>((BYTE*)rect.pBits + y * rect.Pitch);
+            for (int x = 0; x < 16; ++x)
+                row[x] = 0x80FFFFFF; // semi-transparent white
+        }
+
+        // Draw sparse vertical streaks
+        for (int x = 0; x < 16; x += 8)
+        {
+            if (rand() % 2 == 0)
+            {
+                int startY = rand() % (256 - 8); // random Y start
+                for (int y = 0; y < 8; ++y) // vertical streak of 8px
+                {
+                    DWORD* row = reinterpret_cast<DWORD*>((BYTE*)rect.pBits + (startY + y) * rect.Pitch);
+                    BYTE alpha = 0x80 - (y * 8); // fading downward
+
+                    if ((x % 8 == 0) && (rand() % 3 == 0))
+                    {
+                        row[x] = (alpha << 24) | 0x00FFFFFF;
+                    }
+                    else
+                    {
+                        row[x] = 0x00000000; // transparent
+                    }
+                }
+            }
+        }
+
+        m_rainTex->UnlockRect(0);
+        OutputDebugStringA("[IsCreatedRainTexture] Vertical rain streaks texture created\n");
+    }
+    else
+        OutputDebugStringA("[IsCreatedRainTexture] Failed Procedural fallback rain texture creation\n");
+
+    return result;
+}
+
 void ForcePrecipitation::Update(IDirect3DDevice9* device)
 {
     if (!m_active || !m_precip.active || !device)
         return;
 
-    device->BeginScene(); // 👈 Add this
+    device->BeginScene(); // render correction for dxvk
 
     // Initialize rain texture if needed
     if (!m_rainTex)
     {
-        device->CreateTexture(4, 4, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &m_rainTex, nullptr);
-        D3DLOCKED_RECT rect;
-        if (SUCCEEDED(m_rainTex->LockRect(0, &rect, nullptr, 0)))
+        // if (FAILED(D3DXCreateTextureFromFileA(device, "scripts\\raindrop.dds", &m_rainTex)))
         {
-            DWORD* pixels = static_cast<DWORD*>(rect.pBits);
-            for (int i = 0; i < 16; ++i)
-                pixels[i] = 0x80FFFFFF; // semi-transparent white
-            m_rainTex->UnlockRect(0);
-            OutputDebugStringA("[Rain] Procedural fallback rain texture created\n");
+            // OutputDebugStringA("[RainController] Failed to load raindrop.dds\n");
+            if (!IsCreatedRainTexture(device))
+                return;
         }
     }
 
@@ -135,10 +141,6 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
     // Fallback perspective matrix (60° FOV, 16:9 aspect, near/far = 0.1, 1000)
     float aspect = static_cast<float>(viewport.Width) / static_cast<float>(viewport.Height);
     D3DXMatrixPerspectiveFovLH(&matProj, D3DXToRadian(60.0f), aspect, 0.1f, 1000.0f);
-
-    char buf[256];
-    sprintf(buf, "Proj: %f %f %f %f\n", matProj._11, matProj._22, matProj._33, matProj._43);
-    OutputDebugStringA(buf);
 
     // Estimated camera position (replace this with actual camera lookup if possible)
     D3DXVECTOR3 camPos(0, 0, 0); // TODO: Replace with real camera pos if found
@@ -200,5 +202,5 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
     device->SetTexture(0, nullptr);
     device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
 
-    device->EndScene(); // 👈 And this
+    device->EndScene(); // render correction for dxvk
 }

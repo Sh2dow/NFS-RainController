@@ -13,7 +13,6 @@ public:
         return &instance;
     }
 
-    void PatchRainSettings(DWORD rainEnable);
     const char* name() const override { return "ForcePrecipitation"; }
 
     void enable() override;
@@ -23,6 +22,8 @@ public:
     bool IsActive() const;
 
 private:
+    bool IsCreatedRainTexture(IDirect3DDevice9* device);
+
     size_t m_callbackId = static_cast<size_t>(-1);
 
     struct Drop
