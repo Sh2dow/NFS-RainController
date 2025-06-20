@@ -76,6 +76,7 @@ private:
     
     void ScaleSettingsForIntensity(float intensity);
     bool IsCreatedRainTexture(IDirect3DDevice9* device);
+    void Render2DRainOverlay(IDirect3DDevice9* device, const D3DVIEWPORT9& viewport);
 
     void RenderRainDrop(IDirect3DDevice9* device, const Drop& drop,
                         const D3DVIEWPORT9& viewport,

@@ -181,6 +181,59 @@ bool ForcePrecipitation::IsCreatedRainTexture(IDirect3DDevice9* device)
     return result;
 }
 
+void ForcePrecipitation::Render2DRainOverlay(IDirect3DDevice9* device, const D3DVIEWPORT9& viewport)
+{
+    if (m_precip.rainPercent <= 0.05f)
+        return;
+
+    ID3DXLine* line = nullptr;
+    if (FAILED(D3DXCreateLine(device, &line)))
+    {
+        OutputDebugStringA("D3DXCreateLine failed\n");
+        return;
+    }
+
+    line->SetWidth(1.5f);
+    line->SetAntialias(TRUE);
+    line->Begin();
+
+    float wind = sinf(timeGetTime() * 0.001f) * 30.0f;
+    float width = static_cast<float>(viewport.Width);
+    float height = static_cast<float>(viewport.Height);
+    BYTE alpha = static_cast<BYTE>(std::clamp(64.0f + m_precip.rainPercent * 192.0f, 0.0f, 255.0f));
+
+    for (auto& drop : m_drops)
+    {
+        // If velocity is zero, initialize it
+        if (drop.velocity.y == 0.0f)
+        {
+            drop.position.x = static_cast<float>(rand() % static_cast<int>(width));
+            drop.position.y = static_cast<float>(rand() % static_cast<int>(height));
+            drop.velocity.y = 200.0f + m_precip.rainPercent * 600.0f;
+            drop.length = 10.0f + m_precip.rainPercent * 20.0f;
+        }
+
+        drop.position.y += drop.velocity.y * 0.016f;
+        drop.position.x += wind * 0.016f;
+
+        if (drop.position.y > height)
+        {
+            drop.position.x = static_cast<float>(rand() % static_cast<int>(width));
+            drop.position.y = -drop.length;
+        }
+
+        D3DXVECTOR2 verts[2] = {
+            { drop.position.x, drop.position.y },
+            { drop.position.x, drop.position.y + drop.length }
+        };
+        if (FAILED(line->Draw(verts, 2, D3DCOLOR_ARGB(alpha, 255, 255, 255))))
+            OutputDebugStringA("line->Draw failed\n");
+    }
+
+    line->End();
+    line->Release();
+}
+
 void ForcePrecipitation::Update(IDirect3DDevice9* device)
 {
     if (!m_active || !m_precip.active || !device)
@@ -194,6 +247,8 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
     D3DVIEWPORT9 viewport{};
     if (FAILED(device->GetViewport(&viewport)))
         return;
+
+    Render2DRainOverlay(device, viewport);
 
     D3DXMATRIX matProj, matView;
     device->GetTransform(D3DTS_VIEW, &matView);
