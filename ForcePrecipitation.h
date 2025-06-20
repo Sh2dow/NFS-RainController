@@ -23,6 +23,8 @@ private:
         float x{0.0f};
         float y{0.0f};
         float speed{0.0f};
+        float length;
+        bool initialized = false;
     };
 
     std::vector<Drop> m_drops;

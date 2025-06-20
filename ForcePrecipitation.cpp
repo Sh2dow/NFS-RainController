@@ -32,15 +32,17 @@ void ForcePrecipitation::PatchRainSettings(DWORD rainEnable)
         }
     };
 
-    patch(RAIN_CF_INTENSITY_ADDR, rainEnable ? m_precip.rainPercent : 0.0f); // cfRainIntensity
-    patch(RAIN_DROP_OFFSET_ADDR, rainEnable ? -10.0f : 0.0f); // RAINDROPOFFSET
-    patch(RAIN_DROP_ALPHA_ADDR, rainEnable ? m_precip.rainPercent : 0.0f); // RAINDROPALPHA
-    patch(FOG_SKY_FALLOFF_ADDR, rainEnable ? m_precip.fogPercent * 0.5f : 0.0f); // cfSkyFogFalloff
+    // Probably a leftover stuff, doesn't work either
+    // patch(RAIN_CF_INTENSITY_ADDR, rainEnable ? m_precip.rainPercent : 0.0f); // cfRainIntensity
+    // patch(RAIN_DROP_OFFSET_ADDR, rainEnable ? -10.0f : 0.0f); // RAINDROPOFFSET
+    // patch(RAIN_DROP_ALPHA_ADDR, rainEnable ? m_precip.rainPercent : 0.0f); // RAINDROPALPHA
+    // patch(FOG_SKY_FALLOFF_ADDR, rainEnable ? m_precip.fogPercent * 0.5f : 0.0f); // cfSkyFogFalloff
+    //
+    // patch(RAIN_PARAM_A_ADDR, rainEnable ? 1.5f : 0.0f); // Additional rain param A
+    // patch(FOG_BLEND_PARAM_ADDR, rainEnable ? 0.5f : 0.0f); // Maybe fog falloff / blend param
 
-    patch(RAIN_PARAM_A_ADDR, rainEnable ? 1.5f : 0.0f); // Additional rain param A
-    patch(FOG_BLEND_PARAM_ADDR, rainEnable ? 0.5f : 0.0f); // Maybe fog falloff / blend param
-
-    OutputDebugStringA(rainEnable ? "[PatchRainSettings] Patching rain ON\n" : "[PatchRainSettings] Patching rain OFF\n");
+    OutputDebugStringA(
+        rainEnable ? "[PatchRainSettings] Patching rain ON\n" : "[PatchRainSettings] Patching rain OFF\n");
 }
 
 void ForcePrecipitation::enable()
@@ -96,25 +98,6 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
     if (!m_active || !device)
         return;
 
-    static bool dropsInitialized = false;
-
-    if (!dropsInitialized)
-    {
-        D3DVIEWPORT9 vp{};
-        if (SUCCEEDED(device->GetViewport(&vp)))
-        {
-            float width = static_cast<float>(vp.Width);
-            float height = static_cast<float>(vp.Height);
-            for (auto& d : m_drops)
-            {
-                d.x = static_cast<float>(rand() % static_cast<int>(width));
-                d.y = static_cast<float>(rand() % static_cast<int>(height));
-            }
-        }
-        dropsInitialized = true;
-    }
-
-    // Get screen size
     D3DVIEWPORT9 vp{};
     if (FAILED(device->GetViewport(&vp)))
     {
@@ -124,23 +107,35 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
 
     float width = static_cast<float>(vp.Width);
     float height = static_cast<float>(vp.Height);
+    float wind = sinf(timeGetTime() * 0.001f) * 30.0f; // oscillating wind
 
-    // Update rain drop positions
+    // Initialize and update drop positions
     for (auto& d : m_drops)
     {
-        d.y += d.speed * 0.05f;
+        if (!d.initialized)
+        {
+            d.x = static_cast<float>(rand() % static_cast<int>(width));
+            d.y = static_cast<float>(rand() % static_cast<int>(height));
+            d.speed = 200.0f + m_precip.rainPercent * 600.0f;
+            d.length = 10.0f + m_precip.rainPercent * 20.0f;
+            d.initialized = true;
+        }
+
+        d.y += d.speed * 0.016f;
+        d.x += wind * 0.016f; // Apply wind every frame
+
         if (d.y > height)
         {
             d.x = static_cast<float>(rand() % static_cast<int>(width));
-            d.y = -10.0f;
+            d.y = -d.length;
         }
     }
 
-    // Set up rendering
+    // Render rain
     device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
     device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
     device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
-    device->SetTexture(0, nullptr); // Disable texturing
+    device->SetTexture(0, nullptr);
 
     ID3DXLine* line = nullptr;
     if (FAILED(D3DXCreateLine(device, &line)))
@@ -149,13 +144,13 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
         return;
     }
 
-    line->SetWidth(2.0f);
+    line->SetWidth(1.5f);
     line->SetAntialias(TRUE);
     line->Begin();
 
     for (auto& d : m_drops)
     {
-        D3DXVECTOR2 verts[2] = {{d.x, d.y}, {d.x, d.y + 10.0f}};
+        D3DXVECTOR2 verts[2] = {{d.x, d.y}, {d.x, d.y + d.length}};
         HRESULT result = line->Draw(verts, 2, D3DCOLOR_ARGB(128, 255, 255, 255));
         if (FAILED(result))
             OutputDebugStringA("line->Draw failed\n");
@@ -164,3 +159,4 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
     line->End();
     line->Release();
 }
+

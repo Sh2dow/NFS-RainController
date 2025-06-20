@@ -97,6 +97,14 @@
 
 #define DOSCREENPRINTF_ADDR 0x00DAA175
 
+// Precipitation memory addresses (NFS ProStreet)
+// #define RAIN_CF_INTENSITY_ADDR        0x00FEB1D4
+// #define RAIN_DROP_OFFSET_ADDR         0x00FEB1C8
+// #define RAIN_DROP_ALPHA_ADDR          0x00FEB1D0
+// #define FOG_SKY_FALLOFF_ADDR          0x00FEB198
+// #define RAIN_PARAM_A_ADDR             0x00FEB190
+// #define FOG_BLEND_PARAM_ADDR          0x00FEB1A0
+
 #define ENABLECOPS_ADDR 0x00D1F042
 #define CAMERADEBUGWATCHCAR_ADDR 0x00D89951
 #define MTOGGLECAR_ADDR 0x00D89990

@@ -57,7 +57,7 @@ static void Initialize()
             }
             else
             {
-                ForcePrecipitation::Get()->PatchRainSettings(0); // Static! Doesn't touch .Get()
+                feature->disable();
                 OutputDebugStringA("[Initialize] Precipitation disabled in config\n");
             }
         }
