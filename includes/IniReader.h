@@ -3,7 +3,7 @@
 #include "ini_parser.hpp"
 #include <string>
 #include <string_view>
-#include <windows.h>
+#include <Windows.h>
 #include <filesystem>
 
 /*

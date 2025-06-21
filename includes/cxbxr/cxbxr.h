@@ -1,5 +1,5 @@
 #pragma once
-#include <windows.h>
+#include <Windows.h>
 #include <filesystem>
 #include <tlhelp32.h>
 #include <Psapi.h>

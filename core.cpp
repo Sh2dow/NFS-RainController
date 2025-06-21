@@ -3,31 +3,42 @@
 #include <vector>
 #include <mutex>
 #include <thread>
-
 static std::vector<core::VoidCallback> loopCallbacks;
 static std::vector<core::D3DCallback> d3dCallbacks;
 static std::mutex coreMutex;
 static bool running = true;
 
-bool core::IsDXVKAdapter()
+#include <shlwapi.h>
+#pragma comment(lib, "shlwapi.lib")
+
+bool core::IsDXVKWrapper()
 {
-    IDirect3D9* d3d = Direct3DCreate9(D3D_SDK_VERSION);
-    if (!d3d) return false;
+    char path[MAX_PATH] = {};
+    HMODULE hMod = GetModuleHandleA("d3d9.dll");
+    if (!hMod) return false;
 
-    D3DADAPTER_IDENTIFIER9 id = {};
-    bool isDXVK = false;
+    GetModuleFileNameA(hMod, path, MAX_PATH);
 
-    if (SUCCEEDED(d3d->GetAdapterIdentifier(D3DADAPTER_DEFAULT, 0, &id)))
+    char sysDir[MAX_PATH] = {};
+    GetSystemDirectoryA(sysDir, MAX_PATH);
+
+    // 1. d3d9.dll is not the system one
+    bool nonSystemDll = !PathIsPrefixA(sysDir, path);
+    if (!nonSystemDll)
     {
-        if (strstr(id.Description, "DXVK"))
-        {
-            OutputDebugStringA("DXVK detected\n");
-            isDXVK = true;
-        }
+        OutputDebugStringA("[IsDXVKWrapper] System D3D9 detected, not DXVK.\n");
+        return false;
     }
 
-    d3d->Release();
-    return isDXVK;
+    // 2. Vulkan runtime must be loaded — dxvk depends on it
+    if (!GetModuleHandleA("vulkan-1.dll"))
+    {
+        OutputDebugStringA("[IsDXVKWrapper] No vulkan-1.dll loaded — not DXVK.\n");
+        return false;
+    }
+
+    OutputDebugStringA("[IsDXVKWrapper] Detected DXVK by d3d9.dll location + vulkan-1.dll\n");
+    return true;
 }
 
 void core::AddLoop(VoidCallback cb)

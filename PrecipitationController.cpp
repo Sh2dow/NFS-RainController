@@ -1,4 +1,4 @@
-#include "ForcePrecipitation.h"
+#include "PrecipitationController.h"
 #include "RainConfigController.h"
 #include <algorithm>
 #include <d3d9.h>
@@ -11,21 +11,19 @@
 
 using namespace ngg::common;
 
-bool ForcePrecipitation::IsActive() const
+IDirect3DDevice9* m_device = nullptr; // Add to class
+
+bool PrecipitationController::IsActive() const
 {
-    return m_active && m_precip.active;
+    return m_active;
 }
 
-void ForcePrecipitation::enable()
+void PrecipitationController::enable()
 {
     if (m_active)
         return;
 
     RainConfigController::Load();
-
-    m_precip.active = true;
-    m_precip.rainPercent = RainConfigController::rainIntensity;
-    m_precip.fogPercent = RainConfigController::fogIntensity;
 
     m_active = true;
 
@@ -45,9 +43,11 @@ void ForcePrecipitation::enable()
         drop.length = 8.0f + (rand() % 8);
     }
 
-    m_rainSettings[0] = {20, 2.0f, 1.5f, 0.2f, true}; // Near: small, slow, few
-    m_rainSettings[1] = {40, 3.5f, 2.0f, 0.3f, false}; // Mid: moderate
-    m_rainSettings[2] = {60, 1.5f, 2.5f, 0.5f, false}; // Far: tiny, fast, dense
+    // m_rainSettings[0] = {20, 2.0f, 1.5f, 0.2f, true}; // Near: small, slow, few
+    // m_rainSettings[1] = {40, 3.5f, 2.0f, 0.3f, false}; // Mid: moderate
+    // m_rainSettings[2] = {60, 1.5f, 2.5f, 0.5f, false}; // Far: tiny, fast, dense
+
+    ScaleSettingsForIntensity(RainConfigController::g_precipitationConfig.rainIntensity);
 
     m_drops.clear();
     for (int group = 0; group < 3; ++group)
@@ -59,18 +59,19 @@ void ForcePrecipitation::enable()
 
     if (!m_registered)
     {
-        OutputDebugStringA("[RainController] Registering DX9 loop\n");
-        m_callbackId = core::AddDirectX9Loop(std::bind(&ForcePrecipitation::Update, this, std::placeholders::_1));
+        OutputDebugStringA("[PrecipitationController::enable] Registering DX9 loop\n");
+        m_callbackId = core::AddDirectX9Loop(std::bind(&PrecipitationController::Update, this, std::placeholders::_1));
         m_registered = true;
     }
 }
 
-void ForcePrecipitation::disable()
+void PrecipitationController::disable()
 {
-    m_precip.active = false;
+    RainConfigController::g_precipitationConfig = RainConfigController::PrecipitationData();
+    // resets all members to their default values
+
     m_active = false;
     m_drops.clear();
-    RainConfigController::enabled = false;
 
     if (m_callbackId != size_t(-1))
     {
@@ -79,7 +80,7 @@ void ForcePrecipitation::disable()
     }
 }
 
-ForcePrecipitation::Drop ForcePrecipitation::RespawnDrop(const RainGroupSettings& settings, float camY)
+PrecipitationController::Drop PrecipitationController::RespawnDrop(const RainGroupSettings& settings, float camY)
 {
     Drop drop;
     drop.length = settings.dropSize;
@@ -92,7 +93,7 @@ ForcePrecipitation::Drop ForcePrecipitation::RespawnDrop(const RainGroupSettings
     return drop;
 }
 
-const ForcePrecipitation::RainGroupSettings* ForcePrecipitation::ChooseGroupByY(float y)
+const PrecipitationController::RainGroupSettings* PrecipitationController::ChooseGroupByY(float y)
 {
     float relY = y - m_cameraY;
     if (relY > 85.0f) return &m_rainSettings[0]; // near
@@ -100,7 +101,7 @@ const ForcePrecipitation::RainGroupSettings* ForcePrecipitation::ChooseGroupByY(
     return &m_rainSettings[2]; // far
 }
 
-void ForcePrecipitation::ScaleSettingsForIntensity(float intensity)
+void PrecipitationController::ScaleSettingsForIntensity(float intensity)
 {
     m_rainSettings[0].dropCount = static_cast<int>(10 + 30 * intensity);
     m_rainSettings[1].dropCount = static_cast<int>(20 + 50 * intensity);
@@ -119,7 +120,6 @@ void ForcePrecipitation::ScaleSettingsForIntensity(float intensity)
     m_rainSettings[2].windSway = 0.5f;
 }
 
-
 bool IsFormatSupported(IDirect3DDevice9* device, D3DFORMAT targetFormat)
 {
     D3DDEVICE_CREATION_PARAMETERS params;
@@ -134,7 +134,7 @@ bool IsFormatSupported(IDirect3DDevice9* device, D3DFORMAT targetFormat)
         params.AdapterOrdinal,
         params.DeviceType,
         D3DFMT_X8R8G8B8, // assumed backbuffer format
-        0,               // no usage flags (standard texture)
+        0, // no usage flags (standard texture)
         D3DRTYPE_TEXTURE,
         targetFormat);
 
@@ -157,10 +157,10 @@ D3DFORMAT GetSupportedRainTextureFormat(IDirect3DDevice9* device)
 
     // List of candidate formats in priority order
     D3DFORMAT formatsToCheck[] = {
-        D3DFMT_A8R8G8B8,      // Most compatible
-        D3DFMT_X8R8G8B8,      // No alpha fallback
-        D3DFMT_R5G6B5,        // 16-bit fallback
-        D3DFMT_A4R4G4B4       // 16-bit with alpha
+        D3DFMT_A8R8G8B8, // Most compatible
+        D3DFMT_X8R8G8B8, // No alpha fallback
+        D3DFMT_R5G6B5, // 16-bit fallback
+        D3DFMT_A4R4G4B4 // 16-bit with alpha
     };
 
     D3DFORMAT supportedFormat = D3DFMT_UNKNOWN;
@@ -171,7 +171,7 @@ D3DFORMAT GetSupportedRainTextureFormat(IDirect3DDevice9* device)
             params.AdapterOrdinal,
             params.DeviceType,
             adapterFormat,
-            0,                  // No special usage
+            0, // No special usage
             D3DRTYPE_TEXTURE,
             format);
 
@@ -186,32 +186,23 @@ D3DFORMAT GetSupportedRainTextureFormat(IDirect3DDevice9* device)
     return supportedFormat;
 }
 
-bool ForcePrecipitation::IsCreatedRainTexture(IDirect3DDevice9* device)
+bool PrecipitationController::IsCreatedRainTexture(IDirect3DDevice9* device)
 {
     D3DFORMAT chosenFormat = D3DFMT_A8R8G8B8;
-#ifndef GAME_PS
-    chosenFormat = GetSupportedRainTextureFormat(device);
-    if (chosenFormat == D3DFMT_UNKNOWN)
-    {
-        OutputDebugStringA("[RainTex] No supported texture format found\n");
-        return false;
-    }
+#ifdef GAME_UC
+    // chosenFormat = GetSupportedRainTextureFormat(device);
+    // if (chosenFormat == D3DFMT_UNKNOWN)
+    // {
+    //     OutputDebugStringA("[RainTex] No supported texture format found\n");
+    // return false;
+    // }
+    chosenFormat = D3DFMT_A8B8G8R8;
+#else
 
-    chosenFormat = D3DFMT_R8G8_B8G8;
-
-    if (!m_rainTex)
-    {
-        if (FAILED(D3DXCreateTextureFromFileA(device, "scripts\\raindrop.dds", &m_rainTex)))
-        {
-            OutputDebugStringA("[RainController] Failed to load raindrop.dds\n");
-            return false;
-        }
-    }
 #endif
 
-    if (!m_rainTex)
-        device->CreateTexture(16, 512, 1, 0, chosenFormat, D3DPOOL_MANAGED, &m_rainTex, nullptr);
-    
+    device->CreateTexture(16, 512, 1, 0, chosenFormat, D3DPOOL_MANAGED, &m_rainTex, nullptr);
+
     D3DLOCKED_RECT rect;
     bool result = SUCCEEDED(m_rainTex->LockRect(0, &rect, nullptr, 0));
     if (result)
@@ -271,13 +262,13 @@ bool ForcePrecipitation::IsCreatedRainTexture(IDirect3DDevice9* device)
     return result;
 }
 
-void ForcePrecipitation::Render2DRainOverlay(IDirect3DDevice9* device, const D3DVIEWPORT9& viewport)
+void PrecipitationController::Render2DRainOverlay(IDirect3DDevice9* m_device, const D3DVIEWPORT9& viewport)
 {
-    if (m_precip.rainPercent <= 0.05f)
+    if (RainConfigController::g_precipitationConfig.rainIntensity == 0.0f)
         return;
 
     ID3DXLine* line = nullptr;
-    if (FAILED(D3DXCreateLine(device, &line)))
+    if (FAILED(D3DXCreateLine(m_device, &line)))
     {
         OutputDebugStringA("D3DXCreateLine failed\n");
         return;
@@ -290,7 +281,8 @@ void ForcePrecipitation::Render2DRainOverlay(IDirect3DDevice9* device, const D3D
     float wind = sinf(timeGetTime() * 0.001f) * 30.0f;
     float width = static_cast<float>(viewport.Width);
     float height = static_cast<float>(viewport.Height);
-    BYTE alpha = static_cast<BYTE>(std::clamp(64.0f + m_precip.rainPercent * 192.0f, 0.0f, 255.0f));
+    BYTE alpha = static_cast<BYTE>(std::clamp(
+        64.0f + RainConfigController::g_precipitationConfig.rainIntensity * 192.0f, 0.0f, 255.0f));
 
     for (auto& drop : m_drops)
     {
@@ -299,8 +291,8 @@ void ForcePrecipitation::Render2DRainOverlay(IDirect3DDevice9* device, const D3D
         {
             drop.position.x = static_cast<float>(rand() % static_cast<int>(width));
             drop.position.y = static_cast<float>(rand() % static_cast<int>(height));
-            drop.velocity.y = 200.0f + m_precip.rainPercent * 600.0f;
-            drop.length = 10.0f + m_precip.rainPercent * 20.0f;
+            drop.velocity.y = 200.0f + RainConfigController::g_precipitationConfig.rainIntensity * 600.0f;
+            drop.length = 10.0f + RainConfigController::g_precipitationConfig.rainIntensity * 20.0f;
         }
 
         drop.position.y += drop.velocity.y * 0.016f;
@@ -324,27 +316,29 @@ void ForcePrecipitation::Render2DRainOverlay(IDirect3DDevice9* device, const D3D
     line->Release();
 }
 
-void ForcePrecipitation::Update(IDirect3DDevice9* device)
+void PrecipitationController::Render3DRainOverlay(IDirect3DDevice9* m_device, const D3DVIEWPORT9& viewport)
 {
-    if (!m_active || !m_precip.active || !device)
-        return;
+    if (!m_rainTex)
+    {
+        if (RainConfigController::g_precipitationConfig.use_raindrop_dds)
+        {
+            if (FAILED(D3DXCreateTextureFromFileA(m_device, "scripts\\raindrop.dds", &m_rainTex)))
+            {
+                OutputDebugStringA("[IsCreatedRainTexture] Failed to load raindrop.dds\n");
+                IsCreatedRainTexture(m_device);
+            }
+        }
+        else
+        {
+            IsCreatedRainTexture(m_device);
+        }
 
-    static bool useDXVKFix = core::IsDXVKAdapter();
-
-    if (useDXVKFix)
-        device->BeginScene(); // DXVK workaround
-
-    if (!m_rainTex && !IsCreatedRainTexture(device))
-        return;
-
-    D3DVIEWPORT9 viewport{};
-    if (FAILED(device->GetViewport(&viewport)))
-        return;
-
-    Render2DRainOverlay(device, viewport);
+        if (!m_rainTex)
+            return;
+    }
 
     D3DXMATRIX matProj, matView;
-    device->GetTransform(D3DTS_VIEW, &matView);
+    m_device->GetTransform(D3DTS_VIEW, &matView);
 
     float aspect = static_cast<float>(viewport.Width) / static_cast<float>(viewport.Height);
     D3DXMatrixPerspectiveFovLH(&matProj, D3DXToRadian(60.0f), aspect, 0.1f, 1000.0f);
@@ -365,21 +359,9 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
             drop = RespawnDrop(*group, camPos.y); // use group index
     }
 
-    // Setup shared render state
-    device->SetRenderState(D3DRS_ZENABLE, FALSE);
-
-    // device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
-
-    device->SetRenderState(D3DRS_ALPHAREF, 32);
-    device->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL);
-    device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
-    device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
-    device->SetTexture(0, m_rainTex);
-    device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
-
     auto RenderGroup = [&](float minY, float maxY, bool enableBlend, BYTE alpha)
     {
-        device->SetRenderState(D3DRS_ALPHABLENDENABLE, enableBlend);
+        m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, enableBlend);
 
         for (const auto& drop : m_drops)
         {
@@ -405,7 +387,7 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
                 {screen.x - half, screen.y + half, screen.z, 1.0f, color, 0.0f, 1.0f},
             };
 
-            device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, quad, sizeof(Vertex));
+            m_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, quad, sizeof(Vertex));
         }
     };
 
@@ -424,9 +406,126 @@ void ForcePrecipitation::Update(IDirect3DDevice9* device)
     // Render: far = faint and small, opaque
     RenderGroup(midMax, farMax, false, 192);
 
-    device->SetTexture(0, nullptr);
-    device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+    m_device->SetTexture(0, nullptr);
+    m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+}
 
-    if (useDXVKFix)
-        device->EndScene(); // DXVK workaround
+void PrecipitationController::Update(IDirect3DDevice9* device)
+{
+    if (!device || !m_active)
+        return;
+
+    // Cache actual device
+    if (!m_device)
+        m_device = device;
+
+    if (core::useDXVKFix)
+        device->BeginScene();
+
+    D3DVIEWPORT9 viewport{};
+    if (FAILED(m_device->GetViewport(&viewport)))
+        return;
+    
+    // Setup shared render state
+    m_device->SetRenderState(D3DRS_ZENABLE, FALSE);
+
+    // device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+
+    m_device->SetRenderState(D3DRS_ALPHAREF, 32);
+    m_device->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL);
+    m_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+    m_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+    m_device->SetTexture(0, m_rainTex);
+    m_device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+    
+    if (RainConfigController::g_precipitationConfig.enable3DRain)
+        Render3DRainOverlay(m_device, viewport);
+
+    // if (RainConfigController::g_precipitationConfig.enable2DRain)
+    //     Render2DRainOverlay(m_device, viewport);
+    
+    if (core::useDXVKFix)
+        device->EndScene();
+
+    Update2(device);
+}
+
+void PrecipitationController::Update2(IDirect3DDevice9* device)
+{
+    D3DVIEWPORT9 viewport{};
+    if (FAILED(m_device->GetViewport(&viewport)))
+        return;
+
+    if (!m_active || !device)
+        return;
+
+    D3DVIEWPORT9 vp{};
+    if (FAILED(device->GetViewport(&vp)))
+    {
+        OutputDebugStringA("Failed to get viewport\n");
+        return;
+    }
+
+    float width = static_cast<float>(vp.Width);
+    float height = static_cast<float>(vp.Height);
+    float wind = sinf(timeGetTime() * 0.001f) * 30.0f; // oscillating wind
+
+    // Initialize and update drop positions
+    for (auto& drop : m_drops)
+    {
+        // If velocity is zero, initialize it
+        if (drop.velocity.y == 0.0f)
+        {
+            drop.position.x = static_cast<float>(rand() % static_cast<int>(width));
+            drop.position.y = static_cast<float>(rand() % static_cast<int>(height));
+            drop.velocity.y = 200.0f + RainConfigController::g_precipitationConfig.rainIntensity * 600.0f;
+            drop.length = 10.0f + RainConfigController::g_precipitationConfig.rainIntensity * 20.0f;
+        }
+
+        drop.position.y += drop.velocity.y * 0.016f;
+        drop.position.x += wind * 0.016f;
+
+        if (drop.position.y > height)
+        {
+            drop.position.x = static_cast<float>(rand() % static_cast<int>(width));
+            drop.position.y = -drop.length;
+        }
+
+        D3DXVECTOR2 verts[2] = {
+            {drop.position.x, drop.position.y},
+            {drop.position.x, drop.position.y + drop.length}
+        };
+        if (FAILED(line->Draw(verts, 2, D3DCOLOR_ARGB(alpha, 255, 255, 255))))
+            OutputDebugStringA("line->Draw failed\n");
+    }
+
+    // Render rain
+    device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+    device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+    device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+    device->SetTexture(0, nullptr);
+
+    ID3DXLine* line = nullptr;
+    if (FAILED(D3DXCreateLine(device, &line)))
+    {
+        OutputDebugStringA("D3DXCreateLine failed\n");
+        return;
+    }
+
+    line->SetWidth(1.5f);
+    line->SetAntialias(TRUE);
+    line->Begin();
+
+    for (auto& d : m_drops)
+    {
+        D3DXVECTOR2 verts[2] = {{d.x, d.y}, {d.x, d.y + d.length}};
+        HRESULT result = line->Draw(verts, 2, D3DCOLOR_ARGB(128, 255, 255, 255));
+        if (FAILED(result))
+            OutputDebugStringA("line->Draw failed\n");
+    }
+
+    line->End();
+    line->Release();
+    
+
 }

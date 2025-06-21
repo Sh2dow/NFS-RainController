@@ -5,7 +5,7 @@
 #include <d3dx9.h>
 #include "core.h"
 #include "features.h"
-#include "ForcePrecipitation.h"
+#include "PrecipitationController.h"
 #include "RainConfigController.h"
 #include "minhook/include/MinHook.h"
 
@@ -31,7 +31,7 @@ CreateDeviceFn g_originalCreateDevice = nullptr;
 
 static void SetupFeatures()
 {
-    g_features.emplace_back(std::make_unique<ForcePrecipitation>());
+    g_features.emplace_back(std::make_unique<PrecipitationController>());
 }
 
 static void Initialize()
@@ -41,7 +41,7 @@ static void Initialize()
 
     OutputDebugStringA("[Initialize] Setting up hooks\n");
 
-    RainConfigController::Load();
+    RainConfigController::LoadOnStartup();
 
     for (const auto& feature : g_features)
     {
@@ -49,9 +49,9 @@ static void Initialize()
         OutputDebugStringA(name);
         OutputDebugStringA(" initialized\n");
 
-        if (strcmp(name, "ForcePrecipitation") == 0)
+        if (strcmp(name, "PrecipitationController") == 0)
         {
-            if (RainConfigController::enabled)
+            if (RainConfigController::g_precipitationConfig.enableOnStartup)
             {
                 feature->enable();
                 OutputDebugStringA("[Initialize] Precipitation enabled\n");
@@ -93,9 +93,9 @@ void hk_OnPresent()
         toggled = !toggled;
 
         if (toggled)
-            ForcePrecipitation::Get()->enable();
+            PrecipitationController::Get()->enable();
         else
-            ForcePrecipitation::Get()->disable();
+            PrecipitationController::Get()->disable();
 
         OutputDebugStringA(toggled ? "[hk_OnPresent] Rain enabled\n" : "[hk_OnPresent] Rain disabled\n");
     }
@@ -134,9 +134,9 @@ HRESULT APIENTRY HookedPresent(IDirect3DDevice9* device, CONST RECT* src, CONST 
     OnPresent();
     hk_OnPresent();
 
-    if (ForcePrecipitation::Get()->IsActive())
+    if (PrecipitationController::Get()->IsActive())
     {
-        ForcePrecipitation::Get()->Update(device); // draw rain last
+        PrecipitationController::Get()->Update(device); // draw rain last
     }
 
     HRESULT result = D3D_OK;
@@ -184,11 +184,12 @@ void HookPresentFromRuntimeDevice(IDirect3DDevice9* device)
 }
 
 HRESULT APIENTRY HookedCreateDevice(IDirect3D9* self, UINT adapter, D3DDEVTYPE type, HWND hwnd,
-    DWORD behavior, D3DPRESENT_PARAMETERS* pp, IDirect3DDevice9** outDevice)
+                                    DWORD behavior, D3DPRESENT_PARAMETERS* pp, IDirect3DDevice9** outDevice)
 {
     OutputDebugStringA("[HookedCreateDevice] Hooking real device Present\n");
 
-    if (g_hookTransferred) {
+    if (g_hookTransferred)
+    {
         OutputDebugStringA("[HookedCreateDevice] Hook already transferred, skipping.\n");
         return g_originalCreateDevice(self, adapter, type, hwnd, behavior, pp, outDevice);
     }
@@ -199,7 +200,8 @@ HRESULT APIENTRY HookedCreateDevice(IDirect3D9* self, UINT adapter, D3DDEVTYPE t
 
     // Call the original CreateDevice
     HRESULT hr = g_originalCreateDevice(self, adapter, type, hwnd, behavior, pp, outDevice);
-    if (FAILED(hr) || !outDevice || !*outDevice) {
+    if (FAILED(hr) || !outDevice || !*outDevice)
+    {
         OutputDebugStringA("[HookedCreateDevice] [FATAL] CreateDevice failed\n");
         return hr;
     }
@@ -208,9 +210,11 @@ HRESULT APIENTRY HookedCreateDevice(IDirect3D9* self, UINT adapter, D3DDEVTYPE t
     void** vtable = *reinterpret_cast<void***>(realDevice);
     void* realPresent = vtable[17];
 
-    if (realPresent != reinterpret_cast<void*>(&HookedPresent)) {
+    if (realPresent != reinterpret_cast<void*>(&HookedPresent))
+    {
         // Disable dummy hook if present
-        if (g_originalDummyPresent) {
+        if (g_originalDummyPresent)
+        {
             MH_DisableHook(reinterpret_cast<void*>(g_originalDummyPresent));
             MH_RemoveHook(reinterpret_cast<void*>(g_originalDummyPresent));
         }
@@ -221,7 +225,8 @@ HRESULT APIENTRY HookedCreateDevice(IDirect3D9* self, UINT adapter, D3DDEVTYPE t
             OutputDebugStringA("[HookedCreateDevice] Hooked real Present successfully\n");
             g_hookTransferred = true;
         }
-        else {
+        else
+        {
             OutputDebugStringA("[HookedCreateDevice] [FATAL] Failed to hook real Present\n");
         }
     }
@@ -277,6 +282,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID)
         MH_Initialize();
         DisableThreadLibraryCalls(hModule);
 
+        core::useDXVKFix = core::IsDXVKWrapper();
+        
         CreateThread(nullptr, 0, [](LPVOID) -> DWORD
         {
             HookPresent();

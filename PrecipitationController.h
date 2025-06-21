@@ -2,23 +2,24 @@
 #include "features.h"
 #include "core.h"
 
-class ForcePrecipitation : public ngg::common::Feature
+class PrecipitationController : public ngg::common::Feature
 {
 public:
     LPDIRECT3DTEXTURE9 m_rainTex{nullptr};
 
-    static ForcePrecipitation* Get()
+    static PrecipitationController* Get()
     {
-        static ForcePrecipitation instance;
+        static PrecipitationController instance;
         return &instance;
     }
 
-    const char* name() const override { return "ForcePrecipitation"; }
+    const char* name() const override { return "PrecipitationController"; }
 
     void enable() override;
     void disable() override;
 
     void Update(IDirect3DDevice9* device);
+    void Update2(IDirect3DDevice9* device);
     bool IsActive() const;
 
 private:
@@ -43,13 +44,6 @@ private:
         float u, v;
     };
 
-    struct PrecipitationData
-    {
-        bool active{false};
-        float rainPercent{1.0f};
-        float fogPercent{0.5f};
-    } m_precip{};
-
     struct RainGroupSettings
     {
         int dropCount;
@@ -58,7 +52,6 @@ private:
         float windSway;
         bool alphaBlended;
     };
-
 
     float m_cameraY = 0.0f; // updated each frame based on estimated or real camera Y
 
@@ -76,10 +69,6 @@ private:
     
     void ScaleSettingsForIntensity(float intensity);
     bool IsCreatedRainTexture(IDirect3DDevice9* device);
-    void Render2DRainOverlay(IDirect3DDevice9* device, const D3DVIEWPORT9& viewport);
-
-    void RenderRainDrop(IDirect3DDevice9* device, const Drop& drop,
-                        const D3DVIEWPORT9& viewport,
-                        const D3DXMATRIX& matProj, const D3DXMATRIX& matView,
-                        const D3DXVECTOR3& camPos, BYTE alpha);
+    void Render2DRainOverlay(IDirect3DDevice9* m_device, const D3DVIEWPORT9& viewport);
+    void Render3DRainOverlay(IDirect3DDevice9* m_device, const D3DVIEWPORT9& viewport);
 };
