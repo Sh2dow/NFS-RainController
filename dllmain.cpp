@@ -51,7 +51,7 @@ static void Initialize()
 
         if (strcmp(name, "PrecipitationController") == 0)
         {
-            if (RainConfigController::g_precipitationConfig.enableOnStartup)
+            if (RainConfigController::precipitationConfig.enableOnStartup)
             {
                 feature->enable();
                 OutputDebugStringA("[Initialize] Precipitation enabled\n");

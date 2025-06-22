@@ -12,14 +12,56 @@ namespace ngg::common::RainConfigController
 
     inline struct PrecipitationData
     {
+        std::string raindropTexturePath;
+
         bool enableOnStartup;
         bool enable2DRain;
         bool enable3DRain;
 
         bool use_raindrop_dds;
-        std::string raindropTexturePath;
 
         float rainIntensity;
         float fogIntensity;
-    } g_precipitationConfig{};
+
+        // 2D overlay config
+        float baseSpeed = 200.0f;
+        float speedScale = 600.0f;
+        float baseLength = 10.0f;
+        float lengthScale = 20.0f;
+        float windStrength = 30.0f;
+        
+        int alphaMin = 64;
+        int alphaMax = 255;
+
+        // 3D group Y-offsets
+        float nearMinOffset = -9999.0f;
+        float nearMaxOffset = -100.0f;
+        float midMaxOffset = 45.0f;
+        float farMaxOffset = 9999.0f;
+
+        // 3D group drop counts
+        int dropCountNear = 25;
+        int dropCountMid  = 150;
+        int dropCountFar  = 200;
+
+        // Drop sizes
+        float dropSizeNear = 1.5f;
+        float dropSizeMid  = 3.5f;
+        float dropSizeFar  = 3.0f;
+
+        // Speeds
+        float speedNear = 2.0f;
+        float speedMid  = 1.5f;
+        float speedFar  = 0.5f;
+
+        // Wind sway
+        float windSwayNear = 0.25f;
+        float windSwayMid  = 0.25f;
+        float windSwayFar  = 0.25f;
+
+        // Alpha blending flags
+        bool alphaBlendNear = true;
+        bool alphaBlendMid  = true;
+        bool alphaBlendFar  = true;
+    } precipitationConfig{};
 }

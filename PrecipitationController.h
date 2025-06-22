@@ -19,7 +19,6 @@ public:
     void disable() override;
 
     void Update(IDirect3DDevice9* device);
-    void Update2(IDirect3DDevice9* device);
     bool IsActive() const;
 
 private:
@@ -27,15 +26,34 @@ private:
 
     struct Drop
     {
-        D3DXVECTOR3 position; // World position
-        D3DXVECTOR3 velocity;
-        float length;
+        float length = 0.0f;
+        bool initialized = false;
     };
 
-    std::vector<Drop> m_drops;
+    struct Drop2D : Drop
+    {
+        float speed = 0.0f;
+        float x = 0.0f;
+        float y = 0.0f;
+    };
+
+    struct Drop3D : Drop
+    {
+        D3DXVECTOR3 position; // World position
+        D3DXVECTOR3 velocity;
+    };
+
+    std::vector<Drop2D> m_drops2D;
+    std::vector<Drop3D> m_drops3D;
     bool m_active{false};
 
     bool m_registered{false};
+
+    struct RHWVertex
+    {
+        float x, y, z, rhw;
+        DWORD color;
+    };
 
     struct Vertex
     {
@@ -55,18 +73,11 @@ private:
 
     float m_cameraY = 0.0f; // updated each frame based on estimated or real camera Y
 
-    Drop RespawnDrop(const RainGroupSettings& settings, float camY);
+    Drop3D RespawnDrop(const RainGroupSettings& settings, float camY);
     const RainGroupSettings* ChooseGroupByY(float y);
-    
-    RainGroupSettings m_rainSettings[3] = {
-        // near
-        {20, 2.0f, 1.5f, 0.2f, true},
-        // mid
-        {40, 3.5f, 2.0f, 0.3f, false},
-        // far
-        {60, 1.5f, 2.5f, 0.5f, false}
-    };
-    
+
+    RainGroupSettings m_rainSettings[3] = {};
+
     void ScaleSettingsForIntensity(float intensity);
     bool IsCreatedRainTexture(IDirect3DDevice9* device);
     void Render2DRainOverlay(IDirect3DDevice9* m_device, const D3DVIEWPORT9& viewport);
