@@ -79,7 +79,8 @@ private:
     RainGroupSettings m_rainSettings[3] = {};
 
     void ScaleSettingsForIntensity(float intensity);
-    bool IsCreatedRainTexture(IDirect3DDevice9* device);
-    void Render2DRainOverlay(IDirect3DDevice9* m_device, const D3DVIEWPORT9& viewport);
-    void Render3DRainOverlay(IDirect3DDevice9* m_device, const D3DVIEWPORT9& viewport);
+    bool IsCreatedRainTexture();
+    void Render2DRainOverlay(const D3DVIEWPORT9& viewport);
+    void Render3DRainOverlay(const D3DVIEWPORT9& viewport);
+    void Render3DSplattersOverlay(const D3DVIEWPORT9& viewport);
 };

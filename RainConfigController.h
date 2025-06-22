@@ -17,6 +17,7 @@ namespace ngg::common::RainConfigController
         bool enableOnStartup;
         bool enable2DRain;
         bool enable3DRain;
+        bool enable3DSplatters;
 
         bool use_raindrop_dds;
 
@@ -29,7 +30,7 @@ namespace ngg::common::RainConfigController
         float baseLength = 10.0f;
         float lengthScale = 20.0f;
         float windStrength = 30.0f;
-        
+
         int alphaMin = 64;
         int alphaMax = 255;
 
@@ -41,27 +42,32 @@ namespace ngg::common::RainConfigController
 
         // 3D group drop counts
         int dropCountNear = 25;
-        int dropCountMid  = 150;
-        int dropCountFar  = 200;
+        int dropCountMid = 150;
+        int dropCountFar = 200;
 
         // Drop sizes
         float dropSizeNear = 1.5f;
-        float dropSizeMid  = 3.5f;
-        float dropSizeFar  = 3.0f;
+        float dropSizeMid = 3.5f;
+        float dropSizeFar = 3.0f;
 
         // Speeds
         float speedNear = 2.0f;
-        float speedMid  = 1.5f;
-        float speedFar  = 0.5f;
+        float speedMid = 1.5f;
+        float speedFar = 0.5f;
 
         // Wind sway
         float windSwayNear = 0.25f;
-        float windSwayMid  = 0.25f;
-        float windSwayFar  = 0.25f;
+        float windSwayMid = 0.25f;
+        float windSwayFar = 0.25f;
 
         // Alpha blending flags
         bool alphaBlendNear = true;
-        bool alphaBlendMid  = true;
-        bool alphaBlendFar  = true;
+        bool alphaBlendMid = true;
+        bool alphaBlendFar = true;
+
+        // Alpha blending values
+        int alphaBlendNearValue = 192;
+        int alphaBlendMidValue = 220;
+        int alphaBlendFarValue = 189;
     } precipitationConfig{};
 }

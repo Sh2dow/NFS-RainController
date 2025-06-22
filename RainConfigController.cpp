@@ -27,8 +27,9 @@ void RainConfigController::Load()
     iniPath = iniPath.substr(0, iniPath.find_last_of("\\/")) + "\\scripts\\NFS-RainController.ini";
 
     CIniReader iniReader(iniPath.c_str());
-    precipitationConfig.enable3DRain = iniReader.ReadInteger("Precipitation", "Enable3DRain", 0) != 0;
     precipitationConfig.enable2DRain = iniReader.ReadInteger("Precipitation", "Enable2DRain", 0) != 0;
+    precipitationConfig.enable3DRain = iniReader.ReadInteger("Precipitation", "Enable3DRain", 0) != 0;
+    precipitationConfig.enable3DSplatters = iniReader.ReadInteger("Precipitation", "Enable3DSplatters", 0) != 0;
     precipitationConfig.rainIntensity = iniReader.ReadFloat("Precipitation", "RainIntensity", 0.5f);
     precipitationConfig.fogIntensity = iniReader.ReadFloat("Precipitation", "FogIntensity", 0.25f);
 
@@ -64,6 +65,10 @@ void RainConfigController::Load()
     precipitationConfig.alphaBlendNear = iniReader.ReadInteger("Precipitation", "AlphaBlendNear", 1) != 0;
     precipitationConfig.alphaBlendMid = iniReader.ReadInteger("Precipitation", "AlphaBlendMid", 1) != 0;
     precipitationConfig.alphaBlendFar = iniReader.ReadInteger("Precipitation", "AlphaBlendFar", 1) != 0;
+
+    precipitationConfig.alphaBlendNearValue = iniReader.ReadInteger("Precipitation", "AlphaBlendNearValue", 255);
+    precipitationConfig.alphaBlendMidValue = iniReader.ReadInteger("Precipitation", "AlphaBlendMidValue", 255);
+    precipitationConfig.alphaBlendFarValue = iniReader.ReadInteger("Precipitation", "AlphaBlendFarValue", 255);
 
 #ifdef _DEBUG
     char debugBuffer[512];
