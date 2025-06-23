@@ -84,23 +84,53 @@ void OnPresent()
 
 void hk_OnPresent()
 {
-    static bool lastState = false;
-    bool pressed = (GetAsyncKeyState(RainConfigController::toggleKey) & 0x8000) != 0;
-    static bool toggled = false;
+    static bool lastKeyState = false;
+    static bool rainEnabled = false;
+    static bool shouldEnable = false;  // this reflects user toggle intent
+    static bool alreadyWarned = false;
 
-    if (pressed && !lastState)
+    bool keyPressed = (GetAsyncKeyState(RainConfigController::toggleKey) & 0x8000) != 0;
+
+    // Handle toggle press
+    if (keyPressed && !lastKeyState)
     {
-        toggled = !toggled;
+        shouldEnable = !shouldEnable;
 
-        if (toggled)
-            PrecipitationController::Get()->enable();
+        if (shouldEnable)
+        {
+            OutputDebugStringA("[hk_OnPresent] ⏳ Waiting for camera to become valid...\n");
+            alreadyWarned = false;
+        }
         else
-            PrecipitationController::Get()->disable();
-
-        OutputDebugStringA(toggled ? "[hk_OnPresent] Rain enabled\n" : "[hk_OnPresent] Rain disabled\n");
+        {
+            if (rainEnabled)
+            {
+                PrecipitationController::Get()->disable();
+                OutputDebugStringA("[hk_OnPresent] 🌤️ Rain disabled by user\n");
+                rainEnabled = false;
+            }
+            alreadyWarned = false;
+        }
     }
 
-    lastState = pressed;
+    // If user *wants* rain but it's not yet enabled
+    if (shouldEnable && !rainEnabled)
+    {
+        D3DXVECTOR3 cam = PrecipitationController::Get()->GetCameraPositionSafe();
+        if (cam != D3DXVECTOR3(0, 0, 0))
+        {
+            PrecipitationController::Get()->enable();
+            OutputDebugStringA("[hk_OnPresent] ✅ Camera now valid, rain enabled\n");
+            rainEnabled = true;
+        }
+        else if (!alreadyWarned)
+        {
+            OutputDebugStringA("[hk_OnPresent] ⏳ Still waiting for camera...\n");
+            alreadyWarned = true;
+        }
+    }
+
+    lastKeyState = keyPressed;
 }
 
 HRESULT APIENTRY HookedPresent(IDirect3DDevice9* device, CONST RECT* src, CONST RECT* dest, HWND wnd,
@@ -283,7 +313,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID)
         DisableThreadLibraryCalls(hModule);
 
         core::useDXVKFix = core::IsDXVKWrapper();
-        
+
         CreateThread(nullptr, 0, [](LPVOID) -> DWORD
         {
             HookPresent();
