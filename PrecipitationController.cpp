@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <d3d9.h>
 #include <format>
+#include "Hooking.Patterns.h"
 
 #ifdef GAME_PS
 #include "NFSPS_PreFEngHook.h"
@@ -13,6 +14,7 @@
 using namespace ngg::common;
 
 IDirect3DDevice9* m_device = nullptr; // Add to class
+D3DXVECTOR3 camPos = D3DXVECTOR3(0, 0, 0);
 
 static auto& g_precipitationConfig = RainConfigController::precipitationConfig;
 
@@ -20,61 +22,129 @@ bool PrecipitationController::IsActive() const
 {
     return m_active;
 }
-D3DXVECTOR3 GetCameraPositionKnownAddr()
+
+// Simplified view node
+struct EViewNode
 {
-    auto ptr = (D3DXVECTOR3*)CAMERA_UPDATE_ADDR;
-    if (IsBadReadPtr(ptr, sizeof(D3DXVECTOR3)))
+    EViewNode* prev; // 0x00
+    EViewNode* next; // 0x04
+    char padding[0x40]; // Up to 0x40
+    D3DXMATRIX viewMatrix; // 0x40
+};
+
+D3DXVECTOR3 GetCameraPositionFromVisibleView1()
+{
+    EViewNode** headPtr = (EViewNode**)EVIEW_LIST_HEAD_PTR;
+
+    if (!headPtr || IsBadReadPtr(headPtr, sizeof(void*)) || *headPtr == nullptr)
+    {
+        OutputDebugStringA("[GetCameraPositionFromVisibleView] ❌ EVIEW_LIST_HEAD_PTR is null or invalid\n");
         return D3DXVECTOR3(0, 0, 0);
-    
+    }
+
+    EViewNode* current = *headPtr;
+
+    char buf[256];
+    sprintf_s(buf, "[GetCameraPositionFromVisibleView] 🧭 Starting camera search at head: 0x%08X\n",
+              (uintptr_t)current);
+    OutputDebugStringA(buf);
+
+    using GetVisibleStateSB_t = int(__thiscall*)(void*, const D3DXVECTOR3*, const D3DXVECTOR3*, D3DXMATRIX*);
+    static GetVisibleStateSB_t GetVisibleStateSB = (GetVisibleStateSB_t)GET_VISIBLE_STATE_SB_ADDR;
+
+    if (!GetVisibleStateSB || IsBadCodePtr((FARPROC)GetVisibleStateSB))
+    {
+        OutputDebugStringA("[GetCameraPositionFromVisibleView] ❌ GetVisibleStateSB function is invalid\n");
+        return D3DXVECTOR3(0, 0, 0);
+    }
+
+    int nodeCount = 0;
+    while (current && current != *headPtr)
+    {
+        __try
+        {
+            nodeCount++;
+
+            sprintf_s(buf, "[GetCameraPositionFromVisibleView] 🔍 Node %d at 0x%08X\n", nodeCount, (uintptr_t)current);
+            OutputDebugStringA(buf);
+
+            D3DXVECTOR3 dummy1 = {0, 0, 0};
+            D3DXVECTOR3 dummy2 = {0, 0, 0};
+            D3DXMATRIX dummyMatrix = {};
+
+            int state = GetVisibleStateSB(current, &dummy1, &dummy2, &dummyMatrix);
+            sprintf_s(buf, "[GetCameraPositionFromVisibleView] ↪️ VisibleStateSB = %d\n", state);
+            OutputDebugStringA(buf);
+
+            if (state != 0) // visible
+            {
+                D3DXMATRIX* mat = (D3DXMATRIX*)((uintptr_t)current + NODE_MATRIX_OFFSET);
+                if (IsBadReadPtr(mat, sizeof(D3DXMATRIX)))
+                {
+                    OutputDebugStringA("[GetCameraPositionFromVisibleView] ⚠️ View matrix pointer invalid\n");
+                    break;
+                }
+
+                D3DXVECTOR3 position(mat->_41, mat->_42, mat->_43);
+                sprintf_s(buf, "[GetCameraPositionFromVisibleView] ✅ Active camera found: %.2f, %.2f, %.2f\n",
+                          position.x, position.y, position.z);
+                OutputDebugStringA(buf);
+                return position;
+            }
+
+            current = current->next;
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+            OutputDebugStringA("[GetCameraPositionFromVisibleView] ❌ Exception in view list traversal\n");
+            break;
+        }
+    }
+
+    OutputDebugStringA("[GetCameraPositionFromVisibleView] ❌ No visible camera found\n");
+    return D3DXVECTOR3(0, 0, 0);
 }
 
-D3DXVECTOR3 GetCameraPositionSafe()
+// Used by rain renderer or world logic
+D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe()
 {
-    if (!m_device)
-        return D3DXVECTOR3(0, 0, 0);
+    EViewNode* head = *(EViewNode**)EVIEW_LIST_HEAD_PTR;
+    OutputDebugStringA("[RainController] [GetCameraPositionFromVisibleView] 🧭 Starting camera search at head: 0x%p\n",
+                       head);
 
-    D3DXMATRIX viewMatrix;
-    HRESULT hr = m_device->GetTransform(D3DTS_VIEW, &viewMatrix);
-    if (FAILED(hr))
+    if (!head)
     {
-        OutputDebugStringA("[GetCameraPositionSafe] Failed to get view matrix\n");
+        OutputDebugStringA("[RainController] ❌ View list is null\n");
         return D3DXVECTOR3(0, 0, 0);
     }
 
-    // Log the view matrix
-    char msg[256];
-    sprintf(msg,
-        "ViewMatrix:\n"
-        "%.2f %.2f %.2f %.2f\n"
-        "%.2f %.2f %.2f %.2f\n"
-        "%.2f %.2f %.2f %.2f\n"
-        "%.2f %.2f %.2f %.2f\n",
-        viewMatrix._11, viewMatrix._12, viewMatrix._13, viewMatrix._14,
-        viewMatrix._21, viewMatrix._22, viewMatrix._23, viewMatrix._24,
-        viewMatrix._31, viewMatrix._32, viewMatrix._33, viewMatrix._34,
-        viewMatrix._41, viewMatrix._42, viewMatrix._43, viewMatrix._44);
-    OutputDebugStringA(msg);
+    EViewNode* current = head;
 
-    // If the matrix is identity, warn and bail out
-    if (viewMatrix._11 == 1.0f && viewMatrix._22 == 1.0f && viewMatrix._33 == 1.0f &&
-        viewMatrix._41 == 0.0f && viewMatrix._42 == 0.0f && viewMatrix._43 == 0.0f)
+    do
     {
-        OutputDebugStringA("[GetCameraPositionSafe] View matrix is identity — camera uninitialized?\n");
-        return D3DXVECTOR3(0, 0, 0);
+        __try
+        {
+            D3DXMATRIX* mat = (D3DXMATRIX*)((uintptr_t)current + NODE_MATRIX_OFFSET);
+            D3DXVECTOR3 position(mat->_41, mat->_42, mat->_43);
+
+            char buf[160];
+            sprintf_s(buf, "[RainController] ✅ Using camera matrix at node 0x%p: %.2f, %.2f, %.2f\n",
+                      current, position.x, position.y, position.z);
+            OutputDebugStringA(buf);
+
+            return position;
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+            OutputDebugStringA("[RainController] ❌ Exception reading matrix from view node\n");
+        }
+
+        current = current->next;
     }
+    while (current && current != head);
 
-    // Invert the view matrix to get world transform (camera position)
-    D3DXMATRIX invView;
-    if (!D3DXMatrixInverse(&invView, nullptr, &viewMatrix))
-    {
-        OutputDebugStringA("[GetCameraPositionSafe] Failed to invert view matrix\n");
-        return D3DXVECTOR3(0, 0, 0);
-    }
-
-    D3DXVECTOR3 camPos(invView._41, invView._42, invView._43);
-    OutputDebugStringA("[GetCameraPositionSafe] Camera position computed\n");
-
-    return camPos;
+    OutputDebugStringA("[RainController] ❌ No readable view node found\n");
+    return D3DXVECTOR3(0, 0, 0);
 }
 
 void PrecipitationController::enable()
@@ -96,8 +166,7 @@ void PrecipitationController::enable()
     }
 
     // Default camera-relative origin if actual camera can't be read
-    // D3DXVECTOR3 camPos(0, 0, 0);
-    D3DXVECTOR3 camPos = GetCameraPositionSafe();
+    camPos = GetCameraPositionSafe();
 
     for (auto& drop : m_drops3D)
     {
@@ -294,9 +363,6 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
     float aspect = static_cast<float>(viewport.Width) / static_cast<float>(viewport.Height);
     D3DXMatrixPerspectiveFovLH(&matProj, D3DXToRadian(60.0f), aspect, 0.1f, 1000.0f);
 
-    // D3DXVECTOR3 camPos(0, 0, 0); // replace with actual camera if possible
-    D3DXVECTOR3 camPos = GetCameraPositionSafe();
-
     m_cameraY = camPos.y;
 
     // Move drops
@@ -390,8 +456,6 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
     D3DXMatrixPerspectiveFovLH(&matProj, D3DXToRadian(60.0f), aspect, 0.1f, 1000.0f);
 
     // Estimated camera position (replace this with actual camera lookup if possible)
-    // D3DXVECTOR3 camPos(0, 0, 0); // TODO: Replace with real camera pos if found
-    D3DXVECTOR3 camPos = GetCameraPositionSafe();
 
     // Drop logic
     for (auto& drop : m_drops3D)

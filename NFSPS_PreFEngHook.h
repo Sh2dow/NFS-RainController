@@ -110,6 +110,13 @@
 #define CAMERA_SETACTION_ADDR 0x006494B0
 #define CAMERA_UPDATE_ADDR 0x0064B940
 
+#define EVIEW_LIST_HEAD_PTR 0x00A79B44     // Example: global pointer to head of EViewNode list
+#define NODE_MATRIX_OFFSET  0x40           // Offset of viewMatrix within EViewNode
+#define GET_VISIBLE_STATE_SB_ADDR 0x006FF730
+
+#define CAMERA_GETANCHOR_ADDR 0x00845810
+#define GET_GAME_CAMERA_MOVER_ADDR 0x00401F60
+
 #define CARLIST_TYPE_AIRACER 3
 #define CARLIST_TYPE_COP 4
 #define CARLIST_TYPE_TRAFFIC 5

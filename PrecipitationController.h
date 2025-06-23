@@ -15,9 +15,11 @@ public:
 
     const char* name() const override { return "PrecipitationController"; }
 
+    D3DXVECTOR3 GetCameraPositionSafe();
     void enable() override;
     void disable() override;
 
+    void Render2DRainOverlay(const D3DVIEWPORT9& viewport, const D3DXVECTOR3& cam_pos);
     void Update(IDirect3DDevice9* device);
     bool IsActive() const;
 
@@ -71,8 +73,9 @@ private:
         bool alphaBlended;
     };
 
+    D3DXVECTOR3 camPos;
     float m_cameraY = 0.0f; // updated each frame based on estimated or real camera Y
-
+    
     Drop3D RespawnDrop(const RainGroupSettings& settings, float camY);
     const RainGroupSettings* ChooseGroupByY(float y);
 
