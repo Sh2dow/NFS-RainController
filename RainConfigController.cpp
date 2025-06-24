@@ -38,7 +38,7 @@ void RainConfigController::Load()
     precipitationConfig.baseLength = iniReader.ReadFloat("Precipitation", "BaseLength", 10.0f);
     precipitationConfig.lengthScale = iniReader.ReadFloat("Precipitation", "LengthScale", 20.0f);
     precipitationConfig.windStrength = iniReader.ReadFloat("Precipitation", "WindStrength", 30.0f);
-    precipitationConfig.alphaMin = iniReader.ReadInteger("Precipitation", "AlphaMin", 64);
+    precipitationConfig.alphaMin = iniReader.ReadInteger("Precipitation", "AlphaMin", 32);
     precipitationConfig.alphaMax = iniReader.ReadInteger("Precipitation", "AlphaMax", 255);
 
     precipitationConfig.nearMinOffset = iniReader.ReadFloat("Precipitation", "NearMinOffset", -9999.0f);
@@ -62,21 +62,25 @@ void RainConfigController::Load()
     precipitationConfig.windSwayMid = iniReader.ReadFloat("Precipitation", "WindSwayMid", 0.25f);
     precipitationConfig.windSwayFar = iniReader.ReadFloat("Precipitation", "WindSwayFar", 0.25f);
 
-    precipitationConfig.alphaBlendNear = iniReader.ReadInteger("Precipitation", "AlphaBlendNear", 1) != 0;
-    precipitationConfig.alphaBlendMid = iniReader.ReadInteger("Precipitation", "AlphaBlendMid", 1) != 0;
-    precipitationConfig.alphaBlendFar = iniReader.ReadInteger("Precipitation", "AlphaBlendFar", 1) != 0;
+    precipitationConfig.alphaBlendNear = iniReader.ReadInteger("Precipitation", "AlphaBlendNear", 1);
+    precipitationConfig.alphaBlendMid = iniReader.ReadInteger("Precipitation", "AlphaBlendMid", 1);
+    precipitationConfig.alphaBlendFar = iniReader.ReadInteger("Precipitation", "AlphaBlendFar", 1);
 
     precipitationConfig.alphaBlendNearValue = iniReader.ReadInteger("Precipitation", "AlphaBlendNearValue", 255);
     precipitationConfig.alphaBlendMidValue = iniReader.ReadInteger("Precipitation", "AlphaBlendMidValue", 255);
     precipitationConfig.alphaBlendFarValue = iniReader.ReadInteger("Precipitation", "AlphaBlendFarValue", 255);
+
+    precipitationConfig.alphaBlendSplatters = iniReader.ReadInteger("Precipitation", "AlphaBlendSplatters", 1);
+    
 
 #ifdef _DEBUG
     char debugBuffer[512];
     sprintf_s(debugBuffer,
         "[RainConfigController] enableOnStartup=%d, enable3DRain=%d, enable2DRain=%d, rainIntensity=%.2f, fogIntensity=%.2f\n",
         precipitationConfig.enableOnStartup ? 1 : 0,
-        precipitationConfig.enable3DRain ? 1 : 0,
         precipitationConfig.enable2DRain ? 1 : 0,
+        precipitationConfig.enable3DRain ? 1 : 0,
+        precipitationConfig.enable3DSplatters ? 1 : 0,
         precipitationConfig.rainIntensity,
         precipitationConfig.fogIntensity
     );

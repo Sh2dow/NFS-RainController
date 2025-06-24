@@ -31,7 +31,7 @@ namespace ngg::common::RainConfigController
         float lengthScale = 20.0f;
         float windStrength = 30.0f;
 
-        int alphaMin = 64;
+        int alphaMin = 32;
         int alphaMax = 255;
 
         // 3D group Y-offsets
@@ -69,5 +69,9 @@ namespace ngg::common::RainConfigController
         int alphaBlendNearValue = 192;
         int alphaBlendMidValue = 220;
         int alphaBlendFarValue = 189;
+
+        // 3D Splatters
+        bool alphaBlendSplatters = true;
+        
     } precipitationConfig{};
 }

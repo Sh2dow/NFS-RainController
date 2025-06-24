@@ -32,79 +32,6 @@ struct EViewNode
     D3DXMATRIX viewMatrix; // 0x40
 };
 
-D3DXVECTOR3 GetCameraPositionFromVisibleView1()
-{
-    EViewNode** headPtr = (EViewNode**)EVIEW_LIST_HEAD_PTR;
-
-    if (!headPtr || IsBadReadPtr(headPtr, sizeof(void*)) || *headPtr == nullptr)
-    {
-        OutputDebugStringA("[GetCameraPositionFromVisibleView] ❌ EVIEW_LIST_HEAD_PTR is null or invalid\n");
-        return D3DXVECTOR3(0, 0, 0);
-    }
-
-    EViewNode* current = *headPtr;
-
-    char buf[256];
-    sprintf_s(buf, "[GetCameraPositionFromVisibleView] 🧭 Starting camera search at head: 0x%08X\n",
-              (uintptr_t)current);
-    OutputDebugStringA(buf);
-
-    using GetVisibleStateSB_t = int(__thiscall*)(void*, const D3DXVECTOR3*, const D3DXVECTOR3*, D3DXMATRIX*);
-    static GetVisibleStateSB_t GetVisibleStateSB = (GetVisibleStateSB_t)GET_VISIBLE_STATE_SB_ADDR;
-
-    if (!GetVisibleStateSB || IsBadCodePtr((FARPROC)GetVisibleStateSB))
-    {
-        OutputDebugStringA("[GetCameraPositionFromVisibleView] ❌ GetVisibleStateSB function is invalid\n");
-        return D3DXVECTOR3(0, 0, 0);
-    }
-
-    int nodeCount = 0;
-    while (current && current != *headPtr)
-    {
-        __try
-        {
-            nodeCount++;
-
-            sprintf_s(buf, "[GetCameraPositionFromVisibleView] 🔍 Node %d at 0x%08X\n", nodeCount, (uintptr_t)current);
-            OutputDebugStringA(buf);
-
-            D3DXVECTOR3 dummy1 = {0, 0, 0};
-            D3DXVECTOR3 dummy2 = {0, 0, 0};
-            D3DXMATRIX dummyMatrix = {};
-
-            int state = GetVisibleStateSB(current, &dummy1, &dummy2, &dummyMatrix);
-            sprintf_s(buf, "[GetCameraPositionFromVisibleView] ↪️ VisibleStateSB = %d\n", state);
-            OutputDebugStringA(buf);
-
-            if (state != 0) // visible
-            {
-                D3DXMATRIX* mat = (D3DXMATRIX*)((uintptr_t)current + NODE_MATRIX_OFFSET);
-                if (IsBadReadPtr(mat, sizeof(D3DXMATRIX)))
-                {
-                    OutputDebugStringA("[GetCameraPositionFromVisibleView] ⚠️ View matrix pointer invalid\n");
-                    break;
-                }
-
-                D3DXVECTOR3 position(mat->_41, mat->_42, mat->_43);
-                sprintf_s(buf, "[GetCameraPositionFromVisibleView] ✅ Active camera found: %.2f, %.2f, %.2f\n",
-                          position.x, position.y, position.z);
-                OutputDebugStringA(buf);
-                return position;
-            }
-
-            current = current->next;
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER)
-        {
-            OutputDebugStringA("[GetCameraPositionFromVisibleView] ❌ Exception in view list traversal\n");
-            break;
-        }
-    }
-
-    OutputDebugStringA("[GetCameraPositionFromVisibleView] ❌ No visible camera found\n");
-    return D3DXVECTOR3(0, 0, 0);
-}
-
 // Used by rain renderer or world logic
 D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe()
 {
@@ -156,6 +83,19 @@ void PrecipitationController::enable()
 
     m_active = true;
 
+    chosenFormat = D3DFMT_A8R8G8B8;
+#ifdef GAME_UC
+    // chosenFormat = GetSupportedRainTextureFormat(m_device);
+    // if (chosenFormat == D3DFMT_UNKNOWN)
+    // {
+    //     OutputDebugStringA("[RainTex] No supported texture format found\n");
+    // return false;
+    // }
+    chosenFormat = D3DFMT_A8B8G8R8;
+#else
+
+#endif
+
     if (m_drops2D.empty())
     {
         m_drops2D.resize(250); // or 200+ for denser rain
@@ -163,6 +103,10 @@ void PrecipitationController::enable()
     if (m_drops3D.empty())
     {
         m_drops3D.resize(200); // or 200+ for denser rain
+    }
+    if (m_splatters3D.empty())
+    {
+        m_splatters3D.resize(200); // or 200+ for denser rain
     }
 
     // Default camera-relative origin if actual camera can't be read
@@ -177,6 +121,17 @@ void PrecipitationController::enable()
         );
         drop.velocity = D3DXVECTOR3(0.0f, -1.0f, 0.0f);
         drop.length = 8.0f + (rand() % 8);
+    }
+
+    for (auto& drop : m_splatters3D)
+    {
+        drop.position = camPos + D3DXVECTOR3(
+            static_cast<float>((rand() % 200) - 100),
+            static_cast<float>((rand() % 100)),
+            static_cast<float>((rand() % 200) + 50)
+        );
+        drop.velocity = D3DXVECTOR3(0.0f, -1.0f, 0.0f);
+        drop.length = 0.1f;
     }
 
     ScaleSettingsForIntensity(g_precipitationConfig.rainIntensity);
@@ -205,6 +160,7 @@ void PrecipitationController::disable()
     m_active = false;
     m_drops2D.clear();
     m_drops3D.clear();
+    m_splatters3D.clear();
 
     if (m_callbackId != size_t(-1))
     {
@@ -262,20 +218,8 @@ void PrecipitationController::ScaleSettingsForIntensity(float intensity)
 
 bool PrecipitationController::IsCreatedRainTexture()
 {
-    D3DFORMAT chosenFormat = D3DFMT_A8R8G8B8;
-#ifdef GAME_UC
-    // chosenFormat = GetSupportedRainTextureFormat(m_device);
-    // if (chosenFormat == D3DFMT_UNKNOWN)
-    // {
-    //     OutputDebugStringA("[RainTex] No supported texture format found\n");
-    // return false;
-    // }
-    chosenFormat = D3DFMT_A8B8G8R8;
-#else
-
-#endif
-
-    m_device->CreateTexture(16, 512, 1, 0, chosenFormat, D3DPOOL_DEFAULT, &m_rainTex, nullptr);
+    // m_device->CreateTexture(16, 512, 1, 0, chosenFormat,  core::useDXVKFix ? D3DPOOL_DEFAULT : D3DPOOL_MANAGED, &m_rainTex, nullptr);
+    m_device->CreateTexture(16, 512, 1, 0, chosenFormat, D3DPOOL_MANAGED, &m_rainTex, nullptr);
 
     D3DLOCKED_RECT rect;
     bool result = SUCCEEDED(m_rainTex->LockRect(0, &rect, nullptr, 0));
@@ -398,6 +342,11 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
 
             float size = drop.length * 4.0f;
             float half = size * 0.5f;
+
+            alpha = static_cast<BYTE>(std::clamp(
+                g_precipitationConfig.alphaMin + g_precipitationConfig.rainIntensity *
+                (g_precipitationConfig.alphaMax - g_precipitationConfig.alphaMin), 0.0f, 255.0f));
+
             DWORD color = D3DCOLOR_ARGB(alpha, 255, 255, 255);
 
             Vertex quad[4] = {
@@ -427,22 +376,24 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
     RenderGroup(midMax, farMax, g_precipitationConfig.alphaBlendFar, g_precipitationConfig.alphaBlendFarValue);
     // Enable alpha blending
 
+    // Clean up render state
     m_device->SetTexture(0, nullptr);
 }
 
 void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewport)
 {
     // Initialize rain texture if needed
-    if (!m_rainTex)
+    if (!m_splatterTex)
     {
-        m_device->CreateTexture(4, 4, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &m_rainTex, nullptr);
+        // m_device->CreateTexture(4, 4, 1, 0, chosenFormat, core::useDXVKFix ? D3DPOOL_DEFAULT : D3DPOOL_MANAGED, &m_splatterTex, nullptr);
+        m_device->CreateTexture(4, 4, 1, 0, chosenFormat, D3DPOOL_MANAGED, &m_splatterTex, nullptr);
         D3DLOCKED_RECT rect;
-        if (SUCCEEDED(m_rainTex->LockRect(0, &rect, nullptr, 0)))
+        if (SUCCEEDED(m_splatterTex->LockRect(0, &rect, nullptr, 0)))
         {
             DWORD* pixels = static_cast<DWORD*>(rect.pBits);
             for (int i = 0; i < 16; ++i)
                 pixels[i] = 0x80FFFFFF; // semi-transparent white
-            m_rainTex->UnlockRect(0);
+            m_splatterTex->UnlockRect(0);
             OutputDebugStringA("[Rain] Procedural fallback rain texture created\n");
         }
     }
@@ -455,10 +406,8 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
     float aspect = static_cast<float>(viewport.Width) / static_cast<float>(viewport.Height);
     D3DXMatrixPerspectiveFovLH(&matProj, D3DXToRadian(60.0f), aspect, 0.1f, 1000.0f);
 
-    // Estimated camera position (replace this with actual camera lookup if possible)
-
     // Drop logic
-    for (auto& drop : m_drops3D)
+    for (auto& drop : m_splatters3D)
     {
         drop.position += drop.velocity;
 
@@ -473,9 +422,10 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
         }
     }
 
-    m_device->SetTexture(0, m_rainTex);
+    m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, g_precipitationConfig.alphaBlendSplatters);
+    m_device->SetTexture(0, m_splatterTex);
 
-    for (const auto& drop : m_drops3D)
+    for (const auto& drop : m_splatters3D)
     {
         D3DXVECTOR3 screen{};
         D3DXMATRIX identity;
@@ -488,7 +438,11 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
         float size = drop.length * 4.0f;
         float half = size * 0.5f;
 
-        DWORD color = D3DCOLOR_ARGB(128, 255, 255, 255);
+        BYTE alpha = static_cast<BYTE>(std::clamp(
+            g_precipitationConfig.alphaMin + g_precipitationConfig.rainIntensity *
+            (g_precipitationConfig.alphaMax - g_precipitationConfig.alphaMin), 0.0f, 255.0f));
+
+        DWORD color = D3DCOLOR_ARGB(alpha, 255, 255, 255);
 
         Vertex quad[4] = {
             {screen.x - half, screen.y - half, screen.z, 1.0f, color, 0.0f, 0.0f},
@@ -565,30 +519,33 @@ void PrecipitationController::Update(IDirect3DDevice9* device)
     if (core::useDXVKFix)
         device->BeginScene();
 
+    camPos = GetCameraPositionSafe();
+
     D3DVIEWPORT9 viewport{};
     if (FAILED(m_device->GetViewport(&viewport)))
         return;
 
     // Setup shared render state
-    m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+    // m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
     m_device->SetRenderState(D3DRS_ZENABLE, FALSE);
     m_device->SetRenderState(D3DRS_ALPHAREF, 32);
     m_device->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL);
     m_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
     m_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+    m_device->SetTexture(0, m_splatterTex);
     m_device->SetTexture(0, m_rainTex);
     m_device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
-
-    if (g_precipitationConfig.enable3DRain)
-        Render3DRainOverlay(viewport);
 
     if (g_precipitationConfig.enable3DSplatters)
         Render3DSplattersOverlay(viewport);
 
+    if (g_precipitationConfig.enable3DRain)
+        Render3DRainOverlay(viewport);
+
     if (g_precipitationConfig.enable2DRain)
         Render2DRainOverlay(viewport);
 
-    m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+    // m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
 
     if (core::useDXVKFix)
         device->EndScene();
