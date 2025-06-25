@@ -14,6 +14,8 @@ namespace ngg::common::RainConfigController
     {
         std::string raindropTexturePath;
 
+        float fpsOverride;
+        
         bool enableOnStartup;
         bool enable2DRain;
         bool enable3DRain;
@@ -25,14 +27,15 @@ namespace ngg::common::RainConfigController
         float fogIntensity;
 
         // 2D overlay config
+        bool alphaBlend2DRain = true;
+        int alpha2DRainMin = 32;
+        int alpha2DRainMax = 255;
+        
         float baseSpeed = 200.0f;
         float speedScale = 600.0f;
         float baseLength = 10.0f;
-        float lengthScale = 20.0f;
+        float lengthScale = 30.0f;
         float windStrength = 30.0f;
-
-        int alphaMin = 32;
-        int alphaMax = 255;
 
         // 3D group Y-offsets
         float nearMinOffset = -9999.0f;
@@ -41,14 +44,14 @@ namespace ngg::common::RainConfigController
         float farMaxOffset = 9999.0f;
 
         // 3D group drop counts
-        int dropCountNear = 25;
-        int dropCountMid = 150;
+        int dropCountNear = 200;
+        int dropCountMid = 100;
         int dropCountFar = 200;
 
         // Drop sizes
-        float dropSizeNear = 1.5f;
-        float dropSizeMid = 3.5f;
-        float dropSizeFar = 3.0f;
+        float dropSizeNear = 2.5f;
+        float dropSizeMid = 2.0f;
+        float dropSizeFar = 1.0f;
 
         // Speeds
         float speedNear = 2.0f;
@@ -56,14 +59,14 @@ namespace ngg::common::RainConfigController
         float speedFar = 0.5f;
 
         // Wind sway
-        float windSwayNear = 0.25f;
+        float windSwayNear = 0.15f;
         float windSwayMid = 0.25f;
         float windSwayFar = 0.25f;
 
         // Alpha blending flags
-        bool alphaBlendNear = true;
-        bool alphaBlendMid = true;
-        bool alphaBlendFar = true;
+        bool alphaBlend3DRainNear = true;
+        bool alphaBlend3DRainMid = true;
+        bool alphaBlend3DRainFar = true;
 
         // Alpha blending values
         int alphaBlendNearValue = 192;

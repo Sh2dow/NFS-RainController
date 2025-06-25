@@ -8,7 +8,7 @@ public:
     LPDIRECT3DTEXTURE9 m_rainTex{nullptr};
     LPDIRECT3DTEXTURE9 m_splatterTex{nullptr};
     inline static D3DFORMAT chosenFormat;
-    
+
     static PrecipitationController* Get()
     {
         static PrecipitationController instance;
@@ -45,12 +45,13 @@ private:
     {
         D3DXVECTOR3 position; // World position
         D3DXVECTOR3 velocity;
+        float life;
     };
 
     std::vector<Drop2D> m_drops2D;
     std::vector<Drop3D> m_drops3D;
     std::vector<Drop3D> m_splatters3D;
-    
+
     bool m_active{false};
 
     bool m_registered{false};
@@ -79,7 +80,7 @@ private:
 
     D3DXVECTOR3 camPos;
     float m_cameraY = 0.0f; // updated each frame based on estimated or real camera Y
-    
+
     Drop3D RespawnDrop(const RainGroupSettings& settings, float camY);
     const RainGroupSettings* ChooseGroupByY(float y);
 

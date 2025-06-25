@@ -27,6 +27,8 @@ void RainConfigController::Load()
     iniPath = iniPath.substr(0, iniPath.find_last_of("\\/")) + "\\scripts\\NFS-RainController.ini";
 
     CIniReader iniReader(iniPath.c_str());
+    precipitationConfig.fpsOverride = iniReader.ReadFloat("Precipitation", "fpsOverride", 0.0f);
+
     precipitationConfig.enable2DRain = iniReader.ReadInteger("Precipitation", "Enable2DRain", 0) != 0;
     precipitationConfig.enable3DRain = iniReader.ReadInteger("Precipitation", "Enable3DRain", 0) != 0;
     precipitationConfig.enable3DSplatters = iniReader.ReadInteger("Precipitation", "Enable3DSplatters", 0) != 0;
@@ -38,8 +40,11 @@ void RainConfigController::Load()
     precipitationConfig.baseLength = iniReader.ReadFloat("Precipitation", "BaseLength", 10.0f);
     precipitationConfig.lengthScale = iniReader.ReadFloat("Precipitation", "LengthScale", 20.0f);
     precipitationConfig.windStrength = iniReader.ReadFloat("Precipitation", "WindStrength", 30.0f);
-    precipitationConfig.alphaMin = iniReader.ReadInteger("Precipitation", "AlphaMin", 32);
-    precipitationConfig.alphaMax = iniReader.ReadInteger("Precipitation", "AlphaMax", 255);
+
+    
+    precipitationConfig.alphaBlend2DRain = iniReader.ReadInteger("Precipitation", "AlphaBlend2DRain", 1);
+    precipitationConfig.alpha2DRainMin = iniReader.ReadInteger("Precipitation", "Alpha2DRainMin", 32);
+    precipitationConfig.alpha2DRainMax = iniReader.ReadInteger("Precipitation", "Alpha2DRainMax", 255);
 
     precipitationConfig.nearMinOffset = iniReader.ReadFloat("Precipitation", "NearMinOffset", -9999.0f);
     precipitationConfig.nearMaxOffset = iniReader.ReadFloat("Precipitation", "NearMaxOffset", -10.0f);
@@ -62,9 +67,9 @@ void RainConfigController::Load()
     precipitationConfig.windSwayMid = iniReader.ReadFloat("Precipitation", "WindSwayMid", 0.25f);
     precipitationConfig.windSwayFar = iniReader.ReadFloat("Precipitation", "WindSwayFar", 0.25f);
 
-    precipitationConfig.alphaBlendNear = iniReader.ReadInteger("Precipitation", "AlphaBlendNear", 1);
-    precipitationConfig.alphaBlendMid = iniReader.ReadInteger("Precipitation", "AlphaBlendMid", 1);
-    precipitationConfig.alphaBlendFar = iniReader.ReadInteger("Precipitation", "AlphaBlendFar", 1);
+    precipitationConfig.alphaBlend3DRainNear = iniReader.ReadInteger("Precipitation", "AlphaBlend3DRainNear", 1);
+    precipitationConfig.alphaBlend3DRainMid = iniReader.ReadInteger("Precipitation", "AlphaBlend3DRainMid", 1);
+    precipitationConfig.alphaBlend3DRainFar = iniReader.ReadInteger("Precipitation", "AlphaBlend3DRainFar", 1);
 
     precipitationConfig.alphaBlendNearValue = iniReader.ReadInteger("Precipitation", "AlphaBlendNearValue", 255);
     precipitationConfig.alphaBlendMidValue = iniReader.ReadInteger("Precipitation", "AlphaBlendMidValue", 255);

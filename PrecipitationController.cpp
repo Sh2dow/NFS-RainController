@@ -36,42 +36,52 @@ struct EViewNode
 D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe()
 {
     EViewNode* head = *(EViewNode**)EVIEW_LIST_HEAD_PTR;
-    OutputDebugStringA("[RainController] [GetCameraPositionFromVisibleView] 🧭 Starting camera search at head: 0x%p\n",
-                       head);
-
-    if (!head)
-    {
-        OutputDebugStringA("[RainController] ❌ View list is null\n");
-        return D3DXVECTOR3(0, 0, 0);
-    }
+    // OutputDebugStringA("[RainController] [GetCameraPositionFromVisibleView] 🧭 Starting camera search at head: 0x%p\n",
+    //                    head);
+    //
+    // if (!head)
+    // {
+    //     OutputDebugStringA("[RainController] ❌ View list is null\n");
+    //     return D3DXVECTOR3(0, 0, 0);
+    // }
 
     EViewNode* current = head;
 
-    do
-    {
-        __try
-        {
-            D3DXMATRIX* mat = (D3DXMATRIX*)((uintptr_t)current + NODE_MATRIX_OFFSET);
-            D3DXVECTOR3 position(mat->_41, mat->_42, mat->_43);
+    // do
+    // {
+    //     __try
+    //     {
+    //         D3DXMATRIX* mat = (D3DXMATRIX*)((uintptr_t)current + NODE_MATRIX_OFFSET);
+    //         D3DXVECTOR3 position(mat->_41, mat->_42, mat->_43);
+    //
+    //         char buf[160];
+    //         sprintf_s(buf, "[RainController] ✅ Using camera matrix at node 0x%p: %.2f, %.2f, %.2f\n",
+    //                   current, position.x, position.y, position.z);
+    //         OutputDebugStringA(buf);
+    //
+    //         return position;
+    //     }
+    //     __except (EXCEPTION_EXECUTE_HANDLER)
+    //     {
+    //         OutputDebugStringA("[RainController] ❌ Exception reading matrix from view node\n");
+    //     }
+    //
+    //     current = current->next;
+    // }
+    // while (current && current != head);
 
-            char buf[160];
-            sprintf_s(buf, "[RainController] ✅ Using camera matrix at node 0x%p: %.2f, %.2f, %.2f\n",
-                      current, position.x, position.y, position.z);
-            OutputDebugStringA(buf);
+    D3DXMATRIX* mat = (D3DXMATRIX*)((uintptr_t)current + NODE_MATRIX_OFFSET);
+    D3DXVECTOR3 position(mat->_41, mat->_42, mat->_43);
 
-            return position;
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER)
-        {
-            OutputDebugStringA("[RainController] ❌ Exception reading matrix from view node\n");
-        }
+    // char buf[160];
+    // sprintf_s(buf, "[RainController] ✅ Using camera matrix at node 0x%p: %.2f, %.2f, %.2f\n",
+    //           current, position.x, position.y, position.z);
+    // OutputDebugStringA(buf);
 
-        current = current->next;
-    }
-    while (current && current != head);
+    return position;
 
-    OutputDebugStringA("[RainController] ❌ No readable view node found\n");
-    return D3DXVECTOR3(0, 0, 0);
+    // OutputDebugStringA("[RainController] ❌ No readable view node found\n");
+    // return D3DXVECTOR3(0, 0, 0);
 }
 
 void PrecipitationController::enable()
@@ -80,8 +90,9 @@ void PrecipitationController::enable()
         return;
 
     RainConfigController::Load();
-
     m_active = true;
+
+    // Select rain texture format
 
     chosenFormat = D3DFMT_A8R8G8B8;
 #ifdef GAME_UC
@@ -96,54 +107,92 @@ void PrecipitationController::enable()
 
 #endif
 
-    if (m_drops2D.empty())
-    {
-        m_drops2D.resize(250); // or 200+ for denser rain
-    }
-    if (m_drops3D.empty())
-    {
-        m_drops3D.resize(200); // or 200+ for denser rain
-    }
-    if (m_splatters3D.empty())
-    {
-        m_splatters3D.resize(200); // or 200+ for denser rain
-    }
+    // Resize drop containers if first-time
+    if (m_drops2D.empty()) m_drops2D.resize(250);
+    if (m_drops3D.empty()) m_drops3D.resize(500);
+    m_splatters3D.clear();
 
-    // Default camera-relative origin if actual camera can't be read
+    // Get camera position early for consistent reference
     camPos = GetCameraPositionSafe();
+    m_cameraY = camPos.y;
 
-    for (auto& drop : m_drops3D)
-    {
-        drop.position = camPos + D3DXVECTOR3(
-            static_cast<float>((rand() % 200) - 100),
-            static_cast<float>((rand() % 100)),
-            static_cast<float>((rand() % 200) + 50)
-        );
-        drop.velocity = D3DXVECTOR3(0.0f, -1.0f, 0.0f);
-        drop.length = 8.0f + (rand() % 8);
-    }
-
-    for (auto& drop : m_splatters3D)
-    {
-        drop.position = camPos + D3DXVECTOR3(
-            static_cast<float>((rand() % 200) - 100),
-            static_cast<float>((rand() % 100)),
-            static_cast<float>((rand() % 200) + 50)
-        );
-        drop.velocity = D3DXVECTOR3(0.0f, -1.0f, 0.0f);
-        drop.length = 0.1f;
-    }
-
+    // Prepare rain group settings based on intensity
     ScaleSettingsForIntensity(g_precipitationConfig.rainIntensity);
 
+    // Local lambda to spawn a splatter at a given drop position
+    auto spawnSplatter = [&](const D3DXVECTOR3& pos)
+    {
+        Drop3D splatter;
+        // splatter.position = pos;
+        // splatter.position.y = m_cameraY - 1.0f;
+
+        float randX = ((rand() % 100) - 50) * 0.05f; // ±2.5
+        float randZ = ((rand() % 100) - 50) * 0.5f; // ±25
+
+        splatter.position = camPos + D3DXVECTOR3(
+            randX, // lateral
+            10.0f, // above camera (adjust as needed)
+            randZ // depth
+        );
+
+        // splatter.velocity = D3DXVECTOR3(0, 0, 0);
+        splatter.velocity = D3DXVECTOR3(0, -3.0f, 0); // or adjustable by config
+
+        splatter.length = 4.0f + (rand() % 3);
+        splatter.life = 1.5f + static_cast<float>(rand() % 100) / 100.0f;
+        return splatter;
+    };
+
+    // Generate initial 3D splatters (fewer than raindrops)
+    for (int group = 0; group < 3; ++group)
+    {
+        const RainGroupSettings& settings = m_rainSettings[group];
+        for (int i = 0; i < settings.dropCount / 2; ++i)
+        {
+            m_splatters3D.push_back(spawnSplatter(RespawnDrop(settings, m_cameraY).position));
+        }
+    }
+
+    // Animate existing drops and spawn splatters where appropriate
+    for (auto& drop : m_drops3D)
+    {
+        const RainGroupSettings* group = ChooseGroupByY(drop.position.y);
+        // drop.position.y -= group->speed;
+        drop.position.x += sinf(drop.position.y * 0.05f) * group->windSway;
+
+        if (drop.position.y < m_cameraY - 100.0f)
+        {
+            m_splatters3D.push_back(spawnSplatter(drop.position));
+            drop = RespawnDrop(*group, m_cameraY);
+        }
+    }
+
+    // Update splatters already in the list (if any)
+    for (auto& drop : m_splatters3D)
+    {
+        const RainGroupSettings* group = ChooseGroupByY(drop.position.y);
+        // drop.position.y -= group->speed;
+        drop.position.x += sinf(drop.position.y * 0.05f) * group->windSway;
+
+        if (drop.position.y < m_cameraY - 100.0f)
+        {
+            m_splatters3D.push_back(spawnSplatter(drop.position));
+            drop = RespawnDrop(*group, m_cameraY);
+        }
+    }
+
+    // Fully regenerate the main 3D rain field with updated intensity
     m_drops3D.clear();
     for (int group = 0; group < 3; ++group)
     {
         const RainGroupSettings& settings = m_rainSettings[group];
         for (int i = 0; i < settings.dropCount; ++i)
+        {
             m_drops3D.push_back(RespawnDrop(settings, 0.0f));
+        }
     }
 
+    // Register DX9 callback loop if not yet added
     if (!m_registered)
     {
         OutputDebugStringA("[PrecipitationController::enable] Registering DX9 loop\n");
@@ -179,6 +228,7 @@ PrecipitationController::Drop3D PrecipitationController::RespawnDrop(const RainG
         camY + 100.0f,
         static_cast<float>((rand() % 200) + 50)
     );
+    drop.life = 1.5f + static_cast<float>(rand() % 100) / 100.0f;
     return drop;
 }
 
@@ -211,9 +261,9 @@ void PrecipitationController::ScaleSettingsForIntensity(float intensity)
     m_rainSettings[1].windSway = g_precipitationConfig.windSwayMid;
     m_rainSettings[2].windSway = g_precipitationConfig.windSwayFar;
 
-    m_rainSettings[0].alphaBlended = g_precipitationConfig.alphaBlendNear;
-    m_rainSettings[1].alphaBlended = g_precipitationConfig.alphaBlendMid;
-    m_rainSettings[2].alphaBlended = g_precipitationConfig.alphaBlendFar;
+    m_rainSettings[0].alphaBlended = g_precipitationConfig.alphaBlend3DRainNear;
+    m_rainSettings[1].alphaBlended = g_precipitationConfig.alphaBlend3DRainMid;
+    m_rainSettings[2].alphaBlended = g_precipitationConfig.alphaBlend3DRainFar;
 }
 
 bool PrecipitationController::IsCreatedRainTexture()
@@ -301,26 +351,47 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
             return;
     }
 
-    D3DXMATRIX matProj, matView;
+    D3DXMATRIX matView, matProj, matIdentity;
     m_device->GetTransform(D3DTS_VIEW, &matView);
-
     float aspect = static_cast<float>(viewport.Width) / static_cast<float>(viewport.Height);
-    D3DXMatrixPerspectiveFovLH(&matProj, D3DXToRadian(60.0f), aspect, 0.1f, 1000.0f);
+    // D3DXMatrixPerspectiveFovLH(&matProj, D3DXToRadian(60.0f), aspect, 0.1f, 1000.0f);
+    D3DXMatrixPerspectiveFovLH(&matProj, D3DXToRadian(60.0f), aspect, 1.0f, 500.0f);
 
-    m_cameraY = camPos.y;
+    D3DXMatrixIdentity(&matIdentity);
+
+    m_device->SetTexture(0, m_rainTex);
 
     // Move drops
     for (auto& drop : m_drops3D)
     {
-        const RainGroupSettings* group = ChooseGroupByY(drop.position.y); // assign group based on vertical distance
+        const RainGroupSettings* group = ChooseGroupByY(drop.position.y);
 
-        // Move down by speed and sway left/right
         drop.position.y -= group->speed;
-        drop.position.x += sinf(drop.position.y * 0.05f) * group->windSway;
+        drop.position.x += sinf(timeGetTime() * 0.002f + drop.position.y) * group->windSway;
 
-        // Respawn if too far below camera
-        if (drop.position.y < camPos.y - 100.0f)
-            drop = RespawnDrop(*group, camPos.y); // use group index
+        if (drop.position.y < m_cameraY - 100.0f)
+        {
+            // Spawn a splatter near the camera with slight X/Z randomness
+            // float randX = ((rand() % 200) - 100) * 0.05f; // range: -5.0 to +5.0
+            // float randZ = ((rand() % 200) - 100) * 0.05f; // range: -5.0 to +5.0
+
+            float randX = ((rand() % 100) - 50) * 0.05f; // ±2.5
+            float randZ = ((rand() % 100) - 50) * 0.5f; // ±25
+
+            Drop3D splatter;
+            splatter.position = camPos + D3DXVECTOR3(randX, -1.0f, randZ); // just below camera
+            splatter.length = 4.0f + (rand() % 3);
+
+            // splatter.velocity = D3DXVECTOR3(0, 0, 0);
+            splatter.velocity = D3DXVECTOR3(0, -3.0f, 0); // or adjustable by config
+
+            splatter.life = 1.5f + static_cast<float>(rand() % 100) / 100.0f;
+
+            m_splatters3D.push_back(splatter);
+
+            // Respawn the original drop above the camera
+            drop = RespawnDrop(*group, m_cameraY);
+        }
     }
 
     auto RenderGroup = [&](float minY, float maxY, bool enableBlend, BYTE alpha)
@@ -333,9 +404,7 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
                 continue;
 
             D3DXVECTOR3 screen;
-            D3DXMATRIX identity;
-            D3DXMatrixIdentity(&identity);
-            D3DXVec3Project(&screen, &drop.position, &viewport, &matProj, &matView, &identity);
+            D3DXVec3Project(&screen, &drop.position, &viewport, &matProj, &matView, &matIdentity);
 
             if (screen.z < 0.0f || screen.z > 1.0f)
                 continue;
@@ -344,8 +413,8 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
             float half = size * 0.5f;
 
             alpha = static_cast<BYTE>(std::clamp(
-                g_precipitationConfig.alphaMin + g_precipitationConfig.rainIntensity *
-                (g_precipitationConfig.alphaMax - g_precipitationConfig.alphaMin), 0.0f, 255.0f));
+                g_precipitationConfig.alpha2DRainMin + g_precipitationConfig.rainIntensity *
+                (g_precipitationConfig.alpha2DRainMax - g_precipitationConfig.alpha2DRainMin), 0.0f, 255.0f));
 
             DWORD color = D3DCOLOR_ARGB(alpha, 255, 255, 255);
 
@@ -360,33 +429,25 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
         }
     };
 
-    // Group thresholds (relative to cam Y)
-    const float nearMin = camPos.y + g_precipitationConfig.nearMinOffset;
-    const float nearMax = camPos.y + g_precipitationConfig.nearMaxOffset;
-    const float midMax = camPos.y + g_precipitationConfig.midMaxOffset;
-    const float farMax = camPos.y + g_precipitationConfig.farMaxOffset;
+    const float nearMin = m_cameraY + g_precipitationConfig.nearMinOffset;
+    const float nearMax = m_cameraY + g_precipitationConfig.nearMaxOffset;
+    const float midMax = m_cameraY + g_precipitationConfig.midMaxOffset;
+    const float farMax = m_cameraY + g_precipitationConfig.farMaxOffset;
 
-    // Render: near = faint and small, opaque
-    RenderGroup(nearMin, nearMax, g_precipitationConfig.alphaBlendNear, g_precipitationConfig.alphaBlendNearValue);
+    RenderGroup(nearMin, nearMax, g_precipitationConfig.alphaBlend3DRainNear,
+                g_precipitationConfig.alphaBlendNearValue);
+    RenderGroup(nearMax, midMax, g_precipitationConfig.alphaBlend3DRainMid, g_precipitationConfig.alphaBlendMidValue);
+    RenderGroup(midMax, farMax, g_precipitationConfig.alphaBlend3DRainFar, g_precipitationConfig.alphaBlendFarValue);
 
-    // Render: mid = moderate size/density, opaque
-    RenderGroup(nearMax, midMax, g_precipitationConfig.alphaBlendMid, g_precipitationConfig.alphaBlendMidValue);
-
-    // Render: far = fewer, smaller, blend
-    RenderGroup(midMax, farMax, g_precipitationConfig.alphaBlendFar, g_precipitationConfig.alphaBlendFarValue);
-    // Enable alpha blending
-
-    // Clean up render state
     m_device->SetTexture(0, nullptr);
 }
 
 void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewport)
 {
-    // Initialize rain texture if needed
+    // Create splatter texture if not available
     if (!m_splatterTex)
     {
-        // m_device->CreateTexture(4, 4, 1, 0, chosenFormat, core::useDXVKFix ? D3DPOOL_DEFAULT : D3DPOOL_MANAGED, &m_splatterTex, nullptr);
-        m_device->CreateTexture(4, 4, 1, 0, chosenFormat, D3DPOOL_MANAGED, &m_splatterTex, nullptr);
+        m_device->CreateTexture(4, 4, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &m_splatterTex, nullptr);
         D3DLOCKED_RECT rect;
         if (SUCCEEDED(m_splatterTex->LockRect(0, &rect, nullptr, 0)))
         {
@@ -394,67 +455,64 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
             for (int i = 0; i < 16; ++i)
                 pixels[i] = 0x80FFFFFF; // semi-transparent white
             m_splatterTex->UnlockRect(0);
-            OutputDebugStringA("[Rain] Procedural fallback rain texture created\n");
+            OutputDebugStringA("[Rain] Procedural fallback splatter texture created\n");
         }
     }
 
-    D3DXMATRIX matProj, matView, matWorld;
-    D3DXMatrixIdentity(&matWorld);
+    // Setup matrices
+    D3DXMATRIX matProj, matView, matIdentity;
+    D3DXMatrixIdentity(&matIdentity);
     m_device->GetTransform(D3DTS_VIEW, &matView);
-
-    // Fallback perspective matrix (60° FOV, 16:9 aspect, near/far = 0.1, 1000)
     float aspect = static_cast<float>(viewport.Width) / static_cast<float>(viewport.Height);
     D3DXMatrixPerspectiveFovLH(&matProj, D3DXToRadian(60.0f), aspect, 0.1f, 1000.0f);
 
-    // Drop logic
-    for (auto& drop : m_splatters3D)
+    // Update splatter positions and life
+    for (auto it = m_splatters3D.begin(); it != m_splatters3D.end();)
     {
-        drop.position += drop.velocity;
+        it->position += it->velocity * core::fpsDeltaTime;
+        it->life -= core::fpsDeltaTime;
 
-        if (drop.position.y < camPos.y - 100.0f)
-        {
-            // Reset above camera
-            drop.position = camPos + D3DXVECTOR3(
-                static_cast<float>((rand() % 200) - 100),
-                100.0f,
-                static_cast<float>((rand() % 200) + 50)
-            );
-        }
+        if (it->life <= 0.0f)
+            it = m_splatters3D.erase(it);
+        else
+            ++it;
     }
 
-    m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, g_precipitationConfig.alphaBlendSplatters);
+    if (m_splatters3D.empty())
+        return;
+
+    // Set render state
+    m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+    m_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+    m_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+    m_device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
     m_device->SetTexture(0, m_splatterTex);
 
     for (const auto& drop : m_splatters3D)
     {
         D3DXVECTOR3 screen{};
-        D3DXMATRIX identity;
-        D3DXMatrixIdentity(&identity);
-        D3DXVec3Project(&screen, &drop.position, &viewport, &matProj, &matView, &identity);
+        D3DXVec3Project(&screen, &drop.position, &viewport, &matProj, &matView, &matIdentity);
 
         if (screen.z < 0.0f || screen.z > 1.0f)
             continue;
 
-        float size = drop.length * 4.0f;
+        float size = std::clamp(drop.length * 4.0f, 1.0f, 6.0f);
         float half = size * 0.5f;
 
-        BYTE alpha = static_cast<BYTE>(std::clamp(
-            g_precipitationConfig.alphaMin + g_precipitationConfig.rainIntensity *
-            (g_precipitationConfig.alphaMax - g_precipitationConfig.alphaMin), 0.0f, 255.0f));
-
+        // Fade alpha by life (optional: multiply with intensity later)
+        BYTE alpha = static_cast<BYTE>(std::clamp(drop.life / 2.0f, 0.0f, 1.0f) * 255.0f);
         DWORD color = D3DCOLOR_ARGB(alpha, 255, 255, 255);
 
         Vertex quad[4] = {
             {screen.x - half, screen.y - half, screen.z, 1.0f, color, 0.0f, 0.0f},
             {screen.x + half, screen.y - half, screen.z, 1.0f, color, 1.0f, 0.0f},
             {screen.x + half, screen.y + half, screen.z, 1.0f, color, 1.0f, 1.0f},
-            {screen.x - half, screen.y + half, screen.z, 1.0f, color, 0.0f, 1.0f},
+            {screen.x - half, screen.y + half, screen.z, 1.0f, color, 0.0f, 1.0f}
         };
 
         m_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, quad, sizeof(Vertex));
     }
 
-    // Clean up render state
     m_device->SetTexture(0, nullptr);
 }
 
@@ -468,12 +526,12 @@ void PrecipitationController::Render2DRainOverlay(const D3DVIEWPORT9& viewport)
     float wind = sinf(timeGetTime() * 0.001f) * g_precipitationConfig.windStrength;
 
     BYTE alpha = static_cast<BYTE>(std::clamp(
-        g_precipitationConfig.alphaMin + g_precipitationConfig.rainIntensity *
-        (g_precipitationConfig.alphaMax - g_precipitationConfig.alphaMin), 0.0f, 255.0f));
+        g_precipitationConfig.alpha2DRainMin + g_precipitationConfig.rainIntensity *
+        (g_precipitationConfig.alpha2DRainMax - g_precipitationConfig.alpha2DRainMin), 0.0f, 255.0f));
 
     DWORD color = D3DCOLOR_ARGB(alpha, 255, 255, 255);
 
-    m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+    m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, g_precipitationConfig.alphaBlend2DRain);
     m_device->SetTexture(0, nullptr);
 
     for (auto& drop : m_drops2D)
@@ -516,10 +574,21 @@ void PrecipitationController::Update(IDirect3DDevice9* device)
     if (!m_device)
         m_device = device;
 
+    if (g_precipitationConfig.fpsOverride > 0.0f)
+        core::fpsDeltaTime = 1.0f / g_precipitationConfig.fpsOverride;
+    else
+    {
+        static DWORD lastTime = timeGetTime();
+        DWORD currentTime = timeGetTime();
+        core::fpsDeltaTime = (currentTime - lastTime) / 1000.0f; // seconds
+        lastTime = currentTime;
+    }
+
     if (core::useDXVKFix)
         device->BeginScene();
 
     camPos = GetCameraPositionSafe();
+    m_cameraY = camPos.y;
 
     D3DVIEWPORT9 viewport{};
     if (FAILED(m_device->GetViewport(&viewport)))
@@ -532,18 +601,24 @@ void PrecipitationController::Update(IDirect3DDevice9* device)
     m_device->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL);
     m_device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
     m_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
-    m_device->SetTexture(0, m_splatterTex);
-    m_device->SetTexture(0, m_rainTex);
     m_device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
 
-    if (g_precipitationConfig.enable3DSplatters)
-        Render3DSplattersOverlay(viewport);
-
     if (g_precipitationConfig.enable3DRain)
+    {
+        m_device->SetTexture(0, m_rainTex);
         Render3DRainOverlay(viewport);
+    }
+
+    if (g_precipitationConfig.enable3DSplatters)
+    {
+        m_device->SetTexture(0, m_splatterTex);
+        Render3DSplattersOverlay(viewport);
+    }
 
     if (g_precipitationConfig.enable2DRain)
+    {
         Render2DRainOverlay(viewport);
+    }
 
     // m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
 
