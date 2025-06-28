@@ -27,18 +27,16 @@
     </PropertyGroup>
     <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props"/>
 
-    <PropertyGroup Label="Configuration">
-        <ConfigurationType>DynamicLibrary</ConfigurationType>
-        <PlatformToolset>v143</PlatformToolset>
-        <CharacterSet>Unicode</CharacterSet>
-    </PropertyGroup>
-
     <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug_PS|Win32' Or '$(Configuration)|$(Platform)'=='Debug_UC|Win32'">
         <ConfigurationType>DynamicLibrary</ConfigurationType>
         <UseDebugLibraries>true</UseDebugLibraries>
+        <CharacterSet>Unicode</CharacterSet>
+        <PlatformToolset>v143</PlatformToolset>
     </PropertyGroup>
     <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug_PS|Win32' Or '$(Configuration)|$(Platform)'=='Debug_UC|Win32'">
         <UseDebugLibraries>false</UseDebugLibraries>
+        <ConfigurationType>DynamicLibrary</ConfigurationType>
+        <CharacterSet>Unicode</CharacterSet>
         <PlatformToolset>v143</PlatformToolset>
     </PropertyGroup>
     <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props"/>
@@ -68,8 +66,12 @@
         <ClCompile>
             <LanguageStandard>stdcpp20</LanguageStandard>
             <AdditionalIncludeDirectories>
-                <!--                external\minhook\include;external\filewatch;external\modutils;-->
-                includes;includes\hooking;includes\json\include;includes\injector;external\inireader;includes\spdlog\include;
+<!--                external\minhook\include;external\filewatch;external\modutils;-->
+                includes\minhook\include;
+                includes;includes\hooking;includes\json\include;includes\injector;external\inireader;
+                includes\spdlog\include;
+                includes\gsl;
+                $(ProjectDir)\include;
                 $(DXSDK_DIR)Include;%(AdditionalIncludeDirectories)
             </AdditionalIncludeDirectories>
         </ClCompile>
@@ -81,11 +83,13 @@
     </ItemDefinitionGroup>
     <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_PS|Win32' Or '$(Configuration)|$(Platform)'=='Debug_UC|Win32'">
         <ClCompile>
-            <PrecompiledHeader>NotUsing</PrecompiledHeader>
+            <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+            <PrecompiledHeader>Create</PrecompiledHeader>
             <WarningLevel>Level3</WarningLevel>
             <Optimization>Disabled</Optimization>
             <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
             <LanguageStandard>stdcpp20</LanguageStandard>
+            <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
         </ClCompile>
         <Link>
             <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -117,13 +121,15 @@
 
     <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_PS|Win32' Or '$(Configuration)|$(Platform)'=='Release_UC|Win32'">
         <ClCompile>
-            <PrecompiledHeader>NotUsing</PrecompiledHeader>
+            <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+            <PrecompiledHeader>Use</PrecompiledHeader>
             <WarningLevel>Level4</WarningLevel>
             <Optimization>MaxSpeed</Optimization>
             <FunctionLevelLinking>true</FunctionLevelLinking>
             <IntrinsicFunctions>true</IntrinsicFunctions>
             <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
             <LanguageStandard>stdcpp20</LanguageStandard>
+            <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
         </ClCompile>
         <Link>
             <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -157,11 +163,12 @@
     <ItemGroup>
         <ClInclude Include="core.h"/>
         <ClInclude Include="features.h"/>
+        <ClInclude Include="PerlinNoise.h" />
         <ClInclude Include="PrecipitationController.h"/>
         <ClInclude Include="GameAddresses.h"/>
         <ClInclude Include="helpers.h"/>
         <ClInclude Include="includes\CPatch.h"/>
-        <ClInclude Include="includes\minhook\include\MinHook.h"/>
+<!--        <ClInclude Include="includes\minhook\include\MinHook.h"/>-->
         <ClInclude Include="includes\minhook\src\buffer.h"/>
         <ClInclude Include="includes\minhook\src\hde\hde32.h"/>
         <ClInclude Include="includes\minhook\src\hde\hde64.h"/>
@@ -175,26 +182,31 @@
         <ClInclude Include="NFSPS_PreFEngHook.h"/>
         <ClInclude Include="NFSUC_PreFEngHook.h"/>
         <ClInclude Include="RainConfigController.h"/>
-
-        <ClInclude Include="includes\hooking\Hooking.Patterns.h"/>
-<!--        <ClInclude Include="includes\stdafx.h"/>-->
+        <ClInclude Include="stdafx.cpp" />
+        <ClInclude Include="stdafx.h" />
     </ItemGroup>
     <ItemGroup>
+        <ClCompile Include="includes\minhook\src\buffer.c">
+            <PrecompiledHeader>NotUsing</PrecompiledHeader>
+        </ClCompile>
+        <ClCompile Include="includes\minhook\src\hde\hde32.c">
+            <PrecompiledHeader>NotUsing</PrecompiledHeader>
+        </ClCompile>
+        <ClCompile Include="includes\minhook\src\hde\hde64.c">
+            <PrecompiledHeader>NotUsing</PrecompiledHeader>
+        </ClCompile>
+        <ClCompile Include="includes\minhook\src\hook.c">
+            <PrecompiledHeader>NotUsing</PrecompiledHeader>
+        </ClCompile>
+        <ClCompile Include="includes\minhook\src\trampoline.c">
+            <PrecompiledHeader>NotUsing</PrecompiledHeader>
+        </ClCompile>
         <ClCompile Include="core.cpp"/>
         <ClCompile Include="features.cpp"/>
         <ClCompile Include="PrecipitationController.cpp"/>
-        <ClCompile Include="includes\minhook\src\buffer.c"/>
-        <ClCompile Include="includes\minhook\src\hde\hde32.c"/>
-        <ClCompile Include="includes\minhook\src\hde\hde64.c"/>
-        <ClCompile Include="includes\minhook\src\hook.c"/>
-        <ClCompile Include="includes\minhook\src\trampoline.c"/>
         <ClCompile Include="RainConfigController.cpp"/>
-        <ClCompile Include="stdafx.h"/>
         <ClCompile Include="dllmain.cpp"/>
-        <ClCompile Include="includes\cxbxr\cxbxr.h"/>
-        <ClCompile Include="includes\log.h"/>
 
-        <ClCompile Include="includes\hooking\Hooking.Patterns.cpp"/>
 <!--        <ClCompile Include="includes\stdafx.cpp"/>-->
     </ItemGroup>
     <ItemGroup>

@@ -1,4 +1,5 @@
 #pragma once
+#include <IniReader.h>
 #include <string>
 
 #include "CPatch.h"
@@ -27,7 +28,7 @@ namespace ngg::common::RainConfigController
         float fogIntensity;
 
         // 2D overlay config
-        bool alphaBlend2DRain = true;
+        bool alphaBlend2DRain;
         int alpha2DRainMin = 32;
         int alpha2DRainMax = 255;
         
@@ -38,10 +39,10 @@ namespace ngg::common::RainConfigController
         float windStrength = 30.0f;
 
         // 3D group Y-offsets
-        float nearMinOffset = -9999.0f;
-        float nearMaxOffset = -100.0f;
-        float midMaxOffset = 45.0f;
-        float farMaxOffset = 9999.0f;
+        float nearMinOffset = -100.0f;
+        float nearMaxOffset = 15.0f;
+        float midMaxOffset = 60.0f;
+        float farMaxOffset = 1200.0f;
 
         // 3D group drop counts
         int dropCountNear = 200;
@@ -64,9 +65,9 @@ namespace ngg::common::RainConfigController
         float windSwayFar = 0.25f;
 
         // Alpha blending flags
-        bool alphaBlend3DRainNear = true;
-        bool alphaBlend3DRainMid = true;
-        bool alphaBlend3DRainFar = true;
+        bool alphaBlend3DRainNear;
+        bool alphaBlend3DRainMid;
+        bool alphaBlend3DRainFar;
 
         // Alpha blending values
         int alphaBlendNearValue = 192;
@@ -74,7 +75,11 @@ namespace ngg::common::RainConfigController
         int alphaBlendFarValue = 189;
 
         // 3D Splatters
-        bool alphaBlendSplatters = true;
+        bool alphaBlendSplatters;
         
+        float occlusionZone_XMin;
+        float occlusionZone_XMax;
+        float occlusionZone_ZMin;
+        float occlusionZone_ZMax;
     } precipitationConfig{};
 }

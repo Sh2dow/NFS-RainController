@@ -1,4 +1,5 @@
 // DXVK-compatible rain plugin patch for NFS ProStreet / UC with CreateDevice hook fallback
+#include "stdafx.h"
 #include <windows.h>
 #include <vector>
 #include <memory>
@@ -7,7 +8,7 @@
 #include "features.h"
 #include "PrecipitationController.h"
 #include "RainConfigController.h"
-#include "minhook/include/MinHook.h"
+#include <MinHook.h>
 
 #ifdef GAME_PS
 #include "NFSPS_PreFEngHook.h"

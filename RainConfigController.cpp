@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "RainConfigController.h"
 #include <stdafx.h>
 #include <windows.h>
@@ -46,10 +47,10 @@ void RainConfigController::Load()
     precipitationConfig.alpha2DRainMin = iniReader.ReadInteger("Precipitation", "Alpha2DRainMin", 32);
     precipitationConfig.alpha2DRainMax = iniReader.ReadInteger("Precipitation", "Alpha2DRainMax", 255);
 
-    precipitationConfig.nearMinOffset = iniReader.ReadFloat("Precipitation", "NearMinOffset", -9999.0f);
-    precipitationConfig.nearMaxOffset = iniReader.ReadFloat("Precipitation", "NearMaxOffset", -10.0f);
-    precipitationConfig.midMaxOffset  = iniReader.ReadFloat("Precipitation", "MidMaxOffset",   45.0f);
-    precipitationConfig.farMaxOffset  = iniReader.ReadFloat("Precipitation", "FarMaxOffset", 9999.0f);
+    precipitationConfig.nearMinOffset = iniReader.ReadFloat("Precipitation", "NearMinOffset", -100);
+    precipitationConfig.nearMaxOffset = iniReader.ReadFloat("Precipitation", "NearMaxOffset", 15.0f);
+    precipitationConfig.midMaxOffset  = iniReader.ReadFloat("Precipitation", "MidMaxOffset",   60.0f);
+    precipitationConfig.farMaxOffset  = iniReader.ReadFloat("Precipitation", "FarMaxOffset", 1200.0f);
 
     precipitationConfig.dropCountNear = iniReader.ReadInteger("Precipitation", "DropCountNear", 25);
     precipitationConfig.dropCountMid = iniReader.ReadInteger("Precipitation", "DropCountMid", 150);
@@ -76,7 +77,12 @@ void RainConfigController::Load()
     precipitationConfig.alphaBlendFarValue = iniReader.ReadInteger("Precipitation", "AlphaBlendFarValue", 255);
 
     precipitationConfig.alphaBlendSplatters = iniReader.ReadInteger("Precipitation", "AlphaBlendSplatters", 1);
+
     
+    precipitationConfig.occlusionZone_XMin = iniReader.ReadFloat("OcclusionZone", "XMin", 100.0f);
+    precipitationConfig.occlusionZone_XMax = iniReader.ReadFloat("OcclusionZone", "XMax", 300.0f);
+    precipitationConfig.occlusionZone_ZMin = iniReader.ReadFloat("OcclusionZone", "ZMin", 500.0f);
+    precipitationConfig.occlusionZone_ZMax = iniReader.ReadFloat("OcclusionZone", "ZMax", 700.0f);
 
 #ifdef _DEBUG
     char debugBuffer[512];

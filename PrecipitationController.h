@@ -1,6 +1,7 @@
 #pragma once
 #include "features.h"
 #include "core.h"
+#include "PerlinNoise.h"
 
 class PrecipitationController : public ngg::common::Feature
 {
@@ -18,6 +19,7 @@ public:
     const char* name() const override { return "PrecipitationController"; }
 
     D3DXVECTOR3 GetCameraPositionSafe();
+    bool IsCameraCovered(const D3DXVECTOR3& camPos);
     void enable() override;
     void disable() override;
 
@@ -34,11 +36,12 @@ private:
         bool initialized = false;
     };
 
-    struct Drop2D : Drop
-    {
-        float speed = 0.0f;
-        float x = 0.0f;
-        float y = 0.0f;
+    struct Drop2D {
+        float x, y;
+        float speed;
+        float length;
+        bool initialized;
+        float noiseSeed; // for more diversity
     };
 
     struct Drop3D : Drop
@@ -46,6 +49,7 @@ private:
         D3DXVECTOR3 position; // World position
         D3DXVECTOR3 velocity;
         float life;
+        float angle; // in radians
     };
 
     std::vector<Drop2D> m_drops2D;
@@ -84,6 +88,7 @@ private:
     Drop3D RespawnDrop(const RainGroupSettings& settings, float camY);
     const RainGroupSettings* ChooseGroupByY(float y);
 
+    siv::PerlinNoise noise{ std::random_device{} };
     RainGroupSettings m_rainSettings[3] = {};
 
     void ScaleSettingsForIntensity(float intensity);
