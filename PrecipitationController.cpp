@@ -26,17 +26,106 @@ bool PrecipitationController::IsActive() const
     return m_active;
 }
 
-// Simplified view node
-struct EViewNode
+void PrecipitationController::DebugEVIEWListPtr()
 {
-    EViewNode* prev; // 0x00
-    EViewNode* next; // 0x04
-    char padding[0x40]; // Up to 0x40
-    D3DXMATRIX viewMatrix; // 0x40
-};
+#ifdef GAME_PS
+    auto match = hook::pattern("A1 20 BE A8 00 50 E8 ?? ??");
+#elif GAME_UC
+    auto match = hook::pattern("D9 C9 D9 5C 24 1C D9 44 24 1C DE D9 DF E0 F6 C4 41 75");    // unique fld/fstp/fcompp/fnstsw/test/loop combo
+#endif
+
+    if (match.empty())
+    {
+        OutputDebugStringA("[DebugEVIEWListPtr] ❌ Pattern not found.\n");
+        return;
+    }
+
+    char logBuf[128];
+    sprintf_s(logBuf, "[DebugEVIEWListPtr] Matches found: %zu\n", match.size());
+    OutputDebugStringA(logBuf);
+
+#ifdef GAME_PS
+    for (int i = 0; i < match.size(); ++i)
+    {
+        uintptr_t addr = reinterpret_cast<uintptr_t>(match.get(i).get<void>(0));
+        char buffer[128];
+        sprintf(buffer, "[RainController] Match %d at 0x%p\n", i, (void*)addr);
+        OutputDebugStringA(buffer);
+    }
+
+    uintptr_t ptrAddr = *reinterpret_cast<uintptr_t*>(match.get(0).get<uintptr_t>(1)); // +1 skips A1 opcode
+    g_EVIEW_LIST_PTR = reinterpret_cast<EViewNode**>(ptrAddr);
+#elif GAME_UC
+    uintptr_t addr = reinterpret_cast<uintptr_t>(match.get_first());
+    uintptr_t targetAddr = *reinterpret_cast<uintptr_t*>(addr + 1);
+    g_EVIEW_LIST_PTR = reinterpret_cast<EViewNode**>(targetAddr);
+#endif
+
+    char buf[256];
+    sprintf_s(buf, "[DebugEVIEWListPtr] ✅ g_EVIEW_LIST_PTR = 0x%08X -> 0x%08X\n",
+              (uintptr_t)g_EVIEW_LIST_PTR, (g_EVIEW_LIST_PTR ? (uintptr_t)*g_EVIEW_LIST_PTR : 0));
+    OutputDebugStringA(buf);
+}
+
+bool isLikelyValidPtr(void* p)
+{
+    MEMORY_BASIC_INFORMATION mbi;
+    if (VirtualQuery(p, &mbi, sizeof(mbi)))
+    {
+        DWORD protect = mbi.Protect;
+
+        // Only treat these as safe to read
+        bool readable = (protect & PAGE_READONLY) ||
+            (protect & PAGE_READWRITE) ||
+            (protect & PAGE_EXECUTE_READ) ||
+            (protect & PAGE_EXECUTE_READWRITE);
+
+        // char buf[256];
+        // sprintf_s(buf, "[isLikelyValidPtr] ✅ EVIEW_PTR state = 0x%X, protect = 0x%X, base = 0x%p\n",
+        //           mbi.State, mbi.Protect, mbi.BaseAddress);
+        // OutputDebugStringA(buf);
+
+        if (mbi.State != MEM_COMMIT || !readable)
+        {
+            OutputDebugStringA("[isLikelyValidPtr] 🚫 EVIEW ptr is NOT readable.\n");
+            return false;
+        }
+
+        return true;
+    }
+
+    OutputDebugStringA("[isLikelyValidPtr] ❌ VirtualQuery failed — invalid pointer.\n");
+    return false;
+}
 
 // Used by rain renderer or world logic
 D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe()
+{
+    if (g_EVIEW_LIST_PTR == nullptr)
+    {
+        DebugEVIEWListPtr();
+    }
+
+    auto head = *(EViewNode**)g_EVIEW_LIST_PTR;
+
+    if (!head || !isLikelyValidPtr(head))
+    {
+        OutputDebugStringA("[GetCameraPositionSafe] 🚫 EVIEW ptr is NOT valid memory.\n");
+        return D3DXVECTOR3(0, 0, 0);
+    }
+
+    // Also optionally validate the matrix if needed
+    auto mat = (D3DXMATRIX*)((uintptr_t)head + NODE_MATRIX_OFFSET);
+    if (!isLikelyValidPtr(mat))
+    {
+        OutputDebugStringA("[GetCameraPositionSafe] 🚫 Matrix is NOT readable.\n");
+        return D3DXVECTOR3(0, 0, 0);
+    }
+
+    return D3DXVECTOR3(mat->_41, mat->_42, mat->_43); // camera position
+}
+
+D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe_Static_Addr()
 {
     EViewNode* head = *(EViewNode**)EVIEW_LIST_HEAD_PTR;
     // OutputDebugStringA("[RainController] [GetCameraPositionFromVisibleView] 🧭 Starting camera search at head: 0x%p\n",
@@ -73,7 +162,12 @@ D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe()
     // }
     // while (current && current != head);
 
+
+    // #ifdef GAME_PS
     D3DXMATRIX* mat = (D3DXMATRIX*)((uintptr_t)current + NODE_MATRIX_OFFSET);
+    // #elif GAME_UC
+    // D3DXMATRIX* mat = *(D3DXMATRIX**)(*(uintptr_t*)(*(uintptr_t*)EVIEW_LIST_HEAD_PTR + 0x1D0) + NODE_MATRIX_OFFSET);
+    // #endif
     D3DXVECTOR3 position(mat->_41, mat->_42, mat->_43);
 
     // char buf[160];
@@ -117,7 +211,7 @@ void PrecipitationController::enable()
     //     OutputDebugStringA("[RainTex] No supported texture format found\n");
     // return false;
     // }
-    chosenFormat = D3DFMT_A8B8G8R8;
+    // chosenFormat = D3DFMT_A8B8G8R8;
 #else
 
 #endif
@@ -128,8 +222,20 @@ void PrecipitationController::enable()
     m_splatters3D.clear();
 
     // Get camera position early for consistent reference
+    static bool printedCameraReady = false;
     camPos = GetCameraPositionSafe();
-    m_cameraY = camPos.y;
+    if (camPos != D3DXVECTOR3(0, 0, 0))
+    {
+        if (!printedCameraReady)
+        {
+            OutputDebugStringA("[RainController] 🎥 Camera is now valid.\n");
+            printedCameraReady = true;
+        }
+        m_cameraY = camPos.y;
+    }
+
+    // camPos = GetCameraPositionSafe();
+    // m_cameraY = camPos.y;
 
     // Prepare rain group settings based on intensity
     ScaleSettingsForIntensity(g_precipitationConfig.rainIntensity);
@@ -146,6 +252,7 @@ void PrecipitationController::enable()
 
         splatter.length = 4.0f + (rand() % 3);
         splatter.life = 3.5f + static_cast<float>(rand() % 100) / 100.0f;
+        splatter.angle = static_cast<float>((rand() % 360)) * (D3DX_PI / 180.0f);
         return splatter;
     };
 

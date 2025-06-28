@@ -112,6 +112,10 @@
 #define CAMERA_SETACTION_ADDR 0x004D2480
 #define CAMERA_UPDATE_ADDR 0x004D2480  // ToDo: find address
 
+#define EVIEW_LIST_HEAD_PTR  0x0A79B44  // Example: global pointer to head of EViewNode list
+#define NODE_MATRIX_OFFSET   0x40       // Offset of viewMatrix within EViewNode
+// #define GET_VISIBLE_STATE_SB_ADDR 0xXXXXXXX
+
 #define CARLIST_TYPE_AIRACER 3
 #define CARLIST_TYPE_COP 4
 #define CARLIST_TYPE_TRAFFIC 5

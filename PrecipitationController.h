@@ -6,6 +6,17 @@
 class PrecipitationController : public ngg::common::Feature
 {
 public:
+    // Simplified view node
+    struct EViewNode
+    {
+        EViewNode* prev; // 0x00
+        EViewNode* next; // 0x04
+        char padding[0x40]; // Up to 0x40
+        D3DXMATRIX viewMatrix; // 0x40
+    };
+
+    EViewNode** g_EVIEW_LIST_PTR = nullptr;
+
     LPDIRECT3DTEXTURE9 m_rainTex{nullptr};
     LPDIRECT3DTEXTURE9 m_splatterTex{nullptr};
     inline static D3DFORMAT chosenFormat;
@@ -18,7 +29,9 @@ public:
 
     const char* name() const override { return "PrecipitationController"; }
 
+    void DebugEVIEWListPtr();
     D3DXVECTOR3 GetCameraPositionSafe();
+    D3DXVECTOR3 GetCameraPositionSafe_Static_Addr();
     bool IsCameraCovered(const D3DXVECTOR3& camPos);
     void enable() override;
     void disable() override;
@@ -36,7 +49,8 @@ private:
         bool initialized = false;
     };
 
-    struct Drop2D {
+    struct Drop2D
+    {
         float x, y;
         float speed;
         float length;
@@ -88,7 +102,7 @@ private:
     Drop3D RespawnDrop(const RainGroupSettings& settings, float camY);
     const RainGroupSettings* ChooseGroupByY(float y);
 
-    siv::PerlinNoise noise{ std::random_device{} };
+    siv::PerlinNoise noise{std::random_device{}};
     RainGroupSettings m_rainSettings[3] = {};
 
     void ScaleSettingsForIntensity(float intensity);

@@ -87,7 +87,7 @@ void RainConfigController::Load()
 #ifdef _DEBUG
     char debugBuffer[512];
     sprintf_s(debugBuffer,
-        "[RainConfigController] enableOnStartup=%d, enable3DRain=%d, enable2DRain=%d, rainIntensity=%.2f, fogIntensity=%.2f\n",
+        "[RainConfigController] enableOnStartup=%d, enable2DRain=%d, enable3DRain=%d, enable3DSplatters=%d, rainIntensity=%.2f, fogIntensity=%.2f\n",
         precipitationConfig.enableOnStartup ? 1 : 0,
         precipitationConfig.enable2DRain ? 1 : 0,
         precipitationConfig.enable3DRain ? 1 : 0,

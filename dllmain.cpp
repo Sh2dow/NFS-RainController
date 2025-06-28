@@ -76,10 +76,11 @@ void OnPresent()
         return;
 
     auto feManager = *reinterpret_cast<void**>(FEMANAGER_INSTANCE_ADDR);
-    if (feManager && !IsBadReadPtr(feManager, 0x40))
+    if (feManager && core::IsReadable(feManager, 0x40)) // use the safer check
     {
         triedInit = true;
-        Initialize();
+
+        Initialize(); // whatever other setup you need
     }
 }
 
@@ -312,7 +313,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID)
     {
         MH_Initialize();
         DisableThreadLibraryCalls(hModule);
-
+        
         core::useDXVKFix = core::IsDXVKWrapper();
 
         CreateThread(nullptr, 0, [](LPVOID) -> DWORD
