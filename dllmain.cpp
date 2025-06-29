@@ -9,6 +9,7 @@
 #include "PrecipitationController.h"
 #include "RainConfigController.h"
 #include <MinHook.h>
+#include <util.h>
 
 #ifdef GAME_PS
 #include "NFSPS_PreFEngHook.h"
@@ -52,20 +53,31 @@ static void Initialize()
 
         if (strcmp(name, "PrecipitationController") == 0)
         {
+            auto* controller = PrecipitationController::Get();
+
             if (RainConfigController::precipitationConfig.enableOnStartup)
             {
-                feature->enable();
-                OutputDebugStringA("[Initialize] Precipitation enabled\n");
+                // ✅ Prewarm camera pointer to avoid first-frame pattern scan
+                controller->DebugEVIEWListPtr();
+
+                // ✅ Create procedural rain texture in advance (if needed)
+                if (!controller->m_rainTex && !RainConfigController::precipitationConfig.use_raindrop_dds)
+                {
+                    controller->IsCreatedRainTexture(); // create texture early
+                }
+
+                // ✅ Defer actual `enable()` to hk_OnPresent when camera is valid
+                OutputDebugStringA("[Initialize] Precipitation is configured for startup, waiting for camera...\n");
             }
             else
             {
-                feature->disable();
+                controller->disable();
                 OutputDebugStringA("[Initialize] Precipitation disabled in config\n");
             }
         }
         else
         {
-            feature->enable();
+            feature->enable(); // Other features proceed as normal
         }
     }
 }
@@ -132,12 +144,30 @@ void hk_OnPresent()
         }
     }
 
+    // ✅ Auto-enable rain on startup if config allows
+    if (!shouldEnable && !rainEnabled && RainConfigController::precipitationConfig.enableOnStartup)
+    {
+        shouldEnable = true; // trigger enable logic on next Present
+    }
+    
     lastKeyState = keyPressed;
 }
 
 HRESULT APIENTRY HookedPresent(IDirect3DDevice9* device, CONST RECT* src, CONST RECT* dest, HWND wnd,
                                CONST RGNDATA* dirty)
 {
+    // Cache actual device
+    if (!PrecipitationController::Get()->m_device)
+        PrecipitationController::Get()->m_device = device;
+
+    if (core::useDXVKFix)
+    {
+        device->BeginScene();
+        // auto endSceneGuard = gsl::finally([&]() { device->EndScene(); });
+    }
+
+    core::CurrentTime = timeGetTime(); // ONE call per frame
+
     static bool inCall = false;
     if (inCall)
         return g_originalPresent ? g_originalPresent(device, src, dest, wnd, dirty) : D3D_OK;
@@ -168,7 +198,7 @@ HRESULT APIENTRY HookedPresent(IDirect3DDevice9* device, CONST RECT* src, CONST 
 
     if (PrecipitationController::Get()->IsActive())
     {
-        PrecipitationController::Get()->Update(device); // draw rain last
+        PrecipitationController::Get()->Update(); // draw rain last
     }
 
     HRESULT result = D3D_OK;
@@ -192,6 +222,10 @@ HRESULT APIENTRY HookedPresent(IDirect3DDevice9* device, CONST RECT* src, CONST 
             warned = true;
         }
         inCall = false;
+        
+        if (core::useDXVKFix)
+            device->EndScene();
+        
         return D3D_OK; // Safe fallback to avoid infinite loop
     }
 
@@ -199,6 +233,10 @@ HRESULT APIENTRY HookedPresent(IDirect3DDevice9* device, CONST RECT* src, CONST 
 
     core::CallDirectX9Callbacks(device);
     inCall = false;
+  
+    if (core::useDXVKFix)
+        device->EndScene();
+    
     return result;
 }
 

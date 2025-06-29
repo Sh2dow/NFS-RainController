@@ -28,41 +28,43 @@ namespace ngg::common::RainConfigController
         float fogIntensity;
 
         // 2D overlay config
+        int drop2DCount;
+
         bool alphaBlend2DRain;
-        int alpha2DRainMin = 32;
-        int alpha2DRainMax = 255;
+        int alpha2DRainMin;
+        int alpha2DRainMax;
         
-        float baseSpeed = 200.0f;
-        float speedScale = 600.0f;
-        float baseLength = 10.0f;
-        float lengthScale = 30.0f;
-        float windStrength = 30.0f;
+        float baseSpeed;
+        float speedScale;
+        float baseLength;
+        float lengthScale;
+        float windStrength;
 
         // 3D group Y-offsets
-        float nearMinOffset = -100.0f;
-        float nearMaxOffset = 15.0f;
-        float midMaxOffset = 60.0f;
-        float farMaxOffset = 1200.0f;
+        float nearMinOffset;
+        float nearMaxOffset;
+        float midMaxOffset;
+        float farMaxOffset;
 
         // 3D group drop counts
-        int dropCountNear = 200;
-        int dropCountMid = 100;
-        int dropCountFar = 200;
+        int dropCountNear;
+        int dropCountMid;
+        int dropCountFar;
 
         // Drop sizes
-        float dropSizeNear = 2.5f;
-        float dropSizeMid = 2.0f;
-        float dropSizeFar = 1.0f;
+        float dropSizeNear;
+        float dropSizeMid;
+        float dropSizeFar;
 
         // Speeds
-        float speedNear = 2.0f;
-        float speedMid = 1.5f;
-        float speedFar = 0.5f;
+        float speedNear;
+        float speedMid;
+        float speedFar;
 
         // Wind sway
-        float windSwayNear = 0.15f;
-        float windSwayMid = 0.25f;
-        float windSwayFar = 0.25f;
+        float windSwayNear;
+        float windSwayMid;
+        float windSwayFar;
 
         // Alpha blending flags
         bool alphaBlend3DRainNear;
@@ -70,9 +72,9 @@ namespace ngg::common::RainConfigController
         bool alphaBlend3DRainFar;
 
         // Alpha blending values
-        int alphaBlendNearValue = 192;
-        int alphaBlendMidValue = 220;
-        int alphaBlendFarValue = 189;
+        int alphaBlendNearValue;
+        int alphaBlendMidValue;
+        int alphaBlendFarValue;
 
         // 3D Splatters
         bool alphaBlendSplatters;

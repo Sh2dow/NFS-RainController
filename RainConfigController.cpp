@@ -17,6 +17,7 @@ void RainConfigController::LoadOnStartup()
 
     CIniReader iniReader(iniPath.c_str());
     precipitationConfig.enableOnStartup = iniReader.ReadInteger("Precipitation", "EnableOnStartup", 0) != 0;
+    toggleKey = iniReader.ReadInteger("Precipitation", "ToggleKey", VK_F3);
 }
 
 void RainConfigController::Load()
@@ -28,55 +29,59 @@ void RainConfigController::Load()
     iniPath = iniPath.substr(0, iniPath.find_last_of("\\/")) + "\\scripts\\NFS-RainController.ini";
 
     CIniReader iniReader(iniPath.c_str());
+
+    toggleKey = iniReader.ReadInteger("Precipitation", "ToggleKey", VK_F3);
+    
     precipitationConfig.fpsOverride = iniReader.ReadFloat("Precipitation", "fpsOverride", 0.0f);
 
-    precipitationConfig.enable2DRain = iniReader.ReadInteger("Precipitation", "Enable2DRain", 0) != 0;
-    precipitationConfig.enable3DRain = iniReader.ReadInteger("Precipitation", "Enable3DRain", 0) != 0;
-    precipitationConfig.enable3DSplatters = iniReader.ReadInteger("Precipitation", "Enable3DSplatters", 0) != 0;
-    precipitationConfig.rainIntensity = iniReader.ReadFloat("Precipitation", "RainIntensity", 0.5f);
-    precipitationConfig.fogIntensity = iniReader.ReadFloat("Precipitation", "FogIntensity", 0.25f);
+    precipitationConfig.enable2DRain = iniReader.ReadInteger("Precipitation", "Enable2DRain", 0);
+    precipitationConfig.enable3DRain = iniReader.ReadInteger("Precipitation", "Enable3DRain", 0);
+    precipitationConfig.enable3DSplatters = iniReader.ReadInteger("Precipitation", "Enable3DSplatters", 0);
+    precipitationConfig.rainIntensity = iniReader.ReadFloat("Precipitation", "RainIntensity", 0.0f);
+    precipitationConfig.fogIntensity = iniReader.ReadFloat("Precipitation", "FogIntensity", 0.0f);
 
-    precipitationConfig.baseSpeed = iniReader.ReadFloat("Precipitation", "BaseSpeed", 200.0f);
-    precipitationConfig.speedScale = iniReader.ReadFloat("Precipitation", "SpeedScale", 600.0f);
-    precipitationConfig.baseLength = iniReader.ReadFloat("Precipitation", "BaseLength", 10.0f);
-    precipitationConfig.lengthScale = iniReader.ReadFloat("Precipitation", "LengthScale", 20.0f);
-    precipitationConfig.windStrength = iniReader.ReadFloat("Precipitation", "WindStrength", 30.0f);
+    precipitationConfig.baseSpeed = iniReader.ReadFloat("Precipitation", "BaseSpeed", 0.0f);
+    precipitationConfig.speedScale = iniReader.ReadFloat("Precipitation", "SpeedScale", 0.0f);
+    precipitationConfig.baseLength = iniReader.ReadFloat("Precipitation", "BaseLength", 0.0f);
+    precipitationConfig.lengthScale = iniReader.ReadFloat("Precipitation", "LengthScale", 0.0f);
+    precipitationConfig.windStrength = iniReader.ReadFloat("Precipitation", "WindStrength", 0.0f);
 
+    precipitationConfig.drop2DCount = iniReader.ReadInteger("Precipitation", "Drop2DCount", 0);
     
-    precipitationConfig.alphaBlend2DRain = iniReader.ReadInteger("Precipitation", "AlphaBlend2DRain", 1);
+    precipitationConfig.alphaBlend2DRain = iniReader.ReadInteger("Precipitation", "AlphaBlend2DRain", 0);
     precipitationConfig.alpha2DRainMin = iniReader.ReadInteger("Precipitation", "Alpha2DRainMin", 32);
     precipitationConfig.alpha2DRainMax = iniReader.ReadInteger("Precipitation", "Alpha2DRainMax", 255);
 
-    precipitationConfig.nearMinOffset = iniReader.ReadFloat("Precipitation", "NearMinOffset", -100);
-    precipitationConfig.nearMaxOffset = iniReader.ReadFloat("Precipitation", "NearMaxOffset", 15.0f);
-    precipitationConfig.midMaxOffset  = iniReader.ReadFloat("Precipitation", "MidMaxOffset",   60.0f);
-    precipitationConfig.farMaxOffset  = iniReader.ReadFloat("Precipitation", "FarMaxOffset", 1200.0f);
+    precipitationConfig.nearMinOffset = iniReader.ReadFloat("Precipitation", "NearMinOffset", 0.0f);
+    precipitationConfig.nearMaxOffset = iniReader.ReadFloat("Precipitation", "NearMaxOffset", 0.0f);
+    precipitationConfig.midMaxOffset  = iniReader.ReadFloat("Precipitation", "MidMaxOffset",   0.0f);
+    precipitationConfig.farMaxOffset  = iniReader.ReadFloat("Precipitation", "FarMaxOffset", 0.0f);
 
-    precipitationConfig.dropCountNear = iniReader.ReadInteger("Precipitation", "DropCountNear", 25);
-    precipitationConfig.dropCountMid = iniReader.ReadInteger("Precipitation", "DropCountMid", 150);
-    precipitationConfig.dropCountFar = iniReader.ReadInteger("Precipitation", "DropCountFar", 200);
+    precipitationConfig.dropCountNear = iniReader.ReadInteger("Precipitation", "DropCountNear", 0);
+    precipitationConfig.dropCountMid = iniReader.ReadInteger("Precipitation", "DropCountMid", 0);
+    precipitationConfig.dropCountFar = iniReader.ReadInteger("Precipitation", "DropCountFar", 0);
 
-    precipitationConfig.dropSizeNear = iniReader.ReadFloat("Precipitation", "DropSizeNear", 1.5f);
-    precipitationConfig.dropSizeMid = iniReader.ReadFloat("Precipitation", "DropSizeMid", 3.5f);
-    precipitationConfig.dropSizeFar = iniReader.ReadFloat("Precipitation", "DropSizeFar", 3.0f);
+    precipitationConfig.dropSizeNear = iniReader.ReadFloat("Precipitation", "DropSizeNear", 0.0f);
+    precipitationConfig.dropSizeMid = iniReader.ReadFloat("Precipitation", "DropSizeMid", 0.0f);
+    precipitationConfig.dropSizeFar = iniReader.ReadFloat("Precipitation", "DropSizeFar", 0.0f);
 
-    precipitationConfig.speedNear = iniReader.ReadFloat("Precipitation", "SpeedNear", 2.0f);
-    precipitationConfig.speedMid = iniReader.ReadFloat("Precipitation", "SpeedMid", 1.5f);
-    precipitationConfig.speedFar = iniReader.ReadFloat("Precipitation", "SpeedFar", 0.5f);
+    precipitationConfig.speedNear = iniReader.ReadFloat("Precipitation", "SpeedNear", 0.0f);
+    precipitationConfig.speedMid = iniReader.ReadFloat("Precipitation", "SpeedMid", 0.0f);
+    precipitationConfig.speedFar = iniReader.ReadFloat("Precipitation", "SpeedFar", 0.0f);
 
-    precipitationConfig.windSwayNear = iniReader.ReadFloat("Precipitation", "WindSwayNear", 0.25f);
-    precipitationConfig.windSwayMid = iniReader.ReadFloat("Precipitation", "WindSwayMid", 0.25f);
-    precipitationConfig.windSwayFar = iniReader.ReadFloat("Precipitation", "WindSwayFar", 0.25f);
+    precipitationConfig.windSwayNear = iniReader.ReadFloat("Precipitation", "WindSwayNear", 0.0f);
+    precipitationConfig.windSwayMid = iniReader.ReadFloat("Precipitation", "WindSwayMid", 0.0f);
+    precipitationConfig.windSwayFar = iniReader.ReadFloat("Precipitation", "WindSwayFar", 0.0f);
 
-    precipitationConfig.alphaBlend3DRainNear = iniReader.ReadInteger("Precipitation", "AlphaBlend3DRainNear", 1);
-    precipitationConfig.alphaBlend3DRainMid = iniReader.ReadInteger("Precipitation", "AlphaBlend3DRainMid", 1);
-    precipitationConfig.alphaBlend3DRainFar = iniReader.ReadInteger("Precipitation", "AlphaBlend3DRainFar", 1);
+    precipitationConfig.alphaBlend3DRainNear = iniReader.ReadInteger("Precipitation", "AlphaBlend3DRainNear", 0);
+    precipitationConfig.alphaBlend3DRainMid = iniReader.ReadInteger("Precipitation", "AlphaBlend3DRainMid", 0);
+    precipitationConfig.alphaBlend3DRainFar = iniReader.ReadInteger("Precipitation", "AlphaBlend3DRainFar", 0);
 
     precipitationConfig.alphaBlendNearValue = iniReader.ReadInteger("Precipitation", "AlphaBlendNearValue", 255);
     precipitationConfig.alphaBlendMidValue = iniReader.ReadInteger("Precipitation", "AlphaBlendMidValue", 255);
     precipitationConfig.alphaBlendFarValue = iniReader.ReadInteger("Precipitation", "AlphaBlendFarValue", 255);
 
-    precipitationConfig.alphaBlendSplatters = iniReader.ReadInteger("Precipitation", "AlphaBlendSplatters", 1);
+    precipitationConfig.alphaBlendSplatters = iniReader.ReadInteger("Precipitation", "AlphaBlendSplatters", 0);
 
     
     precipitationConfig.occlusionZone_XMin = iniReader.ReadFloat("OcclusionZone", "XMin", 100.0f);

@@ -20,4 +20,5 @@ namespace core
     void RemoveDirectX9Loop(size_t id);
     void Initializing();
     static __readonly bool useDXVKFix;
+    inline static DWORD CurrentTime = 0;
 }

@@ -6,6 +6,11 @@
 class PrecipitationController : public ngg::common::Feature
 {
 public:
+    IDirect3DDevice9* m_device; // Add to class
+    D3DXVECTOR3 camPos = D3DXVECTOR3(0, 0, 0);
+
+    inline static DWORD m_lastTime;
+
     // Simplified view node
     struct EViewNode
     {
@@ -14,8 +19,6 @@ public:
         char padding[0x40]; // Up to 0x40
         D3DXMATRIX viewMatrix; // 0x40
     };
-
-    EViewNode** g_EVIEW_LIST_PTR = nullptr;
 
     LPDIRECT3DTEXTURE9 m_rainTex{nullptr};
     LPDIRECT3DTEXTURE9 m_splatterTex{nullptr};
@@ -29,15 +32,16 @@ public:
 
     const char* name() const override { return "PrecipitationController"; }
 
+    EViewNode** g_EVIEW_LIST_PTR;
     void DebugEVIEWListPtr();
     D3DXVECTOR3 GetCameraPositionSafe();
-    D3DXVECTOR3 GetCameraPositionSafe_Static_Addr();
     bool IsCameraCovered(const D3DXVECTOR3& camPos);
+
     void enable() override;
     void disable() override;
 
-    void Render2DRainOverlay(const D3DVIEWPORT9& viewport, const D3DXVECTOR3& cam_pos);
-    void Update(IDirect3DDevice9* device);
+    bool IsCreatedRainTexture();
+    void Update();
     bool IsActive() const;
 
 private:
@@ -69,6 +73,7 @@ private:
     std::vector<Drop2D> m_drops2D;
     std::vector<Drop3D> m_drops3D;
     std::vector<Drop3D> m_splatters3D;
+    std::vector<Drop3D> nearDrops, midDrops, farDrops;
 
     bool m_active{false};
 
@@ -96,7 +101,6 @@ private:
         bool alphaBlended;
     };
 
-    D3DXVECTOR3 camPos;
     float m_cameraY = 0.0f; // updated each frame based on estimated or real camera Y
 
     Drop3D RespawnDrop(const RainGroupSettings& settings, float camY);
@@ -106,7 +110,6 @@ private:
     RainGroupSettings m_rainSettings[3] = {};
 
     void ScaleSettingsForIntensity(float intensity);
-    bool IsCreatedRainTexture();
     void Render2DRainOverlay(const D3DVIEWPORT9& viewport);
     void Render3DRainOverlay(const D3DVIEWPORT9& viewport);
     void Render3DSplattersOverlay(const D3DVIEWPORT9& viewport);
