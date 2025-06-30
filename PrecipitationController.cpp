@@ -371,7 +371,7 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
     {
         if (g_precipitationConfig.use_raindrop_dds)
         {
-            if (FAILED(D3DXCreateTextureFromFileA(m_device, "scripts\\raindrop.dds", &m_rainTex)))
+            if (FAILED(D3DXCreateTextureFromFileA(m_device, g_precipitationConfig.raindropTexturePath.c_str(), &m_rainTex)))
             {
                 OutputDebugStringA("[Render3DRainOverlay] Failed to load raindrop.dds\n");
                 IsCreatedRainTexture();
@@ -436,9 +436,9 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
             splatter.life = 3.5f + static_cast<float>(rand() % 100) / 100.0f;
             splatter.angle = atan2f(forwardXZ.x, forwardXZ.z);
 
-            char dbg[128];
-            sprintf_s(dbg, "[Splatter] forwardXZ: %.2f %.2f %.2f\n", forwardXZ.x, forwardXZ.y, forwardXZ.z);
-            OutputDebugStringA(dbg);
+            // char dbg[128];
+            // sprintf_s(dbg, "[Splatter] forwardXZ: %.2f %.2f %.2f\n", forwardXZ.x, forwardXZ.y, forwardXZ.z);
+            // OutputDebugStringA(dbg);
 
             m_splatters3D.push_back(splatter);
             drop = RespawnDrop(*group, m_cameraY);
