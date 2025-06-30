@@ -28,34 +28,47 @@ bool core::IsReadable(void* ptr, size_t size = 1)
     return false;
 }
 
-bool core::IsDXVKWrapper()
+bool core::IsDXVKWrapper(IDirect3DDevice9* device)
 {
-    char path[MAX_PATH] = {};
-    HMODULE hMod = GetModuleHandleA("d3d9.dll");
-    if (!hMod) return false;
-
-    GetModuleFileNameA(hMod, path, MAX_PATH);
-
-    char sysDir[MAX_PATH] = {};
-    GetSystemDirectoryA(sysDir, MAX_PATH);
-
-    // 1. d3d9.dll is not the system one
-    bool nonSystemDll = !PathIsPrefixA(sysDir, path);
-    if (!nonSystemDll)
+    if (!device)
     {
-        OutputDebugStringA("[IsDXVKWrapper] System D3D9 detected, not DXVK.\n");
+        OutputDebugStringA("[IsDXVKWrapper] device is null\n");
         return false;
     }
 
-    // 2. Vulkan runtime must be loaded — dxvk depends on it
-    if (!GetModuleHandleA("vulkan-1.dll"))
+    IDirect3D9* d3d = nullptr;
+    if (FAILED(device->GetDirect3D(&d3d)) || !d3d)
     {
-        OutputDebugStringA("[IsDXVKWrapper] No vulkan-1.dll loaded — not DXVK.\n");
+        OutputDebugStringA("[IsDXVKWrapper] GetDirect3D failed\n");
         return false;
     }
 
-    OutputDebugStringA("[IsDXVKWrapper] Detected DXVK by d3d9.dll location + vulkan-1.dll\n");
-    return true;
+    D3DADAPTER_IDENTIFIER9 ident = {};
+    if (SUCCEEDED(d3d->GetAdapterIdentifier(D3DADAPTER_DEFAULT, 0, &ident)))
+    {
+        OutputDebugStringA("[IsDXVKWrapper] Adapter description: ");
+        OutputDebugStringA(ident.Description);
+        OutputDebugStringA("\n");
+
+        if (strstr(ident.Description, "DXVK") != nullptr)
+        {
+            OutputDebugStringA("[IsDXVKWrapper] ✅ Detected DXVK via adapter string.\n");
+            d3d->Release();
+            return true;
+        }
+    }
+
+    d3d->Release();
+
+    // Optional fallback: check for vulkan-1.dll
+    if (GetModuleHandleA("vulkan-1.dll"))
+    {
+        OutputDebugStringA("[IsDXVKWrapper] Vulkan loaded — possible DXVK\n");
+        return true; // Use caution here
+    }
+
+    OutputDebugStringA("[IsDXVKWrapper] ❌ Not DXVK\n");
+    return false;
 }
 
 void core::AddLoop(VoidCallback cb)

@@ -10,7 +10,7 @@ namespace core
     bool IsReadable(void* ptr, size_t size);
 
     inline static float fpsDeltaTime;
-    bool IsDXVKWrapper();
+    bool IsDXVKWrapper(IDirect3DDevice9* device);
     using VoidCallback = std::function<void()>;
     using D3DCallback = std::function<void(IDirect3DDevice9*)>;
 

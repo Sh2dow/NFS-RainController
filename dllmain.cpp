@@ -276,6 +276,9 @@ HRESULT APIENTRY HookedCreateDevice(IDirect3D9* self, UINT adapter, D3DDEVTYPE t
         return hr;
     }
 
+    // ✅ SAFELY call DXVK detection here
+    core::useDXVKFix = core::IsDXVKWrapper(*outDevice);
+    
     IDirect3DDevice9* realDevice = *outDevice;
     void** vtable = *reinterpret_cast<void***>(realDevice);
     void* realPresent = vtable[17];
@@ -352,8 +355,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID)
         MH_Initialize();
         DisableThreadLibraryCalls(hModule);
         
-        core::useDXVKFix = core::IsDXVKWrapper();
-
         CreateThread(nullptr, 0, [](LPVOID) -> DWORD
         {
             HookPresent();
