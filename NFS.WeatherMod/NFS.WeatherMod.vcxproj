@@ -91,7 +91,6 @@
     <!-- ====================================================== -->
     <ItemDefinitionGroup>
         <ClCompile>
-            <LanguageStandard>stdcpp17</LanguageStandard>
             <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
             <AdditionalIncludeDirectories>
                 <!--                external\minhook\include;external\filewatch;external\modutils;-->
@@ -154,6 +153,7 @@
             <PreprocessorDefinitions>
                 NDEBUG;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)
             </PreprocessorDefinitions>
+            <LanguageStandard>stdcpp20</LanguageStandard>
         </ClCompile>
     </ItemDefinitionGroup>
 
@@ -203,8 +203,6 @@
         <ClCompile Include="..\includes\minhook\src\trampoline.c"/>
         <ClCompile Include="core.cpp" />
         <ClCompile Include="PrecipitationController.cpp" />
-        <ClCompile Include="PrecipitationController_Backup.cpp" />
-        <ClCompile Include="PrecipitationController_working.cpp" />
         <ClCompile Include="RainConfigController.cpp" />
         <ClCompile Include="dllmain.cpp"/>
     </ItemGroup>

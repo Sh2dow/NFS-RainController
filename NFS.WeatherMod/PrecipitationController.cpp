@@ -1143,7 +1143,7 @@ bool PrecipitationController::IsCreatedRainTexture()
     }
 
     HRESULT hr = m_device->CreateTexture(16, 512, 1, 0, chosenFormat, D3DPOOL_MANAGED, &m_rainTex, nullptr);
-    if (FAILED(hr) && core::useDXVKFix)
+    if (FAILED(hr))
     {
         hr = m_device->CreateTexture(16, 512, 1, 0, chosenFormat, D3DPOOL_DEFAULT, &m_rainTex, nullptr);
     }
@@ -1622,7 +1622,7 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
     // Create splatter texture if not available
     if (!m_splatterTex)
     {
-        m_device->CreateTexture(16, 16, 1, 0, chosenFormat, core::useDXVKFix ? D3DPOOL_DEFAULT : D3DPOOL_MANAGED,
+        m_device->CreateTexture(16, 16, 1, 0, chosenFormat, D3DPOOL_DEFAULT, //if issues happen, try D3DPOOL_MANAGED
                                 &m_splatterTex, nullptr);
         // m_device->CreateTexture(4, 4, 1, 0, chosenFormat, D3DPOOL_DEFAULT, &m_splatterTex, nullptr);
         D3DLOCKED_RECT rect;
