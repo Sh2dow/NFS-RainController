@@ -1,0 +1,323 @@
+.text:006CFF40 ; _DWORD __cdecl sub_6CFF40(_DWORD, _DWORD, _DWORD, _DWORD)
+.text:006CFF40 sub_6CFF40      proc near               ; CODE XREF: sub_6DE300+77D↓p
+.text:006CFF40                                         ; sub_6DE300+7B5↓p
+.text:006CFF40
+.text:006CFF40 var_128         = dword ptr -128h
+.text:006CFF40 var_124         = dword ptr -124h
+.text:006CFF40 var_120         = dword ptr -120h
+.text:006CFF40 var_11C         = dword ptr -11Ch
+.text:006CFF40 var_118         = dword ptr -118h
+.text:006CFF40 var_114         = dword ptr -114h
+.text:006CFF40 var_110         = dword ptr -110h
+.text:006CFF40 var_10C         = dword ptr -10Ch
+.text:006CFF40 var_108         = dword ptr -108h
+.text:006CFF40 var_104         = dword ptr -104h
+.text:006CFF40 var_100         = dword ptr -100h
+.text:006CFF40 var_FC          = dword ptr -0FCh
+.text:006CFF40 var_F8          = dword ptr -0F8h
+.text:006CFF40 var_F4          = dword ptr -0F4h
+.text:006CFF40 var_F0          = dword ptr -0F0h
+.text:006CFF40 var_EC          = dword ptr -0ECh
+.text:006CFF40 var_E8          = dword ptr -0E8h
+.text:006CFF40 var_E4          = dword ptr -0E4h
+.text:006CFF40 var_E0          = dword ptr -0E0h
+.text:006CFF40 var_DC          = dword ptr -0DCh
+.text:006CFF40 var_D8          = dword ptr -0D8h
+.text:006CFF40 var_D4          = dword ptr -0D4h
+.text:006CFF40 var_D0          = dword ptr -0D0h
+.text:006CFF40 var_CC          = dword ptr -0CCh
+.text:006CFF40 var_C8          = dword ptr -0C8h
+.text:006CFF40 var_C4          = dword ptr -0C4h
+.text:006CFF40 var_C0          = dword ptr -0C0h
+.text:006CFF40 var_BC          = dword ptr -0BCh
+.text:006CFF40 var_B8          = dword ptr -0B8h
+.text:006CFF40 var_B4          = dword ptr -0B4h
+.text:006CFF40 var_B0          = dword ptr -0B0h
+.text:006CFF40 var_AC          = dword ptr -0ACh
+.text:006CFF40 var_A8          = dword ptr -0A8h
+.text:006CFF40 var_A4          = dword ptr -0A4h
+.text:006CFF40 var_A0          = dword ptr -0A0h
+.text:006CFF40 var_9C          = dword ptr -9Ch
+.text:006CFF40 var_98          = dword ptr -98h
+.text:006CFF40 var_94          = dword ptr -94h
+.text:006CFF40 var_90          = dword ptr -90h
+.text:006CFF40 var_8C          = dword ptr -8Ch
+.text:006CFF40 var_88          = dword ptr -88h
+.text:006CFF40 var_84          = dword ptr -84h
+.text:006CFF40 var_80          = byte ptr -80h
+.text:006CFF40 var_40          = byte ptr -40h
+.text:006CFF40 arg_0           = dword ptr  8
+.text:006CFF40 arg_4           = dword ptr  0Ch
+.text:006CFF40 arg_8           = dword ptr  10h
+.text:006CFF40 arg_C           = dword ptr  14h
+.text:006CFF40
+.text:006CFF40                 push    ebp
+.text:006CFF41                 mov     ebp, esp
+.text:006CFF43                 and     esp, 0FFFFFFF0h
+.text:006CFF46                 sub     esp, 134h
+.text:006CFF4C                 push    ebx
+.text:006CFF4D                 push    esi
+.text:006CFF4E                 push    edi
+.text:006CFF4F                 mov     eax, [ebp+arg_4]
+.text:006CFF52                 mov     [esp+140h+var_D4], eax
+.text:006CFF56                 mov     [esp+140h+var_BC], eax
+.text:006CFF5D                 mov     [esp+140h+var_A4], eax
+.text:006CFF64                 mov     [esp+140h+var_8C], eax
+.text:006CFF6B                 mov     eax, dword_982A20
+.text:006CFF70                 mov     [esp+140h+var_E0], 0BF800000h
+.text:006CFF78                 mov     [esp+140h+var_DC], 0BF800000h
+.text:006CFF80                 mov     [esp+140h+var_D8], 0
+.text:006CFF88                 mov     [esp+140h+var_D0], 0
+.text:006CFF90                 mov     [esp+140h+var_CC], 3F800000h
+.text:006CFF98                 mov     [esp+140h+var_C8], 0BF800000h
+.text:006CFFA0                 mov     [esp+140h+var_C4], 3F800000h
+.text:006CFFA8                 mov     [esp+140h+var_C0], 0
+.text:006CFFB3                 mov     [esp+140h+var_B8], 0
+.text:006CFFBE                 mov     [esp+140h+var_B4], 0
+.text:006CFFC9                 mov     [esp+140h+var_B0], 3F800000h
+.text:006CFFD4                 mov     [esp+140h+var_AC], 3F800000h
+.text:006CFFDF                 mov     [esp+140h+var_A8], 0
+.text:006CFFEA                 mov     [esp+140h+var_A0], 3F800000h
+.text:006CFFF5                 mov     [esp+140h+var_9C], 0
+.text:006D0000                 mov     [esp+140h+var_98], 3F800000h
+.text:006D000B                 mov     [esp+140h+var_94], 0BF800000h
+.text:006D0016                 mov     [esp+140h+var_90], 0
+.text:006D0021                 mov     [esp+140h+var_88], 3F800000h
+.text:006D002C                 mov     [esp+140h+var_84], 3F800000h
+.text:006D0037                 mov     [esp+140h+var_120], 3F800000h
+.text:006D003F                 mov     [esp+140h+var_11C], 0
+.text:006D0047                 mov     [esp+140h+var_118], 0
+.text:006D004F                 mov     [esp+140h+var_114], 0
+.text:006D0057                 mov     [esp+140h+var_110], 0
+.text:006D005F                 mov     [esp+140h+var_10C], 3F800000h
+.text:006D0067                 mov     [esp+140h+var_108], 0
+.text:006D006F                 mov     [esp+140h+var_104], 0
+.text:006D0077                 mov     [esp+140h+var_100], 0
+.text:006D007F                 mov     [esp+140h+var_FC], 0
+.text:006D0087                 mov     [esp+140h+var_F8], 3F800000h
+.text:006D008F                 mov     [esp+140h+var_F4], 0
+.text:006D0097                 mov     [esp+140h+var_F0], 0
+.text:006D009F                 mov     [esp+140h+var_EC], 0
+.text:006D00A7                 mov     [esp+140h+var_E8], 0
+.text:006D00AF                 mov     [esp+140h+var_E4], 3F800000h
+.text:006D00B7                 mov     eax, [eax+4]
+.text:006D00BA                 imul    eax, 70h ; 'p'
+.text:006D00BD                 add     eax, offset eViews
+.text:006D00C2                 mov     ebx, [eax]
+.text:006D00C4                 mov     [esp+140h+var_128], eax
+.text:006D00C8                 lea     eax, [ebx+40h]
+.text:006D00CB                 mov     ecx, 10h
+.text:006D00D0                 mov     esi, ebx
+.text:006D00D2                 lea     edi, [esp+140h+var_40]
+.text:006D00D9                 rep movsd
+.text:006D00DB                 mov     ecx, 10h
+.text:006D00E0                 mov     esi, eax
+.text:006D00E2                 lea     edi, [esp+140h+var_80]
+.text:006D00E9                 rep movsd
+.text:006D00EB                 xor     esi, esi
+.text:006D00ED                 mov     ecx, 3F800000h
+.text:006D00F2                 mov     [ebx], ecx
+.text:006D00F4                 mov     [ebx+4], esi
+.text:006D00F7                 mov     [ebx+8], esi
+.text:006D00FA                 mov     [ebx+0Ch], esi
+.text:006D00FD                 mov     [ebx+10h], esi
+.text:006D0100                 mov     [ebx+14h], ecx
+.text:006D0103                 mov     [ebx+18h], esi
+.text:006D0106                 mov     [ebx+1Ch], esi
+.text:006D0109                 mov     [ebx+20h], esi
+.text:006D010C                 mov     [ebx+24h], esi
+.text:006D010F                 mov     [ebx+28h], ecx
+.text:006D0112                 mov     [ebx+2Ch], esi
+.text:006D0115                 mov     [ebx+30h], esi
+.text:006D0118                 mov     [ebx+34h], esi
+.text:006D011B                 mov     [ebx+38h], esi
+.text:006D011E                 mov     [ebx+3Ch], ecx
+.text:006D0121                 mov     [eax], ecx
+.text:006D0123                 mov     [eax+4], esi
+.text:006D0126                 mov     [eax+8], esi
+.text:006D0129                 mov     [eax+0Ch], esi
+.text:006D012C                 push    eax
+.text:006D012D                 mov     [eax+14h], ecx
+.text:006D0130                 mov     [eax+28h], ecx
+.text:006D0133                 mov     [eax+3Ch], ecx
+.text:006D0136                 lea     ecx, [ebx+80h]
+.text:006D013C                 push    ebx
+.text:006D013D                 push    ecx
+.text:006D013E                 mov     [eax+10h], esi
+.text:006D0141                 mov     [eax+18h], esi
+.text:006D0144                 mov     [eax+1Ch], esi
+.text:006D0147                 mov     [eax+20h], esi
+.text:006D014A                 mov     [eax+24h], esi
+.text:006D014D                 mov     [eax+2Ch], esi
+.text:006D0150                 mov     [eax+30h], esi
+.text:006D0153                 mov     [eax+34h], esi
+.text:006D0156                 mov     [eax+38h], esi
+.text:006D0159                 mov     [esp+14Ch+var_124], ecx
+.text:006D015D                 call    D3DXMatrixMultiply
+.text:006D0162                 mov     ecx, [esp+140h+var_128]
+.text:006D0166                 mov     edx, [ecx+4]
+.text:006D0169                 push    edx
+.text:006D016A                 lea     eax, [esp+144h+var_120]
+.text:006D016E                 push    eax
+.text:006D016F                 mov     dword_8FAE9C, 0FFFFFFFFh
+.text:006D0179                 call    sub_6C8000
+.text:006D017E                 mov     eax, dword_982BDC
+.text:006D0183                 mov     ecx, [eax]
+.text:006D0185                 add     esp, 8
+.text:006D0188                 push    3
+.text:006D018A                 push    1
+.text:006D018C                 push    esi
+.text:006D018D                 push    eax
+.text:006D018E                 call    dword ptr [ecx+114h]
+.text:006D0194                 mov     eax, dword_982BDC
+.text:006D0199                 mov     edx, [eax]
+.text:006D019B                 push    3
+.text:006D019D                 push    2
+.text:006D019F                 push    esi
+.text:006D01A0                 push    eax
+.text:006D01A1                 call    dword ptr [edx+114h]
+.text:006D01A7                 mov     eax, dword_982BDC
+.text:006D01AC                 mov     ecx, [eax]
+.text:006D01AE                 push    3
+.text:006D01B0                 push    1
+.text:006D01B2                 push    1
+.text:006D01B4                 push    eax
+.text:006D01B5                 call    dword ptr [ecx+114h]
+.text:006D01BB                 mov     eax, dword_982BDC
+.text:006D01C0                 mov     edx, [eax]
+.text:006D01C2                 push    3
+.text:006D01C4                 push    2
+.text:006D01C6                 push    1
+.text:006D01C8                 push    eax
+.text:006D01C9                 call    dword ptr [edx+114h]
+.text:006D01CF                 mov     eax, dword_982BDC
+.text:006D01D4                 mov     ecx, [eax]
+.text:006D01D6                 push    3
+.text:006D01D8                 push    1
+.text:006D01DA                 push    2
+.text:006D01DC                 push    eax
+.text:006D01DD                 call    dword ptr [ecx+114h]
+.text:006D01E3                 mov     eax, dword_982BDC
+.text:006D01E8                 mov     edx, [eax]
+.text:006D01EA                 push    3
+.text:006D01EC                 push    2
+.text:006D01EE                 push    2
+.text:006D01F0                 push    eax
+.text:006D01F1                 call    dword ptr [edx+114h]
+.text:006D01F7                 mov     eax, dword_982BDC
+.text:006D01FC                 mov     ecx, [eax]
+.text:006D01FE                 push    3
+.text:006D0200                 push    1
+.text:006D0202                 push    3
+.text:006D0204                 push    eax
+.text:006D0205                 call    dword ptr [ecx+114h]
+.text:006D020B                 mov     eax, dword_982BDC
+.text:006D0210                 mov     edx, [eax]
+.text:006D0212                 push    3
+.text:006D0214                 push    2
+.text:006D0216                 push    3
+.text:006D0218                 push    eax
+.text:006D0219                 call    dword ptr [edx+114h]
+.text:006D021F                 mov     ecx, dword_982C80
+.text:006D0225                 mov     eax, [ecx+48h]
+.text:006D0228                 mov     ecx, [ecx+44h]
+.text:006D022B                 mov     edi, [ebp+arg_0]
+.text:006D022E                 mov     ecx, [ecx+22Ch]
+.text:006D0234                 mov     edx, [eax]
+.text:006D0236                 push    edi
+.text:006D0237                 push    ecx
+.text:006D0238                 push    eax
+.text:006D0239                 call    dword ptr [edx+0D0h]
+.text:006D023F                 mov     edx, [ebp+arg_C]
+.text:006D0242                 mov     eax, [ebp+arg_8]
+.text:006D0245                 push    edx
+.text:006D0246                 push    eax
+.text:006D0247                 push    1
+.text:006D0249                 call    sub_6C6810
+.text:006D024E                 push    esi
+.text:006D024F                 push    esi
+.text:006D0250                 call    sub_6C67C0
+.text:006D0255                 add     esp, 14h
+.text:006D0258                 call    sub_6C83A0
+.text:006D025D                 mov     eax, dword_982BDC
+.text:006D0262                 mov     ecx, [eax]
+.text:006D0264                 push    esi
+.text:006D0265                 push    7
+.text:006D0267                 push    eax
+.text:006D0268                 call    dword ptr [ecx+0E4h]
+.text:006D026E                 mov     eax, dword_982BDC
+.text:006D0273                 mov     edx, [eax]
+.text:006D0275                 push    esi
+.text:006D0276                 push    0Eh
+.text:006D0278                 push    eax
+.text:006D0279                 call    dword ptr [edx+0E4h]
+.text:006D027F                 mov     eax, dword_982C80
+.text:006D0284                 mov     eax, [eax+48h]
+.text:006D0287                 mov     ecx, [eax]
+.text:006D0289                 push    eax
+.text:006D028A                 call    dword ptr [ecx+104h]
+.text:006D0290                 mov     edx, dword_982C80
+.text:006D0296                 mov     eax, [edx+48h]
+.text:006D0299                 mov     ecx, [eax]
+.text:006D029B                 push    esi
+.text:006D029C                 push    eax
+.text:006D029D                 call    dword ptr [ecx+100h]
+.text:006D02A3                 mov     eax, dword_982BDC
+.text:006D02A8                 mov     edx, [eax]
+.text:006D02AA                 push    18h
+.text:006D02AC                 lea     ecx, [esp+144h+var_E0]
+.text:006D02B0                 push    ecx
+.text:006D02B1                 push    2
+.text:006D02B3                 push    6
+.text:006D02B5                 push    eax
+.text:006D02B6                 call    dword ptr [edx+14Ch]
+.text:006D02BC                 mov     edx, dword_982C80
+.text:006D02C2                 mov     eax, [edx+48h]
+.text:006D02C5                 mov     ecx, [eax]
+.text:006D02C7                 push    eax
+.text:006D02C8                 call    dword ptr [ecx+108h]
+.text:006D02CE                 mov     eax, dword_982BDC
+.text:006D02D3                 mov     edx, [eax]
+.text:006D02D5                 push    1
+.text:006D02D7                 push    0Eh
+.text:006D02D9                 push    eax
+.text:006D02DA                 call    dword ptr [edx+0E4h]
+.text:006D02E0                 mov     eax, dword_982BDC
+.text:006D02E5                 mov     ecx, [eax]
+.text:006D02E7                 push    1
+.text:006D02E9                 push    7
+.text:006D02EB                 push    eax
+.text:006D02EC                 call    dword ptr [ecx+0E4h]
+.text:006D02F2                 push    6
+.text:006D02F4                 push    5
+.text:006D02F6                 push    esi
+.text:006D02F7                 call    sub_6C6810
+.text:006D02FC                 mov     ecx, 10h
+.text:006D0301                 lea     esi, [esp+14Ch+var_40]
+.text:006D0308                 mov     edi, ebx
+.text:006D030A                 rep movsd
+.text:006D030C                 add     esp, 0Ch
+.text:006D030F                 mov     ecx, 10h
+.text:006D0314                 mov     edx, [esp+140h+var_124]
+.text:006D0318                 lea     eax, [ebx+40h]
+.text:006D031B                 push    eax
+.text:006D031C                 push    ebx
+.text:006D031D                 mov     edi, eax
+.text:006D031F                 lea     esi, [esp+148h+var_80]
+.text:006D0326                 push    edx
+.text:006D0327                 rep movsd
+.text:006D0329                 call    D3DXMatrixMultiply
+.text:006D032E                 mov     eax, dword_982A20
+.text:006D0333                 mov     ecx, [eax+4]
+.text:006D0336                 push    ecx
+.text:006D0337                 lea     edx, [esp+144h+var_120]
+.text:006D033B                 push    edx
+.text:006D033C                 call    sub_6C8000
+.text:006D0341                 add     esp, 8
+.text:006D0344                 pop     edi
+.text:006D0345                 pop     esi
+.text:006D0346                 pop     ebx
+.text:006D0347                 mov     esp, ebp
+.text:006D0349                 pop     ebp
+.text:006D034A                 retn
+.text:006D034A sub_6CFF40      endp

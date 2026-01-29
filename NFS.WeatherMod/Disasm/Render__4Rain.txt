@@ -1,0 +1,295 @@
+.text:0074ACC0 ; Rain::Render(void)
+.text:0074ACC0 Render__4Rain   proc near               ; CODE XREF: sub_758100+E3↓p
+.text:0074ACC0                                         ; sub_758100+3BE↓p
+.text:0074ACC0
+.text:0074ACC0 var_BC          = dword ptr -0BCh
+.text:0074ACC0 var_B8          = dword ptr -0B8h
+.text:0074ACC0 var_B4          = dword ptr -0B4h
+.text:0074ACC0 a3              = dword ptr -0B0h
+.text:0074ACC0 var_AC          = dword ptr -0ACh
+.text:0074ACC0 var_A8          = dword ptr -0A8h
+.text:0074ACC0 var_9C          = dword ptr -9Ch
+.text:0074ACC0 var_98          = dword ptr -98h
+.text:0074ACC0 var_94          = dword ptr -94h
+.text:0074ACC0 a1              = dword ptr -90h
+.text:0074ACC0 var_8C          = dword ptr -8Ch
+.text:0074ACC0 var_88          = dword ptr -88h
+.text:0074ACC0 var_78          = dword ptr -78h
+.text:0074ACC0 var_74          = dword ptr -74h
+.text:0074ACC0 a2              = dword ptr -70h
+.text:0074ACC0 var_6C          = dword ptr -6Ch
+.text:0074ACC0 var_68          = dword ptr -68h
+.text:0074ACC0 var_60          = dword ptr -60h
+.text:0074ACC0 var_5C          = dword ptr -5Ch
+.text:0074ACC0 var_58          = dword ptr -58h
+.text:0074ACC0 var_50          = dword ptr -50h
+.text:0074ACC0 var_4C          = dword ptr -4Ch
+.text:0074ACC0 var_48          = dword ptr -48h
+.text:0074ACC0 var_44          = dword ptr -44h
+.text:0074ACC0 var_40          = dword ptr -40h
+.text:0074ACC0 var_30          = dword ptr -30h
+.text:0074ACC0 var_2C          = dword ptr -2Ch
+.text:0074ACC0 var_28          = dword ptr -28h
+.text:0074ACC0 var_20          = dword ptr -20h
+.text:0074ACC0 var_1C          = dword ptr -1Ch
+.text:0074ACC0 var_18          = dword ptr -18h
+.text:0074ACC0 var_10          = byte ptr -10h
+.text:0074ACC0
+.text:0074ACC0                 push    ebp
+.text:0074ACC1                 mov     ebp, esp
+.text:0074ACC3                 and     esp, 0FFFFFFF0h
+.text:0074ACC6                 sub     esp, 0C4h
+.text:0074ACCC                 mov     eax, PrecipitationEnable
+.text:0074ACD1                 test    eax, eax
+.text:0074ACD3                 push    ebx
+.text:0074ACD4                 push    esi
+.text:0074ACD5                 push    edi
+.text:0074ACD6                 mov     esi, ecx
+.text:0074ACD8                 jz      loc_74AFF8
+.text:0074ACDE                 mov     eax, dword_904AD0
+.text:0074ACE3                 test    eax, eax
+.text:0074ACE5                 jz      loc_74AFF8
+.text:0074ACEB                 cmp     TheGameFlowManager, 6
+.text:0074ACF2                 jnz     loc_74AFF8
+.text:0074ACF8                 mov     eax, [esi+284h]
+.text:0074ACFE                 test    eax, eax
+.text:0074AD00                 jz      loc_74AFF8
+.text:0074AD06                 mov     eax, [esi+288h]
+.text:0074AD0C                 mov     eax, [eax+40h]
+.text:0074AD0F                 fld     dword ptr [eax+54h]
+.text:0074AD12                 mov     ecx, [eax+50h]
+.text:0074AD15                 fld     dword ptr [eax+58h]
+.text:0074AD18                 add     eax, 50h ; 'P'
+.text:0074AD1B                 lea     edx, [esp+0D0h+a2]
+.text:0074AD1F                 fxch    st(1)
+.text:0074AD21                 push    edx
+.text:0074AD22                 fstp    [esp+0D4h+var_6C]
+.text:0074AD26                 lea     eax, [esi+3650h]
+.text:0074AD2C                 mov     [esp+0D4h+a2], ecx
+.text:0074AD30                 fstp    [esp+0D4h+var_68]
+.text:0074AD34                 push    eax
+.text:0074AD35                 mov     ecx, edx
+.text:0074AD37                 push    ecx
+.text:0074AD38                 call    eMulVector__FP8bVector3PC8bMatrix4PC8bVector3 ; eMulVector(bVector3 *,bMatrix4 const *,bVector3 const *)
+.text:0074AD3D                 push    1               ; num_matrices
+.text:0074AD3F                 call    ?eFrameMallocMatrix@@YAPAUbMatrix4@@H@Z ; eFrameMallocMatrix(int)
+.text:0074AD44                 mov     ebx, eax
+.text:0074AD46                 add     esp, 10h
+.text:0074AD49                 test    ebx, ebx
+.text:0074AD4B                 mov     [esp+0D0h+var_74], ebx
+.text:0074AD4F                 jz      loc_74AFF8
+.text:0074AD55                 lea     edx, [esi+3610h]
+.text:0074AD5B                 push    edx
+.text:0074AD5C                 mov     ecx, ebx
+.text:0074AD5E                 call    sub_445090
+.text:0074AD63                 mov     eax, [esi+33D8h]
+.text:0074AD69                 lea     edi, [esi+3404h]
+.text:0074AD6F                 mov     [esp+0D0h+var_9C], eax
+.text:0074AD73                 mov     [esp+0D0h+var_B4], 0
+.text:0074AD7B                 mov     [esp+0D0h+var_98], edi
+.text:0074AD7F                 nop
+.text:0074AD80
+.text:0074AD80 loc_74AD80:                             ; CODE XREF: Rain::Render(void)+332↓j
+.text:0074AD80                 mov     eax, [edi-28h]
+.text:0074AD83                 test    eax, eax
+.text:0074AD85                 jz      loc_74AFDF
+.text:0074AD8B                 mov     ecx, [esi+284h]
+.text:0074AD91                 mov     edx, [edi]
+.text:0074AD93                 mov     eax, [esi+288h]
+.text:0074AD99                 push    ecx
+.text:0074AD9A                 push    ebx
+.text:0074AD9B                 push    edx
+.text:0074AD9C                 push    eax
+.text:0074AD9D                 mov     ecx, offset byte_9877CC
+.text:0074ADA2                 call    sub_6C1120
+.text:0074ADA7                 test    al, al
+.text:0074ADA9                 jz      loc_74AFF8
+.text:0074ADAF                 mov     eax, [esp+0D0h+var_9C]
+.text:0074ADB3                 test    eax, eax
+.text:0074ADB5                 mov     [esp+0D0h+var_B8], 0
+.text:0074ADBD                 jbe     loc_74AFD5
+.text:0074ADC3                 lea     ecx, [esi+2E60h]
+.text:0074ADC9                 mov     ebx, 2Ah ; '*'
+.text:0074ADCE                 mov     [esp+0D0h+var_BC], ecx
+.text:0074ADD2
+.text:0074ADD2 loc_74ADD2:                             ; CODE XREF: Rain::Render(void)+307↓j
+.text:0074ADD2                 lea     ecx, [esp+0D0h+var_60]
+.text:0074ADD6                 call    sub_6C10E0
+.text:0074ADDB                 mov     edx, [esp+0D0h+var_BC]
+.text:0074ADDF                 movzx   edi, byte ptr [edx+1]
+.text:0074ADE3                 cmp     edi, [esp+0D0h+var_B4]
+.text:0074ADE7                 jnz     loc_74AFAA
+.text:0074ADED                 mov     eax, edx
+.text:0074ADEF                 cmp     byte ptr [eax], 0
+.text:0074ADF2                 jnz     loc_74AFAA
+.text:0074ADF8                 mov     ecx, [esi+298h]
+.text:0074ADFE                 add     ecx, ebx
+.text:0074AE00                 shl     ecx, 4
+.text:0074AE03                 add     ecx, esi
+.text:0074AE05                 push    ecx
+.text:0074AE06                 mov     ecx, [esi+29Ch]
+.text:0074AE0C                 add     ecx, ebx
+.text:0074AE0E                 lea     edx, [esp+0D4h+var_10]
+.text:0074AE15                 shl     ecx, 4
+.text:0074AE18                 push    edx
+.text:0074AE19                 add     ecx, esi
+.text:0074AE1B                 call    sub_4102F0
+.text:0074AE20                 fld     dword ptr [eax+4]
+.text:0074AE23                 fld     dword ptr [eax+8]
+.text:0074AE26                 mov     eax, [eax]
+.text:0074AE28                 lea     ecx, [esp+0D0h+a3]
+.text:0074AE2C                 fxch    st(1)
+.text:0074AE2E                 fstp    [esp+0D0h+var_AC]
+.text:0074AE32                 push    ecx             ; v
+.text:0074AE33                 mov     edx, ecx
+.text:0074AE35                 push    edx             ; dest
+.text:0074AE36                 fstp    [esp+0D8h+var_A8]
+.text:0074AE3A                 mov     [esp+0D8h+a3], eax
+.text:0074AE3E                 call    bNormalize__FP8bVector3PC8bVector3 ; bNormalize(bVector3 *,bVector3 const *)
+.text:0074AE43                 lea     eax, [esp+0D8h+a3]
+.text:0074AE47                 push    eax             ; a3
+.text:0074AE48                 lea     ecx, [esp+0DCh+a2]
+.text:0074AE4C                 push    ecx             ; a2
+.text:0074AE4D                 lea     edx, [esp+0E0h+a1]
+.text:0074AE51                 push    edx             ; a1
+.text:0074AE52                 call    bCross__FP8bVector3PC8bVector3T1 ; bCross(bVector3 *,bVector3 const *,bVector3 const *)
+.text:0074AE57                 lea     eax, [edi+342h]
+.text:0074AE5D                 shl     eax, 4
+.text:0074AE60                 fld     dword ptr [eax+esi]
+.text:0074AE63                 mov     ecx, [esp+0E4h+var_BC]
+.text:0074AE67                 fld     [esp+0E4h+a1]
+.text:0074AE6B                 mov     al, [ecx]
+.text:0074AE6D                 fmul    st, st(1)
+.text:0074AE6F                 shl     edi, 4
+.text:0074AE72                 add     esp, 14h
+.text:0074AE75                 test    al, al
+.text:0074AE77                 fstp    [esp+0D0h+a1]
+.text:0074AE7B                 fld     [esp+0D0h+var_8C]
+.text:0074AE7F                 fmul    st, st(1)
+.text:0074AE81                 fstp    [esp+0D0h+var_8C]
+.text:0074AE85                 fld     [esp+0D0h+var_88]
+.text:0074AE89                 fmul    st, st(1)
+.text:0074AE8B                 fstp    [esp+0D0h+var_88]
+.text:0074AE8F                 fstp    st
+.text:0074AE91                 fld     dword ptr [edi+esi+3424h]
+.text:0074AE98                 fadd    dword ptr [esi+3690h]
+.text:0074AE9E                 fld     [esp+0D0h+a3]
+.text:0074AEA2                 fmul    st, st(1)
+.text:0074AEA4                 fstp    [esp+0D0h+a3]
+.text:0074AEA8                 fld     [esp+0D0h+var_AC]
+.text:0074AEAC                 fmul    st, st(1)
+.text:0074AEAE                 fstp    [esp+0D0h+var_AC]
+.text:0074AEB2                 fld     [esp+0D0h+var_A8]
+.text:0074AEB6                 fmul    st, st(1)
+.text:0074AEB8                 fstp    [esp+0D0h+var_A8]
+.text:0074AEBC                 fstp    st
+.text:0074AEBE                 jnz     loc_74AFAA
+.text:0074AEC4                 mov     eax, [esi+298h]
+.text:0074AECA                 mov     edx, [esi+3550h]
+.text:0074AED0                 mov     ecx, [esp+0D0h+a1]
+.text:0074AED4                 add     eax, ebx
+.text:0074AED6                 shl     eax, 4
+.text:0074AED9                 add     eax, esi
+.text:0074AEDB                 mov     [esp+0D0h+var_50], edx
+.text:0074AEE2                 fld     dword ptr [eax+4]
+.text:0074AEE5                 fld     dword ptr [eax+8]
+.text:0074AEE8                 mov     eax, [eax]
+.text:0074AEEA                 mov     edx, [esp+0D0h+var_8C]
+.text:0074AEEE                 fxch    st(1)
+.text:0074AEF0                 mov     [esp+0D0h+var_60], eax
+.text:0074AEF4                 fstp    [esp+0D0h+var_5C]
+.text:0074AEF8                 mov     eax, [esp+0D0h+var_88]
+.text:0074AEFC                 mov     [esp+0D0h+var_2C], edx
+.text:0074AF03                 fstp    [esp+0D0h+var_58]
+.text:0074AF07                 mov     edx, [esp+0D0h+var_AC]
+.text:0074AF0B                 mov     [esp+0D0h+var_28], eax
+.text:0074AF12                 mov     eax, [esp+0D0h+var_A8]
+.text:0074AF16                 mov     [esp+0D0h+var_30], ecx
+.text:0074AF1D                 mov     ecx, [esp+0D0h+a3]
+.text:0074AF21                 mov     [esp+0D0h+var_1C], edx
+.text:0074AF28                 mov     [esp+0D0h+var_18], eax
+.text:0074AF2F                 mov     eax, [esp+0D0h+var_B8]
+.text:0074AF33                 mov     [esp+0D0h+var_20], ecx
+.text:0074AF3A                 xor     edx, edx
+.text:0074AF3C                 mov     ecx, 0Ah
+.text:0074AF41                 div     ecx
+.text:0074AF43                 test    edx, edx
+.text:0074AF45                 mov     [esp+0D0h+var_94], edx
+.text:0074AF49                 fild    [esp+0D0h+var_94]
+.text:0074AF4D                 jge     short loc_74AF55
+.text:0074AF4F                 fadd    ds:flt_891214
+.text:0074AF55
+.text:0074AF55 loc_74AF55:                             ; CODE XREF: Rain::Render(void)+28D↑j
+.text:0074AF55                 fmul    ds:_float_0pt1
+.text:0074AF5B                 mov     eax, [esp+0D0h+var_40]
+.text:0074AF62                 fld     ds:_float_0pt1
+.text:0074AF68                 mov     edx, [esp+0D0h+var_48]
+.text:0074AF6F                 mov     [esp+0D0h+var_48], eax
+.text:0074AF76                 fadd    st, st(1)
+.text:0074AF78                 lea     eax, [esp+0D0h+var_60]
+.text:0074AF7C                 fxch    st(1)
+.text:0074AF7E                 push    eax
+.text:0074AF7F                 fstp    [esp+0D4h+var_94]
+.text:0074AF83                 mov     [esp+0D4h+var_78], edx
+.text:0074AF87                 mov     ecx, [esp+0D4h+var_94]
+.text:0074AF8B                 mov     [esp+0D4h+var_44], ecx
+.text:0074AF92                 fstp    [esp+0D4h+var_4C]
+.text:0074AF99                 mov     ecx, offset byte_9877CC
+.text:0074AF9E                 mov     [esp+0D4h+var_40], edx
+.text:0074AFA5                 call    sub_6D1E30
+.text:0074AFAA
+.text:0074AFAA loc_74AFAA:                             ; CODE XREF: Rain::Render(void)+127↑j
+.text:0074AFAA                                         ; Rain::Render(void)+132↑j ...
+.text:0074AFAA                 mov     eax, [esp+0D0h+var_B8]
+.text:0074AFAE                 mov     edx, [esp+0D0h+var_BC]
+.text:0074AFB2                 mov     ecx, [esp+0D0h+var_9C]
+.text:0074AFB6                 inc     eax
+.text:0074AFB7                 add     edx, 4
+.text:0074AFBA                 add     ebx, 2
+.text:0074AFBD                 cmp     eax, ecx
+.text:0074AFBF                 mov     [esp+0D0h+var_B8], eax
+.text:0074AFC3                 mov     [esp+0D0h+var_BC], edx
+.text:0074AFC7                 jb      loc_74ADD2
+.text:0074AFCD                 mov     ebx, [esp+0D0h+var_74]
+.text:0074AFD1                 mov     edi, [esp+0D0h+var_98]
+.text:0074AFD5
+.text:0074AFD5 loc_74AFD5:                             ; CODE XREF: Rain::Render(void)+FD↑j
+.text:0074AFD5                 mov     ecx, offset byte_9877CC
+.text:0074AFDA                 call    sub_6D1F60
+.text:0074AFDF
+.text:0074AFDF loc_74AFDF:                             ; CODE XREF: Rain::Render(void)+C5↑j
+.text:0074AFDF                 mov     eax, [esp+0D0h+var_B4]
+.text:0074AFE3                 inc     eax
+.text:0074AFE4                 add     edi, 4
+.text:0074AFE7                 cmp     eax, 1
+.text:0074AFEA                 mov     [esp+0D0h+var_B4], eax
+.text:0074AFEE                 mov     [esp+0D0h+var_98], edi
+.text:0074AFF2                 jl      loc_74AD80
+.text:0074AFF8
+.text:0074AFF8 loc_74AFF8:                             ; CODE XREF: Rain::Render(void)+18↑j
+.text:0074AFF8                                         ; Rain::Render(void)+25↑j ...
+.text:0074AFF8                 pop     edi
+.text:0074AFF9                 pop     esi
+.text:0074AFFA                 pop     ebx
+.text:0074AFFB                 mov     esp, ebp
+.text:0074AFFD                 pop     ebp
+.text:0074AFFE                 retn
+.text:0074AFFE Render__4Rain   endp
+
+.text:00445090 ; _DWORD __stdcall sub_445090(_DWORD)
+.text:00445090 sub_445090      proc near               ; CODE XREF: sub_4B15E0+83↓p
+.text:00445090                                         ; Rain::Render(void)+9E↓p ...
+.text:00445090
+.text:00445090 arg_0           = dword ptr  4
+.text:00445090
+.text:00445090                 mov     eax, [esp+arg_0]
+.text:00445094                 push    esi
+.text:00445095                 mov     esi, ecx
+.text:00445097                 push    eax
+.text:00445098                 push    esi
+.text:00445099                 call    bCopy__FP8bMatrix4PC8bMatrix4 ; bCopy(bMatrix4 *,bMatrix4 const *)
+.text:0044509E                 add     esp, 8
+.text:004450A1                 mov     eax, esi
+.text:004450A3                 pop     esi
+.text:004450A4                 retn    4
+.text:004450A4 sub_445090      endp

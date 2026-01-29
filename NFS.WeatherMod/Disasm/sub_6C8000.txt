@@ -1,0 +1,321 @@
+.text:006C8000 sub_6C8000      proc near               ; CODE XREF: sub_6C1120+10↑p
+.text:006C8000                                         ; sub_6CEEE0+26↓p ...
+.text:006C8000
+.text:006C8000 var_F9          = byte ptr -0F9h
+.text:006C8000 var_F8          = dword ptr -0F8h
+.text:006C8000 var_F4          = dword ptr -0F4h
+.text:006C8000 var_F0          = dword ptr -0F0h
+.text:006C8000 var_EC          = dword ptr -0ECh
+.text:006C8000 var_E8          = dword ptr -0E8h
+.text:006C8000 var_E4          = dword ptr -0E4h
+.text:006C8000 dest            = Vector3 ptr -0E0h
+.text:006C8000 var_D0          = byte ptr -0D0h
+.text:006C8000 var_C0          = byte ptr -0C0h
+.text:006C8000 var_80          = byte ptr -80h
+.text:006C8000 var_40          = byte ptr -40h
+.text:006C8000 arg_0           = dword ptr  8
+.text:006C8000 arg_4           = dword ptr  0Ch
+.text:006C8000
+.text:006C8000                 push    ebp
+.text:006C8001                 mov     ebp, esp
+.text:006C8003                 and     esp, 0FFFFFFF0h
+.text:006C8006                 sub     esp, 104h
+.text:006C800C                 mov     eax, dword_982CB4
+.text:006C8011                 test    eax, eax
+.text:006C8013                 push    ebx
+.text:006C8014                 push    esi
+.text:006C8015                 push    edi
+.text:006C8016                 jz      short loc_6C8022
+.text:006C8018                 mov     cl, [eax+50h]
+.text:006C801B                 test    cl, cl
+.text:006C801D                 setnz   bl
+.text:006C8020                 jmp     short loc_6C8024
+.text:006C8022 ; ---------------------------------------------------------------------------
+.text:006C8022
+.text:006C8022 loc_6C8022:                             ; CODE XREF: sub_6C8000+16↑j
+.text:006C8022                 xor     bl, bl
+.text:006C8024
+.text:006C8024 loc_6C8024:                             ; CODE XREF: sub_6C8000+20↑j
+.text:006C8024                 mov     ecx, dword_987B14
+.text:006C802A                 mov     edi, [ebp+arg_0]
+.text:006C802D                 inc     ecx
+.text:006C802E                 cmp     edi, offset eMathIdentityMatrix
+.text:006C8034                 mov     dword_987B14, ecx
+.text:006C803A                 jnz     short loc_6C8042
+.text:006C803C                 inc     dword_987B20
+.text:006C8042
+.text:006C8042 loc_6C8042:                             ; CODE XREF: sub_6C8000+3A↑j
+.text:006C8042                 cmp     edi, dword_988554
+.text:006C8048                 mov     eax, dword_982C80
+.text:006C804D                 jnz     short loc_6C8068
+.text:006C804F                 cmp     eax, dword_988550
+.text:006C8055                 jnz     short loc_6C8068
+.text:006C8057                 mov     edx, [ebp+arg_4]
+.text:006C805A                 cmp     dword_8FAE9C, edx
+.text:006C8060                 jz      loc_6C8332      ; jumptable 006C82F6 default case
+.text:006C8066                 jmp     short loc_6C806B
+.text:006C8068 ; ---------------------------------------------------------------------------
+.text:006C8068
+.text:006C8068 loc_6C8068:                             ; CODE XREF: sub_6C8000+4D↑j
+.text:006C8068                                         ; sub_6C8000+55↑j
+.text:006C8068                 mov     edx, [ebp+arg_4]
+.text:006C806B
+.text:006C806B loc_6C806B:                             ; CODE XREF: sub_6C8000+66↑j
+.text:006C806B                 mov     ecx, edx
+.text:006C806D                 imul    ecx, 70h ; 'p'
+.text:006C8070                 add     ecx, offset eViews
+.text:006C8076                 test    bl, bl
+.text:006C8078                 mov     esi, [ecx]
+.text:006C807A                 mov     [esp+110h+var_F4], ecx
+.text:006C807E                 jz      short loc_6C808E
+.text:006C8080                 lea     ebx, [esi+0C0h]
+.text:006C8086                 lea     ecx, [esi+100h]
+.text:006C808C                 jmp     short loc_6C8097
+.text:006C808E ; ---------------------------------------------------------------------------
+.text:006C808E
+.text:006C808E loc_6C808E:                             ; CODE XREF: sub_6C8000+7E↑j
+.text:006C808E                 lea     ebx, [esi+40h]
+.text:006C8091                 lea     ecx, [esi+80h]
+.text:006C8097
+.text:006C8097 loc_6C8097:                             ; CODE XREF: sub_6C8000+8C↑j
+.text:006C8097                 mov     [esp+110h+var_F8], ecx
+.text:006C809B                 cmp     edx, dword_8FAE9C
+.text:006C80A1                 jz      short loc_6C80E9
+.text:006C80A3                 mov     cl, [eax+40h]
+.text:006C80A6                 test    cl, cl
+.text:006C80A8                 jnz     short loc_6C80D4
+.text:006C80AA                 mov     eax, dword_982BDC
+.text:006C80AF                 mov     edx, [eax]
+.text:006C80B1                 push    esi
+.text:006C80B2                 push    2
+.text:006C80B4                 push    eax
+.text:006C80B5                 call    dword ptr [edx+0B0h]
+.text:006C80BB                 mov     eax, dword_982BDC
+.text:006C80C0                 mov     ecx, [eax]
+.text:006C80C2                 push    ebx
+.text:006C80C3                 push    3
+.text:006C80C5                 push    eax
+.text:006C80C6                 call    dword ptr [ecx+0B0h]
+.text:006C80CC                 mov     eax, dword_982C80
+.text:006C80D1                 mov     edx, [ebp+arg_4]
+.text:006C80D4
+.text:006C80D4 loc_6C80D4:                             ; CODE XREF: sub_6C8000+A8↑j
+.text:006C80D4                 mov     ecx, dword_987B1C
+.text:006C80DA                 inc     ecx
+.text:006C80DB                 mov     dword_8FAE9C, edx
+.text:006C80E1                 mov     dword_987B1C, ecx
+.text:006C80E7                 jmp     short loc_6C811F
+.text:006C80E9 ; ---------------------------------------------------------------------------
+.text:006C80E9
+.text:006C80E9 loc_6C80E9:                             ; CODE XREF: sub_6C8000+A1↑j
+.text:006C80E9                 cmp     eax, dword_988550
+.text:006C80EF                 jz      short loc_6C811F
+.text:006C80F1                 mov     cl, [eax+40h]
+.text:006C80F4                 test    cl, cl
+.text:006C80F6                 jnz     short loc_6C811F
+.text:006C80F8                 mov     eax, dword_982BDC
+.text:006C80FD                 mov     edx, [eax]
+.text:006C80FF                 push    esi
+.text:006C8100                 push    2
+.text:006C8102                 push    eax
+.text:006C8103                 call    dword ptr [edx+0B0h]
+.text:006C8109                 mov     eax, dword_982BDC
+.text:006C810E                 mov     ecx, [eax]
+.text:006C8110                 push    ebx
+.text:006C8111                 push    3
+.text:006C8113                 push    eax
+.text:006C8114                 call    dword ptr [ecx+0B0h]
+.text:006C811A                 mov     eax, dword_982C80
+.text:006C811F
+.text:006C811F loc_6C811F:                             ; CODE XREF: sub_6C8000+E7↑j
+.text:006C811F                                         ; sub_6C8000+EF↑j ...
+.text:006C811F                 inc     dword_987B18
+.text:006C8125                 mov     edx, [eax+44h]
+.text:006C8128                 mov     ecx, [edx+0FC4h]
+.text:006C812E                 test    ecx, ecx
+.text:006C8130                 mov     dword_988550, eax
+.text:006C8135                 mov     dword_988554, edi
+.text:006C813B                 jz      short loc_6C8175
+.text:006C813D                 push    esi
+.text:006C813E                 push    edi
+.text:006C813F                 lea     eax, [esp+118h+var_80]
+.text:006C8146                 push    eax
+.text:006C8147                 call    D3DXMatrixMultiply
+.text:006C814C                 mov     ecx, dword_982C80
+.text:006C8152                 mov     eax, [ecx+48h]
+.text:006C8155                 mov     ecx, [ecx+44h]
+.text:006C8158                 mov     ecx, [ecx+0FC4h]
+.text:006C815E                 mov     edx, [eax]
+.text:006C8160                 lea     esi, [esp+110h+var_80]
+.text:006C8167                 push    esi
+.text:006C8168                 push    ecx
+.text:006C8169                 push    eax
+.text:006C816A                 call    dword ptr [edx+98h]
+.text:006C8170                 mov     eax, dword_982C80
+.text:006C8175
+.text:006C8175 loc_6C8175:                             ; CODE XREF: sub_6C8000+13B↑j
+.text:006C8175                 mov     edx, [eax+44h]
+.text:006C8178                 mov     ecx, [edx+0F4Ch]
+.text:006C817E                 test    ecx, ecx
+.text:006C8180                 jz      short loc_6C8195
+.text:006C8182                 mov     eax, [eax+48h]
+.text:006C8185                 mov     edx, [eax]
+.text:006C8187                 push    edi
+.text:006C8188                 push    ecx
+.text:006C8189                 push    eax
+.text:006C818A                 call    dword ptr [edx+98h]
+.text:006C8190                 mov     eax, dword_982C80
+.text:006C8195
+.text:006C8195 loc_6C8195:                             ; CODE XREF: sub_6C8000+180↑j
+.text:006C8195                 mov     cl, [eax+40h]
+.text:006C8198                 test    cl, cl
+.text:006C819A                 jnz     short loc_6C81BC
+.text:006C819C                 mov     eax, dword_982BDC
+.text:006C81A1                 mov     ecx, [eax]
+.text:006C81A3                 push    edi
+.text:006C81A4                 push    100h
+.text:006C81A9                 push    eax
+.text:006C81AA                 call    dword ptr [ecx+0B0h]
+.text:006C81B0                 mov     eax, dword_982C80
+.text:006C81B5                 mov     cl, [eax+40h]
+.text:006C81B8                 test    cl, cl
+.text:006C81BA                 jz      short loc_6C81F8
+.text:006C81BC
+.text:006C81BC loc_6C81BC:                             ; CODE XREF: sub_6C8000+19A↑j
+.text:006C81BC                 mov     edx, [esp+110h+var_F8]
+.text:006C81C0                 push    edx
+.text:006C81C1                 push    edi
+.text:006C81C2                 lea     eax, [esp+118h+var_40]
+.text:006C81C9                 push    eax
+.text:006C81CA                 call    D3DXMatrixMultiply
+.text:006C81CF                 mov     ecx, dword_982C80
+.text:006C81D5                 mov     eax, [ecx+48h]
+.text:006C81D8                 mov     ecx, [ecx+44h]
+.text:006C81DB                 mov     ecx, [ecx+0FECh]
+.text:006C81E1                 mov     edx, [eax]
+.text:006C81E3                 lea     esi, [esp+110h+var_40]
+.text:006C81EA                 push    esi
+.text:006C81EB                 push    ecx
+.text:006C81EC                 push    eax
+.text:006C81ED                 call    dword ptr [edx+98h]
+.text:006C81F3                 mov     eax, dword_982C80
+.text:006C81F8
+.text:006C81F8 loc_6C81F8:                             ; CODE XREF: sub_6C8000+1BA↑j
+.text:006C81F8                 mov     ecx, [eax+44h]
+.text:006C81FB                 mov     ebx, [ecx+8E4h]
+.text:006C8201                 mov     esi, [ecx+90Ch]
+.text:006C8207                 test    ebx, ebx
+.text:006C8209                 setnz   bl
+.text:006C820C                 test    esi, esi
+.text:006C820E                 setnz   cl
+.text:006C8211                 test    bl, bl
+.text:006C8213                 mov     [esp+110h+var_F9], cl
+.text:006C8217                 jnz     short loc_6C8221
+.text:006C8219                 test    cl, cl
+.text:006C821B                 jz      loc_6C82E7
+.text:006C8221
+.text:006C8221 loc_6C8221:                             ; CODE XREF: sub_6C8000+217↑j
+.text:006C8221                 mov     edx, [esp+110h+var_F4]
+.text:006C8225                 mov     eax, [edx+40h]
+.text:006C8228                 mov     ecx, [eax+40h]
+.text:006C822B                 add     eax, 40h ; '@'
+.text:006C822E                 mov     [esp+110h+var_F0], ecx
+.text:006C8232                 mov     edx, [eax+4]
+.text:006C8235                 mov     [esp+110h+var_EC], edx
+.text:006C8239                 mov     eax, [eax+8]
+.text:006C823C                 lea     ecx, [esp+110h+var_C0]
+.text:006C8240                 push    edi
+.text:006C8241                 push    ecx
+.text:006C8242                 mov     [esp+118h+var_E8], eax
+.text:006C8246                 mov     [esp+118h+var_E4], 3F800000h
+.text:006C824E                 call    eInvertTransformationMatrix__FP8bMatrix4PC8bMatrix4 ; eInvertTransformationMatrix(bMatrix4 *,bMatrix4 const *)
+.text:006C8253                 add     esp, 8
+.text:006C8256                 lea     edx, [esp+110h+var_C0]
+.text:006C825A                 push    edx
+.text:006C825B                 lea     eax, [esp+114h+var_F0]
+.text:006C825F                 push    eax
+.text:006C8260                 lea     ecx, [esp+118h+var_D0]
+.text:006C8264                 push    ecx
+.text:006C8265                 call    D3DXVec4Transform
+.text:006C826A                 test    bl, bl
+.text:006C826C                 jz      short loc_6C828F
+.text:006C826E                 mov     ecx, dword_982C80
+.text:006C8274                 mov     eax, [ecx+48h]
+.text:006C8277                 mov     ecx, [ecx+44h]
+.text:006C827A                 mov     ecx, [ecx+8E4h]
+.text:006C8280                 mov     edx, [eax]
+.text:006C8282                 lea     esi, [esp+110h+var_D0]
+.text:006C8286                 push    esi
+.text:006C8287                 push    ecx
+.text:006C8288                 push    eax
+.text:006C8289                 call    dword ptr [edx+88h]
+.text:006C828F
+.text:006C828F loc_6C828F:                             ; CODE XREF: sub_6C8000+26C↑j
+.text:006C828F                 mov     al, [esp+110h+var_F9]
+.text:006C8293                 test    al, al
+.text:006C8295                 jz      short loc_6C82E2
+.text:006C8297                 mov     eax, TimeOfDayPointer
+.text:006C829C                 lea     edx, [esp+110h+var_C0]
+.text:006C82A0                 push    edx
+.text:006C82A1                 add     eax, 180h
+.text:006C82A6                 push    eax
+.text:006C82A7                 lea     ecx, [esp+118h+dest]
+.text:006C82AB                 push    ecx
+.text:006C82AC                 call    D3DXVec4Transform
+.text:006C82B1                 lea     edx, [esp+110h+dest]
+.text:006C82B5                 push    edx             ; v
+.text:006C82B6                 mov     eax, edx
+.text:006C82B8                 push    eax             ; dest
+.text:006C82B9                 call    bNormalize__FP8bVector3PC8bVector3 ; bNormalize(bVector3 *,bVector3 const *)
+.text:006C82BE                 mov     ecx, dword_982C80
+.text:006C82C4                 mov     eax, [ecx+48h]
+.text:006C82C7                 mov     ecx, [ecx+44h]
+.text:006C82CA                 mov     ecx, [ecx+90Ch]
+.text:006C82D0                 mov     edx, [eax]
+.text:006C82D2                 add     esp, 8
+.text:006C82D5                 lea     esi, [esp+110h+dest]
+.text:006C82D9                 push    esi
+.text:006C82DA                 push    ecx
+.text:006C82DB                 push    eax
+.text:006C82DC                 call    dword ptr [edx+88h]
+.text:006C82E2
+.text:006C82E2 loc_6C82E2:                             ; CODE XREF: sub_6C8000+295↑j
+.text:006C82E2                 mov     eax, dword_982C80
+.text:006C82E7
+.text:006C82E7 loc_6C82E7:                             ; CODE XREF: sub_6C8000+21B↑j
+.text:006C82E7                 mov     eax, [eax+4]
+.text:006C82EA                 cmp     eax, 12h        ; switch 19 cases
+.text:006C82ED                 ja      short loc_6C8332 ; jumptable 006C82F6 default case
+.text:006C82EF                 movzx   edx, ds:byte_6C8344[eax]
+.text:006C82F6                 jmp     ds:off_6C833C[edx*4] ; switch jump
+.text:006C82FD ; ---------------------------------------------------------------------------
+.text:006C82FD
+.text:006C82FD loc_6C82FD:                             ; CODE XREF: sub_6C8000+2F6↑j
+.text:006C82FD                                         ; DATA XREF: .text:off_6C833C↓o
+.text:006C82FD                 mov     eax, dword_919C70 ; jumptable 006C82F6 cases 0,1,3-5,18
+.text:006C8302                 add     eax, 40h ; '@'
+.text:006C8305                 push    eax
+.text:006C8306                 push    edi
+.text:006C8307                 lea     ecx, [esp+118h+var_C0]
+.text:006C830B                 push    ecx
+.text:006C830C                 call    D3DXMatrixMultiply
+.text:006C8311                 mov     ecx, dword_982C80
+.text:006C8317                 mov     eax, [ecx+48h]
+.text:006C831A                 mov     ecx, [ecx+44h]
+.text:006C831D                 mov     ecx, [ecx+0C54h]
+.text:006C8323                 mov     edx, [eax]
+.text:006C8325                 lea     esi, [esp+110h+var_C0]
+.text:006C8329                 push    esi
+.text:006C832A                 push    ecx
+.text:006C832B                 push    eax
+.text:006C832C                 call    dword ptr [edx+98h]
+.text:006C8332
+.text:006C8332 loc_6C8332:                             ; CODE XREF: sub_6C8000+60↑j
+.text:006C8332                                         ; sub_6C8000+2ED↑j ...
+.text:006C8332                 pop     edi             ; jumptable 006C82F6 default case
+.text:006C8333                 pop     esi
+.text:006C8334                 pop     ebx
+.text:006C8335                 mov     esp, ebp
+.text:006C8337                 pop     ebp
+.text:006C8338                 retn
+.text:006C8338 sub_6C8000      endp

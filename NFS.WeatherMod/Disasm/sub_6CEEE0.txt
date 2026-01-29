@@ -1,0 +1,38 @@
+.text:006CEEE0 sub_6CEEE0      proc near               ; CODE XREF: sub_503D00+F7↑p
+.text:006CEEE0
+.text:006CEEE0 arg_0           = dword ptr  4
+.text:006CEEE0 arg_4           = dword ptr  8
+.text:006CEEE0 arg_8           = dword ptr  0Ch
+.text:006CEEE0
+.text:006CEEE0                 mov     eax, dword_982BDC
+.text:006CEEE5                 mov     ecx, [eax]
+.text:006CEEE7                 push    0
+.text:006CEEE9                 push    0Eh
+.text:006CEEEB                 push    eax
+.text:006CEEEC                 call    dword ptr [ecx+0E4h]
+.text:006CEEF2                 mov     edx, [esp+arg_0]
+.text:006CEEF6                 mov     byte_9877CC, 1
+.text:006CEEFD                 mov     eax, [edx+4]
+.text:006CEF00                 push    eax
+.text:006CEF01                 push    offset eMathIdentityMatrix
+.text:006CEF06                 call    sub_6C8000
+.text:006CEF0B                 mov     ecx, [esp+8+arg_4]
+.text:006CEF0F                 push    0
+.text:006CEF11                 push    ecx
+.text:006CEF12                 call    sub_6C6CC0
+.text:006CEF17                 mov     edx, [esp+10h+arg_8]
+.text:006CEF1B                 add     esp, 10h
+.text:006CEF1E                 lea     eax, [esp+arg_0]
+.text:006CEF22                 push    eax
+.text:006CEF23                 mov     ecx, offset dword_93CAF4
+.text:006CEF28                 mov     [esp+4+arg_0], edx
+.text:006CEF2C                 call    sub_6C0F80
+.text:006CEF31                 mov     ecx, dword_982C80
+.text:006CEF37                 mov     eax, [ecx+48h]
+.text:006CEF3A                 mov     edx, [eax]
+.text:006CEF3C                 push    0
+.text:006CEF3E                 push    eax
+.text:006CEF3F                 call    dword ptr [edx+100h]
+.text:006CEF45                 mov     al, 1
+.text:006CEF47                 retn
+.text:006CEF47 sub_6CEEE0      endp

@@ -1,0 +1,292 @@
+.text:006BD830 eMathInit__Fv   proc near               ; CODE XREF: InitializeEverything(int,char **)+D3↑p
+.text:006BD830                 push    edi
+.text:006BD831                 mov     ecx, 10h
+.text:006BD836                 xor     eax, eax
+.text:006BD838                 mov     edi, offset unk_9880A0
+.text:006BD83D                 rep stosd
+.text:006BD83F                 mov     eMathIdentityMatrix, 3F800000h
+.text:006BD849                 mov     dword_987AB4, 0
+.text:006BD853                 mov     dword_987AB8, 0
+.text:006BD85D                 mov     dword_987ABC, 0
+.text:006BD867                 mov     dword_987AC0, 0
+.text:006BD871                 mov     dword_987AC4, 3F800000h
+.text:006BD87B                 mov     dword_987AC8, 0
+.text:006BD885                 mov     dword_987ACC, 0
+.text:006BD88F                 mov     dword_987AD0, 0
+.text:006BD899                 mov     dword_987AD4, 0
+.text:006BD8A3                 mov     dword_987AD8, 3F800000h
+.text:006BD8AD                 mov     dword_987ADC, 0
+.text:006BD8B7                 mov     dword_987AE0, 0
+.text:006BD8C1                 mov     dword_987AE4, 0
+.text:006BD8CB                 mov     dword_987AE8, 0
+.text:006BD8D5                 mov     dword_987AEC, 3F800000h
+.text:006BD8DF                 pop     edi
+.text:006BD8E0                 retn
+.text:006BD8E0 eMathInit__Fv   endp
+.text:006BD8E0
+.text:006BD8E0 ; ---------------------------------------------------------------------------
+.text:006BD8E1                 align 10h
+.text:006BD8F0                 retn
+.text:006BD8F0 ; ---------------------------------------------------------------------------
+.text:006BD8F1                 align 10h
+.text:006BD900
+.text:006BD900 ; =============== S U B R O U T I N E =======================================
+.text:006BD900
+.text:006BD900
+.text:006BD900 ; int __cdecl eMulMatrix(bMatrix4 *a1, bMatrix4 *a2, bMatrix4 *a3)
+.text:006BD900 eMulMatrix__FP8bMatrix4T0T0 proc near   ; CODE XREF: sub_45EA70+1EA↑p
+.text:006BD900                                         ; sub_45EA70+201↑p ...
+.text:006BD900
+.text:006BD900 arg_0           = dword ptr  4
+.text:006BD900 arg_4           = dword ptr  8
+.text:006BD900 arg_8           = dword ptr  0Ch
+.text:006BD900
+.text:006BD900                 mov     eax, [esp+arg_8]
+.text:006BD904                 mov     ecx, [esp+arg_4]
+.text:006BD908                 mov     edx, [esp+arg_0]
+.text:006BD90C                 push    eax
+.text:006BD90D                 push    ecx
+.text:006BD90E                 push    edx
+.text:006BD90F                 call    D3DXMatrixMultiply
+.text:006BD914                 retn
+.text:006BD914 eMulMatrix__FP8bMatrix4T0T0 endp
+.text:006BD914
+.text:006BD914 ; ---------------------------------------------------------------------------
+.text:006BD915                 align 10h
+.text:006BD920
+.text:006BD920 ; =============== S U B R O U T I N E =======================================
+.text:006BD920
+.text:006BD920
+.text:006BD920 ; _DWORD __cdecl eMulVector(_DWORD, _DWORD, _DWORD)
+.text:006BD920 eMulVector__FP8bVector4PC8bMatrix4PC8bVector4 proc near
+.text:006BD920                                         ; CODE XREF: sub_45ECA0+37↑p
+.text:006BD920                                         ; eMulVector(bVector4 *,bMatrix4 const *,bVector4 const *)↑j ...
+.text:006BD920
+.text:006BD920 arg_0           = dword ptr  4
+.text:006BD920 arg_4           = dword ptr  8
+.text:006BD920 arg_8           = dword ptr  0Ch
+.text:006BD920
+.text:006BD920                 mov     eax, [esp+arg_4]
+.text:006BD924                 mov     ecx, [esp+arg_8]
+.text:006BD928                 mov     edx, [esp+arg_0]
+.text:006BD92C                 push    eax
+.text:006BD92D                 push    ecx
+.text:006BD92E                 push    edx
+.text:006BD92F                 call    D3DXVec4Transform
+.text:006BD934                 retn
+.text:006BD934 eMulVector__FP8bVector4PC8bMatrix4PC8bVector4 endp
+.text:006BD934
+.text:006BD934 ; ---------------------------------------------------------------------------
+.text:006BD935                 align 10h
+.text:006BD940
+.text:006BD940 ; =============== S U B R O U T I N E =======================================
+.text:006BD940
+.text:006BD940
+.text:006BD940 ; _DWORD __cdecl eMulVector(_DWORD, _DWORD, _DWORD)
+.text:006BD940 eMulVector__FP8bVector3PC8bMatrix4PC8bVector3 proc near
+.text:006BD940                                         ; CODE XREF: bMulMatrix(bVector3 *,bMatrix4 const *,bVector3 const *)↑j
+.text:006BD940                                         ; CameraMover::ComputeBankedUpVector(bVector3 *,bVector3 *,bVector3 *,ushort)+6F↑p ...
+.text:006BD940
+.text:006BD940 arg_0           = dword ptr  4
+.text:006BD940 arg_4           = dword ptr  8
+.text:006BD940 arg_8           = dword ptr  0Ch
+.text:006BD940
+.text:006BD940                 mov     eax, [esp+arg_4]
+.text:006BD944                 mov     ecx, [esp+arg_8]
+.text:006BD948                 mov     edx, [esp+arg_0]
+.text:006BD94C                 push    eax
+.text:006BD94D                 push    ecx
+.text:006BD94E                 push    edx
+.text:006BD94F                 call    D3DXVec3Transform
+.text:006BD954                 retn
+.text:006BD954 eMulVector__FP8bVector3PC8bMatrix4PC8bVector3 endp
+.text:006BD954
+.text:006BD954 ; ---------------------------------------------------------------------------
+.text:006BD955                 align 10h
+.text:006BD960                 retn
+.text:006BD960 ; ---------------------------------------------------------------------------
+.text:006BD961                 align 10h
+.text:006BD970                 retn
+.text:006BD970 ; ---------------------------------------------------------------------------
+.text:006BD971                 align 10h
+.text:006BD980
+.text:006BD980 ; =============== S U B R O U T I N E =======================================
+.text:006BD980
+.text:006BD980
+.text:006BD980 ; _DWORD __cdecl eCreateAxisRotationMatrix(_DWORD, _DWORD, _DWORD)
+.text:006BD980 eCreateAxisRotationMatrix__FP8bMatrix4R8bVector3Us proc near
+.text:006BD980                                         ; CODE XREF: CameraMover::ComputeBankedUpVector(bVector3 *,bVector3 *,bVector3 *,ushort)+44↑p
+.text:006BD980                                         ; eRenderLightFlare(eView *,eLightFlare *,bMatrix4 *,float,eLightReflexionType,flareType,float,uint,float)+85E↑p ...
+.text:006BD980
+.text:006BD980 var_C           = dword ptr -0Ch
+.text:006BD980 var_8           = dword ptr -8
+.text:006BD980 var_4           = dword ptr -4
+.text:006BD980 arg_0           = dword ptr  4
+.text:006BD980 arg_4           = dword ptr  8
+.text:006BD980 a1              = dword ptr  0Ch
+.text:006BD980
+.text:006BD980                 sub     esp, 0Ch
+.text:006BD983                 push    esi
+.text:006BD984                 mov     esi, [esp+10h+a1]
+.text:006BD988                 push    esi
+.text:006BD989                 call    bSin__FUs       ; bSin(ushort)
+.text:006BD98E                 fstp    [esp+14h+var_C]
+.text:006BD992                 push    esi             ; a1
+.text:006BD993                 call    bCos__FUs       ; bCos(ushort)
+.text:006BD998                 fld     ds:_float_heat_1
+.text:006BD99E                 fsub    [esp+18h+var_C]
+.text:006BD9A2                 mov     eax, [esp+18h+arg_4]
+.text:006BD9A6                 fld     dword ptr [eax]
+.text:006BD9A8                 add     esp, 8
+.text:006BD9AB                 fld     dword ptr [eax+4]
+.text:006BD9AE                 mov     eax, [eax+8]
+.text:006BD9B1                 fld     st(1)
+.text:006BD9B3                 mov     [esp+10h+arg_4], eax
+.text:006BD9B7                 fmul    st, st(3)
+.text:006BD9B9                 mov     eax, [esp+10h+arg_0]
+.text:006BD9BD                 fld     st(1)
+.text:006BD9BF                 xor     ecx, ecx
+.text:006BD9C1                 fmul    st, st(4)
+.text:006BD9C3                 mov     [eax+0Ch], ecx
+.text:006BD9C6                 mov     [eax+1Ch], ecx
+.text:006BD9C9                 mov     [eax+2Ch], ecx
+.text:006BD9CC                 fstp    [esp+10h+var_8]
+.text:006BD9D0                 mov     [eax+30h], ecx
+.text:006BD9D3                 mov     [eax+34h], ecx
+.text:006BD9D6                 fld     st
+.text:006BD9D8                 mov     [eax+38h], ecx
+.text:006BD9DB                 fmul    st, st(3)
+.text:006BD9DD                 mov     dword ptr [eax+3Ch], 3F800000h
+.text:006BD9E4                 pop     esi
+.text:006BD9E5                 fadd    [esp+0Ch+var_C]
+.text:006BD9E8                 fstp    dword ptr [eax]
+.text:006BD9EA                 fld     st
+.text:006BD9EC                 fmul    st, st(2)
+.text:006BD9EE                 fld     [esp+0Ch+arg_4]
+.text:006BD9F2                 fmul    st, st(6)
+.text:006BD9F4                 fld     st(1)
+.text:006BD9F6                 fsub    st, st(1)
+.text:006BD9F8                 fstp    dword ptr [eax+4]
+.text:006BD9FB                 fxch    st(2)
+.text:006BD9FD                 fmul    [esp+0Ch+arg_4]
+.text:006BDA01                 fstp    [esp+0Ch+arg_0]
+.text:006BDA05                 fld     st(2)
+.text:006BDA07                 fmul    st, st(6)
+.text:006BDA09                 fst     [esp+0Ch+var_4]
+.text:006BDA0D                 fadd    [esp+0Ch+arg_0]
+.text:006BDA11                 fstp    dword ptr [eax+8]
+.text:006BDA14                 fxch    st(1)
+.text:006BDA16                 fadd    st, st(1)
+.text:006BDA18                 fstp    dword ptr [eax+10h]
+.text:006BDA1B                 fstp    st
+.text:006BDA1D                 fld     [esp+0Ch+var_8]
+.text:006BDA21                 fmul    st, st(1)
+.text:006BDA23                 fadd    [esp+0Ch+var_C]
+.text:006BDA26                 fstp    dword ptr [eax+14h]
+.text:006BDA29                 fstp    st
+.text:006BDA2B                 fld     [esp+0Ch+var_8]
+.text:006BDA2F                 fmul    [esp+0Ch+arg_4]
+.text:006BDA33                 fxch    st(1)
+.text:006BDA35                 fmul    st, st(3)
+.text:006BDA37                 fld     st(1)
+.text:006BDA39                 fsub    st, st(1)
+.text:006BDA3B                 fstp    dword ptr [eax+18h]
+.text:006BDA3E                 fld     [esp+0Ch+arg_0]
+.text:006BDA42                 fsub    [esp+0Ch+var_4]
+.text:006BDA46                 fstp    dword ptr [eax+20h]
+.text:006BDA49                 fadd    st, st(1)
+.text:006BDA4B                 fstp    dword ptr [eax+24h]
+.text:006BDA4E                 fstp    st
+.text:006BDA50                 fld     [esp+0Ch+arg_4]
+.text:006BDA54                 fmul    [esp+0Ch+arg_4]
+.text:006BDA58                 fmul    st, st(1)
+.text:006BDA5A                 fadd    [esp+0Ch+var_C]
+.text:006BDA5D                 fstp    dword ptr [eax+28h]
+.text:006BDA60                 fstp    st
+.text:006BDA62                 fstp    st
+.text:006BDA64                 add     esp, 0Ch
+.text:006BDA67                 retn
+.text:006BDA67 eCreateAxisRotationMatrix__FP8bMatrix4R8bVector3Us endp
+.text:006BDA67
+.text:006BDA67 ; ---------------------------------------------------------------------------
+.text:006BDA68                 align 10h
+.text:006BDA70                 retn
+.text:006BDA70 ; ---------------------------------------------------------------------------
+.text:006BDA71                 align 10h
+.text:006BDA80                 fld     dword ptr [esp+4]
+.text:006BDA84                 fcom    ds:flt_894218
+.text:006BDA8A                 fnstsw  ax
+.text:006BDA8C                 test    ah, 41h
+.text:006BDA8F                 jnz     short loc_6BDAA4
+.text:006BDA91
+.text:006BDA91 loc_6BDA91:                             ; CODE XREF: .text:006BDAA2↓j
+.text:006BDA91                 fsub    ds:flt_894218
+.text:006BDA97                 fcom    ds:flt_894218
+.text:006BDA9D                 fnstsw  ax
+.text:006BDA9F                 test    ah, 41h
+.text:006BDAA2                 jz      short loc_6BDA91
+.text:006BDAA4
+.text:006BDAA4 loc_6BDAA4:                             ; CODE XREF: .text:006BDA8F↑j
+.text:006BDAA4                 fcom    ds:_float_0
+.text:006BDAAA                 fnstsw  ax
+.text:006BDAAC                 test    ah, 5
+.text:006BDAAF                 jp      short loc_6BDAC4
+.text:006BDAB1
+.text:006BDAB1 loc_6BDAB1:                             ; CODE XREF: .text:006BDAC2↓j
+.text:006BDAB1                 fadd    ds:flt_894218
+.text:006BDAB7                 fcom    ds:_float_0
+.text:006BDABD                 fnstsw  ax
+.text:006BDABF                 test    ah, 5
+.text:006BDAC2                 jnp     short loc_6BDAB1
+.text:006BDAC4
+.text:006BDAC4 loc_6BDAC4:                             ; CODE XREF: .text:006BDAAF↑j
+.text:006BDAC4                 fld     ds:_float_heat_1
+.text:006BDACA                 fld     st(1)
+.text:006BDACC                 fcomp   ds:flt_894214
+.text:006BDAD2                 fnstsw  ax
+.text:006BDAD4                 test    ah, 1
+.text:006BDAD7                 jnz     short loc_6BDAE7
+.text:006BDAD9                 fstp    st
+.text:006BDADB                 fsub    ds:flt_894214
+.text:006BDAE1                 fld     ds:flt_890DA8
+.text:006BDAE7
+.text:006BDAE7 loc_6BDAE7:                             ; CODE XREF: .text:006BDAD7↑j
+.text:006BDAE7                 fld     st(1)
+.text:006BDAE9                 fcomp   ds:flt_891654
+.text:006BDAEF                 fnstsw  ax
+.text:006BDAF1                 test    ah, 1
+.text:006BDAF4                 jnz     short loc_6BDAFE
+.text:006BDAF6                 fld     ds:flt_894214
+.text:006BDAFC                 fsubrp  st(2), st
+.text:006BDAFE
+.text:006BDAFE loc_6BDAFE:                             ; CODE XREF: .text:006BDAF4↑j
+.text:006BDAFE                 fld     st(1)
+.text:006BDB00                 fmul    st, st(2)
+.text:006BDB02                 fld     st
+.text:006BDB04                 fmul    st, st(3)
+.text:006BDB06                 fld     st
+.text:006BDB08                 fmul    st, st(2)
+.text:006BDB0A                 fld     st
+.text:006BDB0C                 fmul    st, st(3)
+.text:006BDB0E                 fxch    st(2)
+.text:006BDB10                 fmul    ds:flt_8AE830
+.text:006BDB16                 fsubp   st(5), st
+.text:006BDB18                 fld     st
+.text:006BDB1A                 fmul    ds:flt_8AE82C
+.text:006BDB20                 faddp   st(5), st
+.text:006BDB22                 fld     st(1)
+.text:006BDB24                 fmul    ds:flt_8AE828
+.text:006BDB2A                 fsubp   st(5), st
+.text:006BDB2C                 fxch    st(1)
+.text:006BDB2E                 fmul    st, st(2)
+.text:006BDB30                 fmul    ds:flt_8AE824
+.text:006BDB36                 faddp   st(4), st
+.text:006BDB38                 fxch    st(3)
+.text:006BDB3A                 fmul    st, st(2)
+.text:006BDB3C                 fxch    st(3)
+.text:006BDB3E                 fstp    st
+.text:006BDB40                 fstp    st
+.text:006BDB42                 fstp    st
+.text:006BDB44                 retn
+.text:006BDB44 ; ---------------------------------------------------------------------------
+.text:006BDB45                 align 10h

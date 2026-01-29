@@ -1,0 +1,415 @@
+.text:006CF400 ; int __stdcall sub_6CF400(int, float, float, int, char)
+.text:006CF400 sub_6CF400      proc near               ; CODE XREF: sub_6D7950+71↓p
+.text:006CF400                                         ; eDisplayFrame(void)+198↓p
+.text:006CF400
+.text:006CF400 var_C           = dword ptr -0Ch
+.text:006CF400 var_8           = dword ptr -8
+.text:006CF400 var_4           = dword ptr -4
+.text:006CF400 arg_0           = dword ptr  4
+.text:006CF400 arg_4           = dword ptr  8
+.text:006CF400 arg_8           = dword ptr  0Ch
+.text:006CF400 arg_10          = byte ptr  14h
+.text:006CF400
+.text:006CF400                 sub     esp, 0Ch
+.text:006CF403                 push    ebx
+.text:006CF404                 push    ebp
+.text:006CF405                 push    esi
+.text:006CF406                 push    edi
+.text:006CF407                 mov     edi, [esp+1Ch+arg_0]
+.text:006CF40B                 mov     dword_8F9210, 0B80BCF65h
+.text:006CF415                 mov     ebp, [edi+40h]
+.text:006CF418                 xor     ebx, ebx
+.text:006CF41A                 cmp     ebp, ebx
+.text:006CF41C                 mov     esi, ecx
+.text:006CF41E                 jnz     short loc_6CF48E
+.text:006CF420                 mov     [esi+4], ebx
+.text:006CF423                 mov     [esi+8], ebx
+.text:006CF426                 mov     [esi+0Ch], ebx
+.text:006CF429                 mov     [esi+10h], ebx
+.text:006CF42C                 mov     [esi+18h], ebx
+.text:006CF42F                 mov     [esi+1Ch], ebx
+.text:006CF432                 mov     [esi+20h], ebx
+.text:006CF435                 mov     [esi+24h], ebx
+.text:006CF438                 mov     [esi+2Ch], ebx
+.text:006CF43B                 mov     [esi+30h], ebx
+.text:006CF43E                 mov     [esi+34h], ebx
+.text:006CF441                 mov     [esi+38h], ebx
+.text:006CF444                 mov     eax, 3F800000h
+.text:006CF449                 mov     [esi], eax
+.text:006CF44B                 mov     [esi+14h], eax
+.text:006CF44E                 mov     [esi+28h], eax
+.text:006CF451                 mov     [esi+3Ch], eax
+.text:006CF454                 pop     edi
+.text:006CF455                 mov     [esi+44h], ebx
+.text:006CF458                 mov     [esi+48h], ebx
+.text:006CF45B                 mov     [esi+4Ch], ebx
+.text:006CF45E                 mov     [esi+50h], ebx
+.text:006CF461                 mov     [esi+58h], ebx
+.text:006CF464                 mov     [esi+5Ch], ebx
+.text:006CF467                 mov     [esi+60h], ebx
+.text:006CF46A                 mov     [esi+64h], ebx
+.text:006CF46D                 mov     [esi+6Ch], ebx
+.text:006CF470                 mov     [esi+70h], ebx
+.text:006CF473                 mov     [esi+74h], ebx
+.text:006CF476                 mov     [esi+78h], ebx
+.text:006CF479                 mov     [esi+40h], eax
+.text:006CF47C                 mov     [esi+54h], eax
+.text:006CF47F                 mov     [esi+68h], eax
+.text:006CF482                 mov     [esi+7Ch], eax
+.text:006CF485                 pop     esi
+.text:006CF486                 pop     ebp
+.text:006CF487                 pop     ebx
+.text:006CF488                 add     esp, 0Ch
+.text:006CF48B                 retn    14h
+.text:006CF48E ; ---------------------------------------------------------------------------
+.text:006CF48E
+.text:006CF48E loc_6CF48E:                             ; CODE XREF: sub_6CF400+1E↑j
+.text:006CF48E                 push    ebp
+.text:006CF48F                 push    esi
+.text:006CF490                 call    bCopy__FP8bMatrix4PC8bMatrix4 ; bCopy(bMatrix4 *,bMatrix4 const *)
+.text:006CF495                 mov     ecx, [edi+4]
+.text:006CF498                 mov     eax, [ebp+0BCh]
+.text:006CF49E                 add     esp, 8
+.text:006CF4A1                 cmp     ecx, 1
+.text:006CF4A4                 mov     [esp+1Ch+var_8], eax
+.text:006CF4A8                 jz      short loc_6CF4B4
+.text:006CF4AA                 mov     edx, [ebp+0C0h]
+.text:006CF4B0                 mov     [esp+1Ch+var_C], edx
+.text:006CF4B4
+.text:006CF4B4 loc_6CF4B4:                             ; CODE XREF: sub_6CF400+A8↑j
+.text:006CF4B4                 fld     [esp+1Ch+arg_4]
+.text:006CF4B8                 fld     ds:dbl_8942E0
+.text:006CF4BE                 fucompp
+.text:006CF4C0                 fnstsw  ax
+.text:006CF4C2                 test    ah, 44h
+.text:006CF4C5                 jnp     short loc_6CF4CF
+.text:006CF4C7                 mov     eax, [esp+1Ch+arg_4]
+.text:006CF4CB                 mov     [esp+1Ch+var_8], eax
+.text:006CF4CF
+.text:006CF4CF loc_6CF4CF:                             ; CODE XREF: sub_6CF400+C5↑j
+.text:006CF4CF                 fld     [esp+1Ch+arg_8]
+.text:006CF4D3                 fld     ds:dbl_8942E0
+.text:006CF4D9                 fucompp
+.text:006CF4DB                 fnstsw  ax
+.text:006CF4DD                 test    ah, 44h
+.text:006CF4E0                 jnp     short loc_6CF4EA
+.text:006CF4E2                 mov     edx, [esp+1Ch+arg_8]
+.text:006CF4E6                 mov     [esp+1Ch+var_C], edx
+.text:006CF4EA
+.text:006CF4EA loc_6CF4EA:                             ; CODE XREF: sub_6CF400+E0↑j
+.text:006CF4EA                 cmp     ecx, 1
+.text:006CF4ED                 mov     eax, [edi+60h]
+.text:006CF4F0                 fild    dword ptr [eax+18h]
+.text:006CF4F3                 fidiv   dword ptr [eax+14h]
+.text:006CF4F6                 fstp    [esp+1Ch+arg_4]
+.text:006CF4FA                 jz      short loc_6CF50B
+.text:006CF4FC                 cmp     ecx, 4
+.text:006CF4FF                 jz      short loc_6CF50B
+.text:006CF501                 cmp     ecx, 2
+.text:006CF504                 jz      short loc_6CF50B
+.text:006CF506                 cmp     ecx, 5
+.text:006CF509                 jnz     short loc_6CF519
+.text:006CF50B
+.text:006CF50B loc_6CF50B:                             ; CODE XREF: sub_6CF400+FA↑j
+.text:006CF50B                                         ; sub_6CF400+FF↑j ...
+.text:006CF50B                 fld     [esp+1Ch+arg_4]
+.text:006CF50F                 fmul    ds:flt_8AF994
+.text:006CF515                 fstp    [esp+1Ch+arg_4]
+.text:006CF519
+.text:006CF519 loc_6CF519:                             ; CODE XREF: sub_6CF400+109↑j
+.text:006CF519                 cmp     ecx, 8
+.text:006CF51C                 jz      short loc_6CF523
+.text:006CF51E                 cmp     ecx, 9
+.text:006CF521                 jnz     short loc_6CF52B
+.text:006CF523
+.text:006CF523 loc_6CF523:                             ; CODE XREF: sub_6CF400+11C↑j
+.text:006CF523                 mov     [esp+1Ch+arg_4], 3F19A956h
+.text:006CF52B
+.text:006CF52B loc_6CF52B:                             ; CODE XREF: sub_6CF400+121↑j
+.text:006CF52B                 movzx   eax, word ptr [ebp+0C4h]
+.text:006CF532                 mov     [esp+1Ch+arg_8], eax
+.text:006CF536                 fild    [esp+1Ch+arg_8]
+.text:006CF53A                 fmul    ds:_float_0pt5
+.text:006CF540                 call    __ftol2
+.text:006CF545                 mov     edi, eax
+.text:006CF547                 push    edi             ; a1
+.text:006CF548                 call    bCos__FUs       ; bCos(ushort)
+.text:006CF54D                 fstp    [esp+20h+arg_8]
+.text:006CF551                 push    edi
+.text:006CF552                 call    bSin__FUs       ; bSin(ushort)
+.text:006CF557                 fdivr   [esp+24h+arg_8]
+.text:006CF55B                 movzx   ecx, word ptr [ebp+0C4h]
+.text:006CF562                 mov     [esp+24h+arg_8], ecx
+.text:006CF566                 fdivr   ds:_float_heat_1
+.text:006CF56C                 fstp    [esp+24h+var_4]
+.text:006CF570                 fild    [esp+24h+arg_8]
+.text:006CF574                 fmul    [esp+24h+arg_4]
+.text:006CF578                 fmul    ds:_float_0pt5
+.text:006CF57E                 call    __ftol2
+.text:006CF583                 mov     edi, eax
+.text:006CF585                 push    edi             ; a1
+.text:006CF586                 call    bCos__FUs       ; bCos(ushort)
+.text:006CF58B                 fstp    [esp+28h+arg_4]
+.text:006CF58F                 push    edi
+.text:006CF590                 call    bSin__FUs       ; bSin(ushort)
+.text:006CF595                 fdivr   [esp+2Ch+arg_4]
+.text:006CF599                 mov     edx, [esp+2Ch+var_4]
+.text:006CF59D                 lea     edi, [esi+40h]
+.text:006CF5A0                 mov     eax, 3F800000h
+.text:006CF5A5                 mov     [edi], eax
+.text:006CF5A7                 mov     [edi+4], ebx
+.text:006CF5AA                 mov     [edi+8], ebx
+.text:006CF5AD                 mov     [edi+0Ch], ebx
+.text:006CF5B0                 mov     [edi+10h], ebx
+.text:006CF5B3                 mov     [edi+14h], eax
+.text:006CF5B6                 mov     [edi+18h], ebx
+.text:006CF5B9                 mov     [edi+1Ch], ebx
+.text:006CF5BC                 mov     [edi+20h], ebx
+.text:006CF5BF                 mov     [edi+24h], ebx
+.text:006CF5C2                 mov     [edi+28h], eax
+.text:006CF5C5                 mov     [edi+2Ch], ebx
+.text:006CF5C8                 mov     [edi+30h], ebx
+.text:006CF5CB                 mov     [edi+34h], ebx
+.text:006CF5CE                 mov     [edi+38h], ebx
+.text:006CF5D1                 mov     [edi+3Ch], eax
+.text:006CF5D4                 mov     [edi], edx
+.text:006CF5D6                 mov     [esi+6Ch], eax
+.text:006CF5D9                 mov     [esi+7Ch], ebx
+.text:006CF5DC                 fdivr   ds:_float_heat_1
+.text:006CF5E2                 fld     [esp+2Ch+var_C]
+.text:006CF5E6                 fsub    [esp+2Ch+var_8]
+.text:006CF5EA                 fdivr   [esp+2Ch+var_C]
+.text:006CF5EE                 fxch    st(1)
+.text:006CF5F0                 fchs
+.text:006CF5F2                 fstp    dword ptr [esi+54h]
+.text:006CF5F5                 fst     dword ptr [esi+68h]
+.text:006CF5F8                 fmul    [esp+2Ch+var_8]
+.text:006CF5FC                 fchs
+.text:006CF5FE                 fstp    dword ptr [esi+78h]
+.text:006CF601                 movzx   ebp, word ptr [ebp+0C4h]
+.text:006CF608                 push    ebp             ; float
+.text:006CF609                 call    sub_6BE9F0
+.text:006CF60E                 mov     eax, [esp+30h+arg_0]
+.text:006CF612                 add     esp, 14h
+.text:006CF615                 push    edi
+.text:006CF616                 fstp    dword ptr [eax+0Ch]
+.text:006CF619                 push    esi
+.text:006CF61A                 lea     ebp, [esi+80h]
+.text:006CF620                 push    ebp
+.text:006CF621                 mov     [esi+0Ch], ebx
+.text:006CF624                 mov     [esi+1Ch], ebx
+.text:006CF627                 mov     [esi+2Ch], ebx
+.text:006CF62A                 call    D3DXMatrixMultiply
+.text:006CF62F                 cmp     [esp+1Ch+arg_10], bl
+.text:006CF633                 jz      loc_6CF88D
+.text:006CF639                 cmp     ebx, 5          ; switch 6 cases
+.text:006CF63C
+.text:006CF63C loc_6CF63C:                             ; CODE XREF: sub_6CF400+457↓j
+.text:006CF63C                 ja      loc_6CF7EE      ; jumptable 006CF642 default case
+.text:006CF642                 jmp     ds:off_6CF898[ebx*4] ; switch jump
+.text:006CF649 ; ---------------------------------------------------------------------------
+.text:006CF649
+.text:006CF649 loc_6CF649:                             ; CODE XREF: sub_6CF400+242↑j
+.text:006CF649                                         ; DATA XREF: .text:off_6CF898↓o
+.text:006CF649                 fld     dword ptr [esi+8Ch] ; jumptable 006CF642 case 0
+.text:006CF64F                 fadd    dword ptr [ebp+0]
+.text:006CF652                 fstp    dword ptr [esi+140h]
+.text:006CF658                 fld     dword ptr [esi+9Ch]
+.text:006CF65E                 fadd    dword ptr [esi+90h]
+.text:006CF664                 fstp    dword ptr [esi+144h]
+.text:006CF66A                 fld     dword ptr [esi+0ACh]
+.text:006CF670                 fadd    dword ptr [esi+0A0h]
+.text:006CF676                 fstp    dword ptr [esi+148h]
+.text:006CF67C                 fld     dword ptr [esi+0BCh]
+.text:006CF682                 fadd    dword ptr [esi+0B0h]
+.text:006CF688                 fstp    dword ptr [esi+14Ch]
+.text:006CF68E                 jmp     loc_6CF7EE      ; jumptable 006CF642 default case
+.text:006CF693 ; ---------------------------------------------------------------------------
+.text:006CF693
+.text:006CF693 loc_6CF693:                             ; CODE XREF: sub_6CF400+242↑j
+.text:006CF693                                         ; DATA XREF: .text:off_6CF898↓o
+.text:006CF693                 fld     dword ptr [esi+8Ch] ; jumptable 006CF642 case 1
+.text:006CF699                 fsub    dword ptr [ebp+0]
+.text:006CF69C                 fstp    dword ptr [esi+150h]
+.text:006CF6A2                 fld     dword ptr [esi+9Ch]
+.text:006CF6A8                 fsub    dword ptr [esi+90h]
+.text:006CF6AE                 fstp    dword ptr [esi+154h]
+.text:006CF6B4                 fld     dword ptr [esi+0ACh]
+.text:006CF6BA                 fsub    dword ptr [esi+0A0h]
+.text:006CF6C0                 fstp    dword ptr [esi+158h]
+.text:006CF6C6                 fld     dword ptr [esi+0BCh]
+.text:006CF6CC                 fsub    dword ptr [esi+0B0h]
+.text:006CF6D2                 fstp    dword ptr [esi+15Ch]
+.text:006CF6D8                 jmp     loc_6CF7EE      ; jumptable 006CF642 default case
+.text:006CF6DD ; ---------------------------------------------------------------------------
+.text:006CF6DD
+.text:006CF6DD loc_6CF6DD:                             ; CODE XREF: sub_6CF400+242↑j
+.text:006CF6DD                                         ; DATA XREF: .text:off_6CF898↓o
+.text:006CF6DD                 fld     dword ptr [esi+8Ch] ; jumptable 006CF642 case 2
+.text:006CF6E3                 fadd    dword ptr [esi+84h]
+.text:006CF6E9                 fstp    dword ptr [esi+160h]
+.text:006CF6EF                 fld     dword ptr [esi+9Ch]
+.text:006CF6F5                 fadd    dword ptr [esi+94h]
+.text:006CF6FB                 fstp    dword ptr [esi+164h]
+.text:006CF701                 fld     dword ptr [esi+0ACh]
+.text:006CF707                 fadd    dword ptr [esi+0A4h]
+.text:006CF70D                 fstp    dword ptr [esi+168h]
+.text:006CF713                 fld     dword ptr [esi+0BCh]
+.text:006CF719                 fadd    dword ptr [esi+0B4h]
+.text:006CF71F                 fstp    dword ptr [esi+16Ch]
+.text:006CF725                 jmp     loc_6CF7EE      ; jumptable 006CF642 default case
+.text:006CF72A ; ---------------------------------------------------------------------------
+.text:006CF72A
+.text:006CF72A loc_6CF72A:                             ; CODE XREF: sub_6CF400+242↑j
+.text:006CF72A                                         ; DATA XREF: .text:off_6CF898↓o
+.text:006CF72A                 fld     dword ptr [esi+8Ch] ; jumptable 006CF642 case 3
+.text:006CF730                 fsub    dword ptr [esi+84h]
+.text:006CF736                 fstp    dword ptr [esi+170h]
+.text:006CF73C                 fld     dword ptr [esi+9Ch]
+.text:006CF742                 fsub    dword ptr [esi+94h]
+.text:006CF748                 fstp    dword ptr [esi+174h]
+.text:006CF74E                 fld     dword ptr [esi+0ACh]
+.text:006CF754                 fsub    dword ptr [esi+0A4h]
+.text:006CF75A                 fstp    dword ptr [esi+178h]
+.text:006CF760                 fld     dword ptr [esi+0BCh]
+.text:006CF766                 fsub    dword ptr [esi+0B4h]
+.text:006CF76C                 fstp    dword ptr [esi+17Ch]
+.text:006CF772                 jmp     short loc_6CF7EE ; jumptable 006CF642 default case
+.text:006CF774 ; ---------------------------------------------------------------------------
+.text:006CF774
+.text:006CF774 loc_6CF774:                             ; CODE XREF: sub_6CF400+242↑j
+.text:006CF774                                         ; DATA XREF: .text:off_6CF898↓o
+.text:006CF774                 mov     ecx, [esi+88h]  ; jumptable 006CF642 case 4
+.text:006CF77A                 mov     [esi+180h], ecx
+.text:006CF780                 mov     edx, [esi+98h]
+.text:006CF786                 mov     [edi+144h], edx
+.text:006CF78C                 mov     eax, [esi+0A8h]
+.text:006CF792                 mov     [edi+148h], eax
+.text:006CF798                 mov     ecx, [esi+0B8h]
+.text:006CF79E                 mov     [edi+14Ch], ecx
+.text:006CF7A4                 jmp     short loc_6CF7EE ; jumptable 006CF642 default case
+.text:006CF7A6 ; ---------------------------------------------------------------------------
+.text:006CF7A6
+.text:006CF7A6 loc_6CF7A6:                             ; CODE XREF: sub_6CF400+242↑j
+.text:006CF7A6                                         ; DATA XREF: .text:off_6CF898↓o
+.text:006CF7A6                 fld     dword ptr [esi+8Ch] ; jumptable 006CF642 case 5
+.text:006CF7AC                 fsub    dword ptr [esi+88h]
+.text:006CF7B2                 fstp    dword ptr [esi+190h]
+.text:006CF7B8                 fld     dword ptr [esi+9Ch]
+.text:006CF7BE                 fsub    dword ptr [esi+98h]
+.text:006CF7C4                 fstp    dword ptr [esi+194h]
+.text:006CF7CA                 fld     dword ptr [esi+0ACh]
+.text:006CF7D0                 fsub    dword ptr [esi+0A8h]
+.text:006CF7D6                 fstp    dword ptr [esi+198h]
+.text:006CF7DC                 fld     dword ptr [esi+0BCh]
+.text:006CF7E2                 fsub    dword ptr [esi+0B8h]
+.text:006CF7E8                 fstp    dword ptr [esi+19Ch]
+.text:006CF7EE
+.text:006CF7EE loc_6CF7EE:                             ; CODE XREF: sub_6CF400:loc_6CF63C↑j
+.text:006CF7EE                                         ; sub_6CF400+28E↑j ...
+.text:006CF7EE                 lea     edx, [ebx+14h]  ; jumptable 006CF642 default case
+.text:006CF7F1                 shl     edx, 4
+.text:006CF7F4                 fld     dword ptr [edx+esi+8]
+.text:006CF7F8                 lea     eax, [edx+esi]
+.text:006CF7FB                 fld     dword ptr [eax+4]
+.text:006CF7FE                 fld     dword ptr [eax]
+.text:006CF800                 fld     st
+.text:006CF802                 fmul    st, st(1)
+.text:006CF804                 fld     st(2)
+.text:006CF806                 fmul    st, st(3)
+.text:006CF808                 faddp   st(1), st
+.text:006CF80A                 fld     st(3)
+.text:006CF80C                 fmul    st, st(4)
+.text:006CF80E                 faddp   st(1), st
+.text:006CF810                 fsqrt
+.text:006CF812                 fstp    st(3)
+.text:006CF814                 fstp    st
+.text:006CF816                 fstp    st
+.text:006CF818                 fdivr   ds:_float_heat_1
+.text:006CF81E                 fld     st
+.text:006CF820                 fmul    dword ptr [eax]
+.text:006CF822                 fstp    dword ptr [eax]
+.text:006CF824                 mov     eax, ebx
+.text:006CF826                 shl     eax, 4
+.text:006CF829                 add     eax, esi
+.text:006CF82B                 fld     st
+.text:006CF82D                 fmul    dword ptr [eax+144h]
+.text:006CF833                 inc     ebx
+.text:006CF834                 cmp     ebx, 5
+.text:006CF837                 fstp    dword ptr [eax+144h]
+.text:006CF83D                 fld     st
+.text:006CF83F                 fmul    dword ptr [eax+148h]
+.text:006CF845                 fstp    dword ptr [eax+148h]
+.text:006CF84B                 fmul    dword ptr [eax+14Ch]
+.text:006CF851                 fstp    dword ptr [eax+14Ch]
+.text:006CF857                 jle     loc_6CF63C
+.text:006CF85D                 lea     ebx, [esi+0C0h]
+.text:006CF863                 push    edi
+.text:006CF864                 push    ebx
+.text:006CF865                 call    bCopy__FP8bMatrix4PC8bMatrix4 ; bCopy(bMatrix4 *,bMatrix4 const *)
+.text:006CF86A                 fld     dword_8F9210
+.text:006CF870                 fadd    dword ptr [esi+0E8h]
+.text:006CF876                 add     esp, 8
+.text:006CF879                 push    ebx
+.text:006CF87A                 push    esi
+.text:006CF87B                 fstp    dword ptr [esi+0E8h]
+.text:006CF881                 add     esi, 100h
+.text:006CF887                 push    esi
+.text:006CF888                 call    D3DXMatrixMultiply
+.text:006CF88D
+.text:006CF88D loc_6CF88D:                             ; CODE XREF: sub_6CF400+233↑j
+.text:006CF88D                 pop     edi
+.text:006CF88E                 pop     esi
+.text:006CF88F                 pop     ebp
+.text:006CF890                 pop     ebx
+.text:006CF891                 add     esp, 0Ch
+.text:006CF894                 retn    14h
+.text:006CF894 sub_6CF400      endp
+.text:006CF894
+.text:006CF894 ; ---------------------------------------------------------------------------
+.text:006CF897                 align 4
+.text:006CF898 off_6CF898      dd offset loc_6CF649    ; DATA XREF: sub_6CF400+242↑r
+.text:006CF89C                 dd offset loc_6CF693    ; jump table for switch statement
+.text:006CF8A0                 dd offset loc_6CF6DD
+.text:006CF8A4                 dd offset loc_6CF72A
+.text:006CF8A8                 dd offset loc_6CF774
+.text:006CF8AC                 dd offset loc_6CF7A6
+.text:006CF8B0 ; ---------------------------------------------------------------------------
+.text:006CF8B0                 mov     eax, e_current_strip
+.text:006CF8B5                 mov     ecx, e_current_strip_vert
+.text:006CF8BB                 push    0
+.text:006CF8BD                 push    0
+.text:006CF8BF                 mov     [eax], ecx
+.text:006CF8C1                 mov     edx, e_strip_texture_info
+.text:006CF8C7                 mov     eax, dword_93DEBC
+.text:006CF8CC                 mov     ecx, e_current_strip
+.text:006CF8D2                 push    offset e_strip_matrix
+.text:006CF8D7                 push    edx
+.text:006CF8D8                 push    eax
+.text:006CF8D9                 push    0
+.text:006CF8DB                 push    ecx
+.text:006CF8DC                 call    sub_6E0770
+.text:006CF8E1                 add     esp, 1Ch
+.text:006CF8E4                 mov     al, 1
+.text:006CF8E6                 retn
+.text:006CF8E6 ; ---------------------------------------------------------------------------
+.text:006CF8E7                 align 10h
+.text:006CF8F0                 mov     eax, e_current_strip
+.text:006CF8F5                 mov     ecx, e_current_strip_vert
+.text:006CF8FB                 push    0
+.text:006CF8FD                 push    0
+.text:006CF8FF                 mov     [eax], ecx
+.text:006CF901                 mov     edx, e_strip_texture_info
+.text:006CF907                 mov     eax, dword_93DEBC
+.text:006CF90C                 mov     ecx, e_current_strip
+.text:006CF912                 push    offset e_strip_matrix
+.text:006CF917                 push    edx
+.text:006CF918                 push    eax
+.text:006CF919                 push    0
+.text:006CF91B                 push    ecx
+.text:006CF91C                 call    sub_6E0770
+.text:006CF921                 add     esp, 1Ch
+.text:006CF924                 mov     al, 1
+.text:006CF926                 retn
+.text:006CF926 ; ---------------------------------------------------------------------------
+.text:006CF927                 align 10h

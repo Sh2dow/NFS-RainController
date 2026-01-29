@@ -1,0 +1,339 @@
+.text:006E6E40 sub_6E6E40      proc near               ; CODE XREF: eDisplayFrame(void)+340↓p
+.text:006E6E40                                         ; eDisplayFrame(void)+387↓p
+.text:006E6E40
+.text:006E6E40 var_104         = byte ptr -104h
+.text:006E6E40 var_100         = dword ptr -100h
+.text:006E6E40 var_FC          = dword ptr -0FCh
+.text:006E6E40 var_F8          = dword ptr -0F8h
+.text:006E6E40 var_F4          = dword ptr -0F4h
+.text:006E6E40 var_F0          = dword ptr -0F0h
+.text:006E6E40 var_EC          = dword ptr -0ECh
+.text:006E6E40 var_E8          = dword ptr -0E8h
+.text:006E6E40 var_E4          = dword ptr -0E4h
+.text:006E6E40 var_E0          = dword ptr -0E0h
+.text:006E6E40 var_DC          = dword ptr -0DCh
+.text:006E6E40 var_D8          = dword ptr -0D8h
+.text:006E6E40 var_D4          = dword ptr -0D4h
+.text:006E6E40 var_D0          = dword ptr -0D0h
+.text:006E6E40 var_CC          = dword ptr -0CCh
+.text:006E6E40 var_C8          = dword ptr -0C8h
+.text:006E6E40 var_C4          = dword ptr -0C4h
+.text:006E6E40 var_B8          = dword ptr -0B8h
+.text:006E6E40 var_B4          = dword ptr -0B4h
+.text:006E6E40 var_B0          = dword ptr -0B0h
+.text:006E6E40 var_AC          = dword ptr -0ACh
+.text:006E6E40 var_A8          = dword ptr -0A8h
+.text:006E6E40 var_A4          = dword ptr -0A4h
+.text:006E6E40 var_A0          = dword ptr -0A0h
+.text:006E6E40 var_9C          = dword ptr -9Ch
+.text:006E6E40 var_90          = dword ptr -90h
+.text:006E6E40 var_8C          = dword ptr -8Ch
+.text:006E6E40 var_80          = dword ptr -80h
+.text:006E6E40 var_7C          = dword ptr -7Ch
+.text:006E6E40 var_70          = dword ptr -70h
+.text:006E6E40 var_6C          = dword ptr -6Ch
+.text:006E6E40 var_20          = byte ptr -20h
+.text:006E6E40 arg_0           = dword ptr  8
+.text:006E6E40
+.text:006E6E40                 push    ebp
+.text:006E6E41                 mov     ebp, esp
+.text:006E6E43                 and     esp, 0FFFFFFF0h
+.text:006E6E46                 sub     esp, 104h
+.text:006E6E4C                 push    ebx
+.text:006E6E4D                 push    esi
+.text:006E6E4E                 push    edi
+.text:006E6E4F                 call    sub_6CFCE0
+.text:006E6E54                 call    sub_6E2F50
+.text:006E6E59                 mov     edx, dword_93DAC0
+.text:006E6E5F                 mov     eax, dword_982BDC
+.text:006E6E64                 mov     ecx, [eax]
+.text:006E6E66                 push    edx
+.text:006E6E67                 xor     esi, esi
+.text:006E6E69                 push    esi
+.text:006E6E6A                 push    eax
+.text:006E6E6B                 call    dword ptr [ecx+94h]
+.text:006E6E71                 mov     edx, dword_93DAC4
+.text:006E6E77                 mov     eax, dword_982BDC
+.text:006E6E7C                 mov     ecx, [eax]
+.text:006E6E7E                 push    edx
+.text:006E6E7F                 push    eax
+.text:006E6E80                 call    dword ptr [ecx+9Ch]
+.text:006E6E86                 mov     ecx, dword_93DAD0
+.text:006E6E8C                 mov     eax, dword_93DACC
+.text:006E6E91                 mov     [esp+110h+var_AC], ecx
+.text:006E6E95                 mov     [esp+110h+var_B0], eax
+.text:006E6E99                 mov     eax, dword_982BDC
+.text:006E6E9E                 lea     ecx, [esp+110h+var_B8]
+.text:006E6EA2                 push    ecx
+.text:006E6EA3                 mov     [esp+114h+var_B8], esi
+.text:006E6EA7                 mov     [esp+114h+var_B4], esi
+.text:006E6EAB                 mov     [esp+114h+var_A8], esi
+.text:006E6EAF                 mov     [esp+114h+var_A4], 1.0
+.text:006E6EB7                 mov     edx, [eax]
+.text:006E6EB9                 push    eax
+.text:006E6EBA                 call    dword ptr [edx+0BCh]
+.text:006E6EC0                 mov     ebx, dword_93DE9C
+.text:006E6EC6                 mov     dword_982A20, offset unk_93DAB8
+.text:006E6ED0                 mov     dword_982C80, esi
+.text:006E6ED6                 mov     ecx, [ebx+44h]
+.text:006E6ED9                 mov     ecx, [ecx+484h]
+.text:006E6EDF                 mov     eax, [ebx+48h]
+.text:006E6EE2                 mov     edx, [eax]
+.text:006E6EE4                 push    0Fh
+.text:006E6EE6                 push    ecx
+.text:006E6EE7                 push    eax
+.text:006E6EE8                 call    dword ptr [edx+68h]
+.text:006E6EEB                 mov     dword_982C80, ebx
+.text:006E6EF1                 mov     edx, [ebx]
+.text:006E6EF3                 mov     ecx, ebx
+.text:006E6EF5                 call    dword ptr [edx+4]
+.text:006E6EF8                 mov     edx, [ebx+4Ch]
+.text:006E6EFB                 mov     eax, dword_982BDC
+.text:006E6F00                 mov     ecx, [eax]
+.text:006E6F02                 push    edx
+.text:006E6F03                 push    eax
+.text:006E6F04                 call    dword ptr [ecx+15Ch]
+.text:006E6F0A                 mov     eax, [ebx+48h]
+.text:006E6F0D                 mov     ecx, [eax]
+.text:006E6F0F                 push    esi
+.text:006E6F10                 lea     edx, [esp+114h+var_104]
+.text:006E6F14                 push    edx
+.text:006E6F15                 push    eax
+.text:006E6F16                 call    dword ptr [ecx+0FCh]
+.text:006E6F1C                 mov     eax, eViews
+.text:006E6F21                 mov     [esp+110h+var_FC], esi
+.text:006E6F25                 mov     [esp+110h+var_F8], esi
+.text:006E6F29                 mov     [esp+110h+var_F4], esi
+.text:006E6F2D                 mov     [esp+110h+var_F0], esi
+.text:006E6F31                 mov     [esp+110h+var_E8], esi
+.text:006E6F35                 mov     [esp+110h+var_E4], esi
+.text:006E6F39                 mov     [esp+110h+var_E0], esi
+.text:006E6F3D                 mov     [esp+110h+var_DC], esi
+.text:006E6F41                 mov     [esp+110h+var_D4], esi
+.text:006E6F45                 mov     [esp+110h+var_D0], esi
+.text:006E6F49                 mov     [esp+110h+var_CC], esi
+.text:006E6F4D                 mov     [esp+110h+var_C8], esi
+.text:006E6F51
+.text:006E6F51 loc_6E6F51:                             ; HUD Width??
+.text:006E6F51                 mov     [esp+110h+var_100], 1.0
+.text:006E6F59
+.text:006E6F59 loc_6E6F59:                             ; HUD Height??
+.text:006E6F59                 mov     [esp+110h+var_EC], 1.0
+.text:006E6F61                 mov     [esp+110h+var_D8], 1.0
+.text:006E6F69                 mov     [esp+110h+var_C4], 1.0
+.text:006E6F71                 mov     ecx, 10h
+.text:006E6F76                 lea     esi, [esp+110h+var_100]
+.text:006E6F7A                 mov     edi, eax
+.text:006E6F7C                 rep movsd
+.text:006E6F7E                 lea     ecx, [eax+40h]
+.text:006E6F81                 push    ecx
+.text:006E6F82                 push    eax
+.text:006E6F83                 add     eax, 80h ; '€'
+.text:006E6F88                 push    eax
+.text:006E6F89                 call    D3DXMatrixMultiply
+.text:006E6F8E                 mov     eax, eViews
+.text:006E6F93                 lea     edx, [eax+40h]
+.text:006E6F96                 push    edx
+.text:006E6F97                 push    eax
+.text:006E6F98                 add     eax, 80h ; '€'
+.text:006E6F9D                 mov     edi, edx
+.text:006E6F9F                 mov     ecx, 10h
+.text:006E6FA4                 lea     esi, [esp+118h+var_100]
+.text:006E6FA8                 push    eax
+.text:006E6FA9                 rep movsd
+.text:006E6FAB                 call    D3DXMatrixMultiply
+.text:006E6FB0                 lea     edx, [esp+110h+var_100]
+.text:006E6FB4                 push    0
+.text:006E6FB6                 push    edx
+.text:006E6FB7                 call    sub_6C8000
+.text:006E6FBC                 mov     eax, [ebx]
+.text:006E6FBE                 add     esp, 8
+.text:006E6FC1                 mov     ecx, ebx
+.text:006E6FC3                 call    dword ptr [eax+8]
+.text:006E6FC6                 mov     eax, [ebx+48h]
+.text:006E6FC9                 mov     ecx, [eax]
+.text:006E6FCB                 push    eax
+.text:006E6FCC                 call    dword ptr [ecx+10Ch]
+.text:006E6FD2                 mov     esi, dword_93DEA0
+.text:006E6FD8                 mov     dword_982C80, esi
+.text:006E6FDE                 mov     edx, [esi]
+.text:006E6FE0                 mov     ecx, esi
+.text:006E6FE2                 call    dword ptr [edx+4]
+.text:006E6FE5                 mov     edx, [esi+4Ch]
+.text:006E6FE8                 mov     eax, dword_982BDC
+.text:006E6FED                 mov     ecx, [eax]
+.text:006E6FEF                 push    edx
+.text:006E6FF0                 push    eax
+.text:006E6FF1                 call    dword ptr [ecx+15Ch]
+.text:006E6FF7                 mov     eax, [esi+48h]
+.text:006E6FFA                 mov     ecx, [eax]
+.text:006E6FFC                 push    0
+.text:006E6FFE                 lea     edx, [esp+114h+var_104]
+.text:006E7002                 push    edx
+.text:006E7003                 push    eax
+.text:006E7004                 call    dword ptr [ecx+0FCh]
+.text:006E700A                 lea     eax, [esp+110h+var_100]
+.text:006E700E                 push    0
+.text:006E7010                 push    eax
+.text:006E7011                 call    sub_6C8000
+.text:006E7016                 mov     edx, [esi]
+.text:006E7018                 add     esp, 8
+.text:006E701B                 mov     ecx, esi
+.text:006E701D                 call    dword ptr [edx+8]
+.text:006E7020                 mov     esi, [esi+48h]
+.text:006E7023                 mov     eax, [esi]
+.text:006E7025                 push    esi
+.text:006E7026                 call    dword ptr [eax+10Ch]
+.text:006E702C                 mov     dword_982C80, ebx
+.text:006E7032                 mov     edx, [ebx]
+.text:006E7034                 mov     ecx, ebx
+.text:006E7036                 call    dword ptr [edx+4]
+.text:006E7039                 mov     edx, [ebx+4Ch]
+.text:006E703C                 mov     eax, dword_982BDC
+.text:006E7041                 mov     ecx, [eax]
+.text:006E7043                 push    edx
+.text:006E7044                 push    eax
+.text:006E7045                 call    dword ptr [ecx+15Ch]
+.text:006E704B                 mov     eax, [ebx+48h]
+.text:006E704E                 mov     ecx, [eax]
+.text:006E7050                 push    0
+.text:006E7052                 lea     edx, [esp+114h+var_104]
+.text:006E7056                 push    edx
+.text:006E7057                 push    eax
+.text:006E7058                 call    dword ptr [ecx+0FCh]
+.text:006E705E                 mov     eax, dword_982BDC
+.text:006E7063                 mov     ecx, [eax]
+.text:006E7065                 push    0
+.text:006E7067                 push    0Eh
+.text:006E7069                 push    eax
+.text:006E706A                 call    dword ptr [ecx+0E4h]
+.text:006E7070                 mov     eax, dword_982BDC
+.text:006E7075                 mov     edx, [eax]
+.text:006E7077                 push    0
+.text:006E7079                 push    7
+.text:006E707B                 push    eax
+.text:006E707C                 call    dword ptr [edx+0E4h]
+.text:006E7082                 mov     eax, [ebp+arg_0]
+.text:006E7085                 test    eax, eax
+.text:006E7087                 jnz     loc_6E71D5
+.text:006E708D                 mov     eax, dword_901794
+.text:006E7092                 push    eax
+.text:006E7093                 push    eax
+.text:006E7094                 call    sub_6E6380
+.text:006E7099                 add     esp, 8
+.text:006E709C                 cmp     ax, 188h
+.text:006E70A0                 jnz     loc_6E71D5
+.text:006E70A6                 mov     al, byte_919738
+.text:006E70AB                 test    al, al
+.text:006E70AD                 jz      loc_6E71C9
+.text:006E70B3                 lea     ecx, [esp+110h+var_A0]
+.text:006E70B7                 call    __ct__5ePoly    ; ePoly::ePoly(void)
+.text:006E70BC                 mov     [esp+110h+var_A0], 450.0
+.text:006E70C4                 mov     [esp+110h+var_9C], 19.0
+.text:006E70CC                 mov     [esp+110h+var_90], 190.0
+.text:006E70D7                 mov     [esp+110h+var_8C], 19.0
+.text:006E70E2                 mov     [esp+110h+var_80], 190.0
+.text:006E70ED                 mov     [esp+110h+var_7C], 89.0
+.text:006E70F8                 mov     [esp+110h+var_70], 450.0
+.text:006E7103                 mov     [esp+110h+var_6C], 89.0
+.text:006E710E                 xor     edx, edx
+.text:006E7110
+.text:006E7110 loc_6E7110:                             ; CODE XREF: sub_6E6E40+2ED↓j
+.text:006E7110                 lea     eax, [esp+edx+110h+var_20]
+.text:006E7117                 mov     ecx, 4
+.text:006E711C                 lea     esp, [esp+0]
+.text:006E7120
+.text:006E7120 loc_6E7120:                             ; CODE XREF: sub_6E6E40+2E7↓j
+.text:006E7120                 mov     byte ptr [eax], 0FFh
+.text:006E7123                 add     eax, 4
+.text:006E7126                 dec     ecx
+.text:006E7127                 jnz     short loc_6E7120
+.text:006E7129                 inc     edx
+.text:006E712A                 cmp     edx, 4
+.text:006E712D                 jl      short loc_6E7110
+.text:006E712F                 mov     edx, dword_982A7C
+.text:006E7135                 mov     eax, [ebx+48h]
+.text:006E7138                 mov     ecx, [eax]
+.text:006E713A                 push    edx
+.text:006E713B                 mov     edx, [ebx+44h]
+.text:006E713E                 mov     edx, [edx+22Ch]
+.text:006E7144                 push    edx
+.text:006E7145                 push    eax
+.text:006E7146                 call    dword ptr [ecx+0D0h]
+.text:006E714C                 mov     eax, dword_982BDC
+.text:006E7151                 mov     ecx, [eax]
+.text:006E7153                 push    3
+.text:006E7155                 push    1
+.text:006E7157                 push    0
+.text:006E7159                 push    eax
+.text:006E715A                 call    dword ptr [ecx+114h]
+.text:006E7160                 mov     eax, dword_982BDC
+.text:006E7165                 mov     edx, [eax]
+.text:006E7167                 push    3
+.text:006E7169                 push    2
+.text:006E716B                 push    0
+.text:006E716D                 push    eax
+.text:006E716E                 call    dword ptr [edx+114h]
+.text:006E7174                 push    1
+.text:006E7176                 push    0
+.text:006E7178                 call    sub_6C67C0
+.text:006E717D                 push    6
+.text:006E717F                 push    5
+.text:006E7181                 push    1
+.text:006E7183                 call    sub_6C6810
+.text:006E7188                 call    sub_6C83A0
+.text:006E718D                 push    0
+.text:006E718F                 lea     eax, [esp+128h+var_A0]
+.text:006E7196                 push    0
+.text:006E7198                 push    eax
+.text:006E7199                 call    Render__18eViewPlatInterfaceP5ePolyP11TextureInfoi ; eViewPlatInterface::Render(ePoly *,TextureInfo *,int)
+.text:006E719E                 mov     eax, dword_982BDC
+.text:006E71A3                 mov     ecx, [eax]
+.text:006E71A5                 add     esp, 20h
+.text:006E71A8                 push    1
+.text:006E71AA                 push    1
+.text:006E71AC                 push    0
+.text:006E71AE                 push    eax
+.text:006E71AF                 call    dword ptr [ecx+114h]
+.text:006E71B5                 mov     eax, dword_982BDC
+.text:006E71BA                 mov     edx, [eax]
+.text:006E71BC                 push    1
+.text:006E71BE                 push    2
+.text:006E71C0                 push    0
+.text:006E71C2                 push    eax
+.text:006E71C3                 call    dword ptr [edx+114h]
+.text:006E71C9
+.text:006E71C9 loc_6E71C9:                             ; CODE XREF: sub_6E6E40+26D↑j
+.text:006E71C9                 call    Get__9FEManager ; FEManager::Get(void)
+.text:006E71CE                 mov     ecx, eax
+.text:006E71D0                 call    sub_516F70
+.text:006E71D5
+.text:006E71D5 loc_6E71D5:                             ; CODE XREF: sub_6E6E40+247↑j
+.text:006E71D5                                         ; sub_6E6E40+260↑j
+.text:006E71D5                 mov     eax, [ebx]
+.text:006E71D7                 mov     ecx, ebx
+.text:006E71D9                 call    dword ptr [eax+8]
+.text:006E71DC                 mov     ebx, [ebx+48h]
+.text:006E71DF                 mov     ecx, [ebx]
+.text:006E71E1                 push    ebx
+.text:006E71E2                 call    dword ptr [ecx+10Ch]
+.text:006E71E8                 mov     eax, dword_982BDC
+.text:006E71ED                 push    1
+.text:006E71EF                 push    7
+.text:006E71F1                 mov     dword_982C80, 0
+.text:006E71FB                 mov     edx, [eax]
+.text:006E71FD                 push    eax
+.text:006E71FE                 call    dword ptr [edx+0E4h]
+.text:006E7204                 mov     eax, dword_982BDC
+.text:006E7209                 mov     ecx, [eax]
+.text:006E720B                 push    1
+.text:006E720D                 push    0Eh
+.text:006E720F                 push    eax
+.text:006E7210                 call    dword ptr [ecx+0E4h]
+.text:006E7216                 pop     edi
+.text:006E7217                 pop     esi
+.text:006E7218                 pop     ebx
+.text:006E7219                 mov     esp, ebp
+.text:006E721B                 pop     ebp
+.text:006E721C                 retn
+.text:006E721C sub_6E6E40      endp

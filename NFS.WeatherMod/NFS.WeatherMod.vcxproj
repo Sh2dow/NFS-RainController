@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+    <!-- ====================================================== -->
+    <!-- CONFIGURATIONS -->
+    <!-- ====================================================== -->
+    <ItemGroup Label="ProjectConfigurations">
+
+        <ProjectConfiguration Include="Debug|Win32">
+            <Configuration>Debug</Configuration>
+            <Platform>Win32</Platform>
+        </ProjectConfiguration>
+
+        <ProjectConfiguration Include="Release|Win32">
+            <Configuration>Release</Configuration>
+            <Platform>Win32</Platform>
+        </ProjectConfiguration>
+
+    </ItemGroup>
+
+    <!-- ====================================================== -->
+    <!-- GLOBALS -->
+    <!-- ====================================================== -->
+    <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props"/>
+
+    <PropertyGroup Label="Globals">
+        <ProjectGuid>{cfe443ac-2306-414a-9605-7e7ebbded37a}</ProjectGuid>
+        <Keyword>Win32Proj</Keyword>
+        <RootNamespace>NFS.WeatherMod</RootNamespace>
+        <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+        <PlatformToolset>v143</PlatformToolset>
+        <ConfigurationType>DynamicLibrary</ConfigurationType>
+        <CharacterSet>Unicode</CharacterSet>
+    </PropertyGroup>
+
+    <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props"/>
+
+    <!-- ====================================================== -->
+    <!-- COMMON OUTPUT -->
+    <!-- ====================================================== -->
+    <PropertyGroup>
+        <TargetExt>.asi</TargetExt>
+        <OutDir>$(SolutionDir)scripts\</OutDir>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)'=='Debug' Or '$(Configuration)'=='Release'">
+        <TargetName>NFS.WeatherMod</TargetName>
+    </PropertyGroup>
+
+    <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug' Or '$(Configuration)'=='Release'">
+        <PostBuildEvent>
+            <Command>
+                <!--                XCOPY /Y /R "$(SolutionDir)NFS.WeatherMod.ini" "$(OutDir)" &amp;-->
+                
+<!--                XCOPY /Y /R "$(SolutionDir)NFS.WeatherMod.ini" "d:\Games\NFS MW - Beta Content Mod\scripts\" &amp;-->
+<!--                XCOPY /Y /R "$(TargetPath)" "d:\Games\NFS MW - Beta Content Mod\scripts\"-->
+
+                XCOPY /Y /R "$(SolutionDir)NFS.WeatherMod.ini" "d:\Games\NFS MW - Vanilla\scripts\" &amp;
+                XCOPY /Y /R "$(TargetPath)" "d:\Games\NFS MW - Vanilla\scripts\"
+            </Command>
+        </PostBuildEvent>
+    </ItemDefinitionGroup>
+
+    <!-- ====================================================== -->
+    <!-- CONFIGURATION FLAGS -->
+    <!-- ====================================================== -->
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+        <UseDebugLibraries>true</UseDebugLibraries>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+        <UseDebugLibraries>false</UseDebugLibraries>
+        <WholeProgramOptimization>true</WholeProgramOptimization>
+    </PropertyGroup>
+
+    <!-- ====================================================== -->
+    <!-- PROPERTY SHEETS -->
+    <!-- ====================================================== -->
+    <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+        <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform"/>
+    </ImportGroup>
+
+    <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+        <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform"/>
+    </ImportGroup>
+
+    <PropertyGroup Label="UserMacros"/>
+
+    <!-- ====================================================== -->
+    <!-- COMMON COMPILER / LINKER -->
+    <!-- ====================================================== -->
+    <ItemDefinitionGroup>
+        <ClCompile>
+            <LanguageStandard>stdcpp17</LanguageStandard>
+            <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+            <AdditionalIncludeDirectories>
+                <!--                external\minhook\include;external\filewatch;external\modutils;-->
+                ..\includes\minhook\include;
+                ..\includes;..\includes\hooking;..\includes\json\include;..\includes\injector;
+                ..\includes\spdlog\include;
+                ..\includes\gsl;
+                external\inireader;
+                $(ProjectDir)\include;
+                $(DXSDK_DIR)Include;%(AdditionalIncludeDirectories)
+            </AdditionalIncludeDirectories>
+            <AdditionalIncludeDirectories>
+                ..\includes;
+                includes\minhook;
+                $(DXSDK_DIR)Include;
+                %(AdditionalIncludeDirectories)
+            </AdditionalIncludeDirectories>
+        </ClCompile>
+
+        <Link>
+            <SubSystem>Windows</SubSystem>
+            <AdditionalLibraryDirectories>
+                $(DXSDK_DIR)Lib\x86;
+                %(AdditionalLibraryDirectories)
+            </AdditionalLibraryDirectories>
+            <AdditionalDependencies>
+                d3d9.lib;
+                d3dx9.lib;
+                winmm.lib;
+                ws2_32.lib;
+                crypt32.lib;
+                %(AdditionalDependencies)
+            </AdditionalDependencies>
+        </Link>
+    </ItemDefinitionGroup>
+
+    <!-- ====================================================== -->
+    <!-- MW CONFIG -->
+    <!-- ====================================================== -->
+    <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+        <ClCompile>
+            <PrecompiledHeader>NotUsing</PrecompiledHeader>
+            <WarningLevel>Level3</WarningLevel>
+            <Optimization>Disabled</Optimization>
+            <PreprocessorDefinitions>
+                _DEBUG;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)
+            </PreprocessorDefinitions>
+            <LanguageStandard>stdcpp20</LanguageStandard>
+        </ClCompile>
+        <Link>
+            <GenerateDebugInformation>true</GenerateDebugInformation>
+        </Link>
+    </ItemDefinitionGroup>
+
+    <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+        <ClCompile>
+            <PrecompiledHeader>NotUsing</PrecompiledHeader>
+            <WarningLevel>Level4</WarningLevel>
+            <Optimization>MaxSpeed</Optimization>
+            <PreprocessorDefinitions>
+                NDEBUG;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)
+            </PreprocessorDefinitions>
+        </ClCompile>
+    </ItemDefinitionGroup>
+
+    <!-- ====================================================== -->
+    <!-- FILES -->
+    <!-- ====================================================== -->
+    <ItemGroup>
+        <ClInclude Include="PerlinNoise.h" />
+        <ClInclude Include="PrecipitationController.h"/>
+        <ClInclude Include="features.h" />
+        <ClInclude Include="GameAddresses.h"/>
+        <ClInclude Include="helpers.h"/>
+        <ClInclude Include="Log.h"/>
+        <ClInclude Include="NFSMW_PreFEngHook.h"/>
+        <ClInclude Include="NFSC_PreFEngHook.h"/>
+        <ClInclude Include="NFSPS_PreFEngHook.h"/>
+        <ClInclude Include="NFSUC_PreFEngHook.h"/>
+        <ClInclude Include="RainConfigController.h"/>
+        <ClInclude Include="WeatherGameAddresses.h" />
+
+        <ClInclude Include="..\includes\CPatch.h"/>
+        <ClInclude Include="..\includes\hooking\Hooking.Patterns.h"/>
+        <ClInclude Include="..\includes\Patch.h"/>
+        <ClInclude Include="..\includes\minhook\include\MinHook.h"/>
+        <ClInclude Include="..\includes\minhook\src\buffer.h"/>
+        <ClInclude Include="..\includes\minhook\src\hde\hde32.h"/>
+        <ClInclude Include="..\includes\minhook\src\hde\hde64.h"/>
+        <ClInclude Include="..\includes\minhook\src\hde\pstdint.h"/>
+        <ClInclude Include="..\includes\minhook\src\hde\table32.h"/>
+        <ClInclude Include="..\includes\minhook\src\hde\table64.h"/>
+        <ClInclude Include="..\includes\minhook\src\trampoline.h"/>
+        <ClInclude Include="Math.h" />
+        <ClInclude Include="Game.h"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ClCompile Include="..\includes\minhook\src\buffer.c"/>
+        <ClCompile Include="..\includes\minhook\src\hde\hde32.c"/>
+        <ClCompile Include="..\includes\minhook\src\hde\hde64.c"/>
+        <ClCompile Include="..\includes\minhook\src\hook.c"/>
+        <ClCompile Include="..\includes\minhook\src\trampoline.c"/>
+        <ClCompile Include="..\includes\hooking\Hooking.Patterns.cpp"/>
+        <ClCompile Include="..\includes\minhook\src\buffer.c"/>
+        <ClCompile Include="..\includes\minhook\src\hde\hde32.c"/>
+        <ClCompile Include="..\includes\minhook\src\hde\hde64.c"/>
+        <ClCompile Include="..\includes\minhook\src\hook.c"/>
+        <ClCompile Include="..\includes\minhook\src\trampoline.c"/>
+        <ClCompile Include="core.cpp" />
+        <ClCompile Include="PrecipitationController.cpp" />
+        <ClCompile Include="PrecipitationController_Backup.cpp" />
+        <ClCompile Include="PrecipitationController_working.cpp" />
+        <ClCompile Include="RainConfigController.cpp" />
+        <ClCompile Include="dllmain.cpp"/>
+    </ItemGroup>
+
+    <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets"/>
+
+</Project>

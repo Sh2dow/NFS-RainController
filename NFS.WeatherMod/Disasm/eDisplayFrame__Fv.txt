@@ -1,0 +1,405 @@
+.text:006E7220 ; _DWORD eDisplayFrame(void)
+.text:006E7220 eDisplayFrame__Fv proc near             ; CODE XREF: Main_DisplayFrame(void)+2E↑p
+.text:006E7220                                         ; TrackLoader::Unload(void)+E3↑p ...
+.text:006E7220
+.text:006E7220 var_24          = dword ptr -24h
+.text:006E7220 var_10          = dword ptr -10h
+.text:006E7220 var_C           = dword ptr -0Ch
+.text:006E7220 var_8           = dword ptr -8
+.text:006E7220 var_4           = dword ptr -4
+.text:006E7220
+.text:006E7220                 mov     al, byte_901AC8
+.text:006E7225                 sub     esp, 10h
+.text:006E7228                 push    ebx
+.text:006E7229                 push    ebp
+.text:006E722A                 xor     ebp, ebp
+.text:006E722C                 test    al, al
+.text:006E722E                 push    esi
+.text:006E722F                 push    edi
+.text:006E7230                 mov     dword_982C80, ebp
+.text:006E7236                 jz      short loc_6E7244
+.text:006E7238                 call    sub_6BF290
+.text:006E723D                 mov     byte_901AC8, 0
+.text:006E7244
+.text:006E7244 loc_6E7244:                             ; CODE XREF: eDisplayFrame(void)+16↑j
+.text:006E7244                 cmp     dword_982B14, ebp
+.text:006E724A                 jz      short loc_6E726B
+.text:006E724C                 call    sub_6C5DA0
+.text:006E7251                 call    sub_6D7500
+.text:006E7256                 mov     ecx, pVisualTreatmentPlat
+.text:006E725C                 cmp     ecx, ebp
+.text:006E725E                 jz      short loc_6E7265
+.text:006E7260                 call    sub_6D4DC0
+.text:006E7265
+.text:006E7265 loc_6E7265:                             ; CODE XREF: eDisplayFrame(void)+3E↑j
+.text:006E7265                 mov     dword_982B14, ebp
+.text:006E726B
+.text:006E726B loc_6E726B:                             ; CODE XREF: eDisplayFrame(void)+2A↑j
+.text:006E726B                 mov     al, LoadedFlagMaybe
+.text:006E7270                 test    al, al
+.text:006E7272                 jz      short loc_6E72CD
+.text:006E7274                 call    sub_6C5DA0
+.text:006E7279                 call    sub_6D7500
+.text:006E727E                 mov     ecx, pVisualTreatmentPlat
+.text:006E7284                 cmp     ecx, ebp
+.text:006E7286                 jz      short loc_6E728D
+.text:006E7288                 call    sub_6D4DC0
+.text:006E728D
+.text:006E728D loc_6E728D:                             ; CODE XREF: eDisplayFrame(void)+66↑j
+.text:006E728D                 lea     eax, [esp+20h+var_4]
+.text:006E7291                 push    eax
+.text:006E7292                 lea     ecx, [esp+24h+var_8]
+.text:006E7296                 push    ecx
+.text:006E7297                 mov     ecx, offset unk_983E60
+.text:006E729C                 call    sub_6C27D0
+.text:006E72A1                 mov     edx, g_RacingResolution
+.text:006E72A7                 mov     eax, dword_9829FC[edx*4]
+.text:006E72AE                 mov     ecx, [esp+20h+var_4]
+.text:006E72B2                 mov     edx, [esp+20h+var_8]
+.text:006E72B6                 push    eax
+.text:006E72B7                 push    ecx
+.text:006E72B8                 push    edx
+.text:006E72B9                 call    sub_6BFAB0
+.text:006E72BE                 add     esp, 0Ch
+.text:006E72C1                 call    sub_6DB0D0
+.text:006E72C6                 mov     LoadedFlagMaybe, 0
+.text:006E72CD
+.text:006E72CD loc_6E72CD:                             ; CODE XREF: eDisplayFrame(void)+52↑j
+.text:006E72CD                 cmp     SaveStreamAnim, ebp
+.text:006E72D3                 mov     dword_982BB8, ebp
+.text:006E72D9                 mov     ebx, 1
+.text:006E72DE                 jz      short loc_6E72F2
+.text:006E72E0                 mov     dword_982BB8, 2
+.text:006E72EA                 mov     dword_982BBC, ebp
+.text:006E72F0                 jmp     short loc_6E7300
+.text:006E72F2 ; ---------------------------------------------------------------------------
+.text:006E72F2
+.text:006E72F2 loc_6E72F2:                             ; CODE XREF: eDisplayFrame(void)+BE↑j
+.text:006E72F2                 cmp     dword_982BBC, ebp
+.text:006E72F8                 jz      short loc_6E7300
+.text:006E72FA                 mov     dword_982BB8, ebx
+.text:006E7300
+.text:006E7300 loc_6E7300:                             ; CODE XREF: eDisplayFrame(void)+D0↑j
+.text:006E7300                                         ; eDisplayFrame(void)+D8↑j
+.text:006E7300                 call    sub_6CFAD0
+.text:006E7305                 mov     eax, g_WorldLodLevel
+.text:006E730A                 cmp     eax, 3          ; switch 4 cases
+.text:006E730D                 ja      short loc_6E7362 ; jumptable 006E730F default case
+.text:006E730F                 jmp     ds:off_6E7674[eax*4] ; switch jump
+.text:006E7316 ; ---------------------------------------------------------------------------
+.text:006E7316
+.text:006E7316 loc_6E7316:                             ; CODE XREF: eDisplayFrame(void)+EF↑j
+.text:006E7316                                         ; DATA XREF: .text:off_6E7674↓o
+.text:006E7316                 mov     dword_982B34, ebx ; jumptable 006E730F case 0
+.text:006E731C                 mov     dword_9A3A34, ebx
+.text:006E7322                 mov     dword_982AE0, 2
+.text:006E732C                 jmp     short loc_6E7362 ; jumptable 006E730F default case
+.text:006E732E ; ---------------------------------------------------------------------------
+.text:006E732E
+.text:006E732E loc_6E732E:                             ; CODE XREF: eDisplayFrame(void)+EF↑j
+.text:006E732E                                         ; DATA XREF: .text:off_6E7674↓o
+.text:006E732E                 mov     dword_982B34, ebx ; jumptable 006E730F case 1
+.text:006E7334                 mov     dword_9A3A34, ebx
+.text:006E733A                 mov     dword_982AE0, ebx
+.text:006E7340                 jmp     short loc_6E7362 ; jumptable 006E730F default case
+.text:006E7342 ; ---------------------------------------------------------------------------
+.text:006E7342
+.text:006E7342 loc_6E7342:                             ; CODE XREF: eDisplayFrame(void)+EF↑j
+.text:006E7342                                         ; DATA XREF: .text:off_6E7674↓o
+.text:006E7342                 mov     dword_982B34, ebx ; jumptable 006E730F case 2
+.text:006E7348                 mov     dword_9A3A34, ebx
+.text:006E734E                 jmp     short loc_6E735C
+.text:006E7350 ; ---------------------------------------------------------------------------
+.text:006E7350
+.text:006E7350 loc_6E7350:                             ; CODE XREF: eDisplayFrame(void)+EF↑j
+.text:006E7350                                         ; DATA XREF: .text:off_6E7674↓o
+.text:006E7350                 mov     dword_982B34, ebp ; jumptable 006E730F case 3
+.text:006E7356                 mov     dword_9A3A34, ebp
+.text:006E735C
+.text:006E735C loc_6E735C:                             ; CODE XREF: eDisplayFrame(void)+12E↑j
+.text:006E735C                 mov     dword_982AE0, ebp
+.text:006E7362
+.text:006E7362 loc_6E7362:                             ; CODE XREF: eDisplayFrame(void)+ED↑j
+.text:006E7362                                         ; eDisplayFrame(void)+10C↑j ...
+.text:006E7362                 cmp     g_CarEnvironmentMapEnable, ebp ; jumptable 006E730F default case
+.text:006E7368                 jz      short loc_6E736F
+.text:006E736A                 call    sub_756060
+.text:006E736F
+.text:006E736F loc_6E736F:                             ; CODE XREF: eDisplayFrame(void)+148↑j
+.text:006E736F                 call    nullsub_10
+.text:006E7374
+.text:006E7374 loc_6E7374:                             ; CODE XREF: eDisplayFrame(void)+1A1↓j
+.text:006E7374                 mov     esi, ebp
+.text:006E7376                 imul    esi, 70h ; 'p'
+.text:006E7379                 add     esi, offset eViews
+.text:006E737F                 cmp     ebp, 8
+.text:006E7382                 mov     edi, [esi]
+.text:006E7384                 jnz     short loc_6E7391
+.text:006E7386                 push    0
+.text:006E7388                 push    esi
+.text:006E7389                 call    sub_6D0B00
+.text:006E738E                 add     esp, 8
+.text:006E7391
+.text:006E7391 loc_6E7391:                             ; CODE XREF: eDisplayFrame(void)+164↑j
+.text:006E7391                 mov     al, [esi+8]
+.text:006E7394                 test    al, al
+.text:006E7396                 jnz     short loc_6E739D
+.text:006E7398                 cmp     ebp, 12h
+.text:006E739B                 jl      short loc_6E73BD
+.text:006E739D
+.text:006E739D loc_6E739D:                             ; CODE XREF: eDisplayFrame(void)+176↑j
+.text:006E739D                 cmp     dword ptr [esi+4], 3
+.text:006E73A1                 push    ebx             ; char
+.text:006E73A2                 push    0               ; int
+.text:006E73A4                 mov     ecx, edi
+.text:006E73A6                 push    466A6000h       ; float
+.text:006E73AB                 jnz     short loc_6E73B5
+.text:006E73AD                 mov     eax, dword_901AC4
+.text:006E73B2                 push    eax
+.text:006E73B3                 jmp     short loc_6E73B7
+.text:006E73B5 ; ---------------------------------------------------------------------------
+.text:006E73B5
+.text:006E73B5 loc_6E73B5:                             ; CODE XREF: eDisplayFrame(void)+18B↑j
+.text:006E73B5                 push    0               ; float
+.text:006E73B7
+.text:006E73B7 loc_6E73B7:                             ; CODE XREF: eDisplayFrame(void)+193↑j
+.text:006E73B7                 push    esi             ; int
+.text:006E73B8                 call    sub_6CF400
+.text:006E73BD
+.text:006E73BD loc_6E73BD:                             ; CODE XREF: eDisplayFrame(void)+17B↑j
+.text:006E73BD                 inc     ebp
+.text:006E73BE                 cmp     ebp, 17h
+.text:006E73C1                 jle     short loc_6E7374
+.text:006E73C3                 call    sub_6CFCE0
+.text:006E73C8                 mov     eax, dword_9017F0
+.text:006E73CD                 xor     edi, edi
+.text:006E73CF                 cmp     eax, edi
+.text:006E73D1                 jz      short loc_6E7412
+.text:006E73D3                 mov     eax, dword_919690
+.text:006E73D8                 fld     ds:_float_0
+.text:006E73DE                 mov     ecx, [eax+0B4h]
+.text:006E73E4                 mov     edx, [eax+0B8h]
+.text:006E73EA                 mov     [esp+20h+var_C], ecx
+.text:006E73EE                 fld     [esp+20h+var_C]
+.text:006E73F2                 mov     [esp+20h+var_10], edx
+.text:006E73F6                 fucompp
+.text:006E73F8                 fnstsw  ax
+.text:006E73FA                 test    ah, 44h
+.text:006E73FD                 jp      short loc_6E741E
+.text:006E73FF                 fld     ds:_float_0
+.text:006E7405                 fld     [esp+20h+var_10]
+.text:006E7409                 fucompp
+.text:006E740B                 fnstsw  ax
+.text:006E740D                 test    ah, 44h
+.text:006E7410                 jp      short loc_6E741E
+.text:006E7412
+.text:006E7412 loc_6E7412:                             ; CODE XREF: eDisplayFrame(void)+1B1↑j
+.text:006E7412                 mov     byte_982B24, 0
+.text:006E7419                 jmp     loc_6E7525
+.text:006E741E ; ---------------------------------------------------------------------------
+.text:006E741E
+.text:006E741E loc_6E741E:                             ; CODE XREF: eDisplayFrame(void)+1DD↑j
+.text:006E741E                                         ; eDisplayFrame(void)+1F0↑j
+.text:006E741E                 fld     [esp+20h+var_C]
+.text:006E7422                 fcomp   ds:_float_0
+.text:006E7428                 fnstsw  ax
+.text:006E742A                 test    ah, 5
+.text:006E742D                 jp      short loc_6E7437
+.text:006E742F                 mov     [esp+20h+var_C], 0
+.text:006E7437
+.text:006E7437 loc_6E7437:                             ; CODE XREF: eDisplayFrame(void)+20D↑j
+.text:006E7437                 fld     [esp+20h+var_10]
+.text:006E743B                 fcomp   ds:_float_0
+.text:006E7441                 fnstsw  ax
+.text:006E7443                 test    ah, 5
+.text:006E7446                 jp      short loc_6E7450
+.text:006E7448                 mov     [esp+20h+var_10], 41000000h
+.text:006E7450
+.text:006E7450 loc_6E7450:                             ; CODE XREF: eDisplayFrame(void)+226↑j
+.text:006E7450                 mov     ecx, dword_93DE78
+.text:006E7456                 mov     byte_982B24, bl
+.text:006E745C                 mov     eax, [ecx+48h]
+.text:006E745F                 mov     ecx, [ecx+44h]
+.text:006E7462                 mov     ecx, [ecx+5C4h]
+.text:006E7468                 mov     edx, [eax]
+.text:006E746A                 push    3A800000h
+.text:006E746F                 push    ecx
+.text:006E7470                 push    eax
+.text:006E7471                 call    dword ptr [edx+78h]
+.text:006E7474                 fld     [esp+20h+var_10]
+.text:006E7478                 fmul    ds:flt_8B00C0
+.text:006E747E                 mov     ecx, dword_93DE78
+.text:006E7484                 mov     eax, [ecx+48h]
+.text:006E7487                 mov     ecx, [ecx+44h]
+.text:006E748A                 fstp    [esp+20h+var_4]
+.text:006E748E                 mov     ecx, [ecx+2F4h]
+.text:006E7494                 fld     [esp+20h+var_C]
+.text:006E7498                 mov     edx, [eax]
+.text:006E749A                 fmul    ds:flt_8A8DB4
+.text:006E74A0                 fstp    [esp+20h+var_8]
+.text:006E74A4                 fld     [esp+20h+var_10]
+.text:006E74A8                 fmul    ds:dbl_8B00B8
+.text:006E74AE                 fdivr   ds:_float_heat_1
+.text:006E74B4                 fstp    [esp+20h+var_C]
+.text:006E74B8                 mov     esi, [esp+20h+var_C]
+.text:006E74BC                 push    esi
+.text:006E74BD                 push    ecx
+.text:006E74BE                 push    eax
+.text:006E74BF                 call    dword ptr [edx+78h]
+.text:006E74C2                 fld     [esp+20h+var_8]
+.text:006E74C6                 fadd    [esp+20h+var_4]
+.text:006E74CA                 mov     ecx, dword_93DE78
+.text:006E74D0                 mov     eax, [ecx+48h]
+.text:006E74D3                 mov     edx, [eax]
+.text:006E74D5                 push    ecx
+.text:006E74D6                 mov     ecx, [ecx+44h]
+.text:006E74D9                 mov     ecx, [ecx+31Ch]
+.text:006E74DF                 fmul    [esp+24h+var_C]
+.text:006E74E3                 fchs
+.text:006E74E5                 fstp    [esp+24h+var_24]
+.text:006E74E8                 push    ecx
+.text:006E74E9                 push    eax
+.text:006E74EA                 call    dword ptr [edx+78h]
+.text:006E74ED                 fld     [esp+20h+var_8]
+.text:006E74F1                 fsub    [esp+20h+var_4]
+.text:006E74F5                 mov     ecx, dword_93DE78
+.text:006E74FB                 mov     eax, [ecx+48h]
+.text:006E74FE                 mov     edx, [eax]
+.text:006E7500                 push    ecx
+.text:006E7501                 mov     ecx, [ecx+44h]
+.text:006E7504                 mov     ecx, [ecx+344h]
+.text:006E750A                 fmul    [esp+24h+var_C]
+.text:006E750E                 fstp    [esp+24h+var_24]
+.text:006E7511                 push    ecx
+.text:006E7512                 push    eax
+.text:006E7513                 call    dword ptr [edx+78h]
+.text:006E7516                 mov     al, byte_982B24
+.text:006E751B                 test    al, al
+.text:006E751D                 mov     byte_982B25, bl
+.text:006E7523                 jnz     short loc_6E752C
+.text:006E7525
+.text:006E7525 loc_6E7525:                             ; CODE XREF: eDisplayFrame(void)+1F9↑j
+.text:006E7525                 mov     byte_982B25, 0
+.text:006E752C
+.text:006E752C loc_6E752C:                             ; CODE XREF: eDisplayFrame(void)+303↑j
+.text:006E752C                 mov     eax, dword_982BDC
+.text:006E7531                 mov     edx, [eax]
+.text:006E7533                 push    eax
+.text:006E7534                 call    dword ptr [edx+0Ch]
+.text:006E7537                 cmp     eax, 88760869h
+.text:006E753C                 jnz     short loc_6E7543
+.text:006E753E                 call    sub_6DB0D0
+.text:006E7543
+.text:006E7543 loc_6E7543:                             ; CODE XREF: eDisplayFrame(void)+31C↑j
+.text:006E7543                 cmp     eax, edi
+.text:006E7545                 jnz     short loc_6E75BD
+.text:006E7547
+.text:006E7547 loc_6E7547:                             ; DATA XREF: .rdata:off_8BDEF8↓o
+.text:006E7547                 mov     eax, dword_982BDC
+.text:006E754C                 mov     ecx, [eax]
+.text:006E754E                 push    eax
+.text:006E754F
+.text:006E754F loc_6E754F:
+.text:006E754F                 call    dword ptr [ecx+0A4h]
+.text:006E7555                 push    ebx
+.text:006E7556                 mov     dword_8FAE6C, 2
+.text:006E7560                 call    sub_6E6E40
+.text:006E7565                 add     esp, 4
+.text:006E7568                 call    sub_517A20
+.text:006E756D                 test    al, al
+.text:006E756F                 jnz     short loc_6E75A6
+.text:006E7571                 mov     esi, offset dword_919650
+.text:006E7576
+.text:006E7576 loc_6E7576:                             ; CODE XREF: eDisplayFrame(void)+36D↓j
+.text:006E7576                 mov     al, [esi+8]
+.text:006E7579                 test    al, al
+.text:006E757B                 jz      short loc_6E7584
+.text:006E757D                 mov     ecx, esi
+.text:006E757F                 call    sub_5029F0
+.text:006E7584
+.text:006E7584 loc_6E7584:                             ; CODE XREF: eDisplayFrame(void)+35B↑j
+.text:006E7584                 add     esi, 70h ; 'p'
+.text:006E7587                 cmp     esi, offset dword_919730
+.text:006E758D                 jle     short loc_6E7576
+.text:006E758F                 cmp     ExitTheGameFlag, edi
+.text:006E7595                 jnz     short loc_6E759C
+.text:006E7597                 call    sub_6CFCE0
+.text:006E759C
+.text:006E759C loc_6E759C:                             ; CODE XREF: eDisplayFrame(void)+375↑j
+.text:006E759C                 call    sub_6DE300
+.text:006E75A1                 call    sub_6C3870
+.text:006E75A6
+.text:006E75A6 loc_6E75A6:                             ; CODE XREF: eDisplayFrame(void)+34F↑j
+.text:006E75A6                 push    edi
+.text:006E75A7                 call    sub_6E6E40
+.text:006E75AC                 mov     eax, dword_982BDC
+.text:006E75B1                 mov     edx, [eax]
+.text:006E75B3                 add     esp, 4
+.text:006E75B6                 push    eax
+.text:006E75B7                 call    dword ptr [edx+0A8h]
+.text:006E75BD
+.text:006E75BD loc_6E75BD:                             ; CODE XREF: eDisplayFrame(void)+325↑j
+.text:006E75BD                 call    sub_6C6F00
+.text:006E75C2                 cmp     dword_982BF8, edi
+.text:006E75C8                 jz      short loc_6E75D9
+.text:006E75CA                 push    edi             ; char *
+.text:006E75CB                 call    sub_6C05E0
+.text:006E75D0                 add     esp, 4
+.text:006E75D3                 mov     dword_982BF8, edi
+.text:006E75D9
+.text:006E75D9 loc_6E75D9:                             ; CODE XREF: eDisplayFrame(void)+3A8↑j
+.text:006E75D9                 call    sub_6C0910
+.text:006E75DE                 mov     eax, dword_982BDC
+.text:006E75E3                 mov     ecx, [eax]
+.text:006E75E5                 push    edi
+.text:006E75E6                 push    edi
+.text:006E75E7                 push    edi
+.text:006E75E8                 push    edi
+.text:006E75E9                 push    eax
+.text:006E75EA                 call    dword ptr [ecx+44h]
+.text:006E75ED                 cmp     eax, 88760868h
+.text:006E75F2                 jnz     short loc_6E760B
+.text:006E75F4                 mov     eax, dword_982BDC
+.text:006E75F9                 mov     edx, [eax]
+.text:006E75FB                 push    eax
+.text:006E75FC                 call    dword ptr [edx+0Ch]
+.text:006E75FF                 cmp     eax, 88760869h
+.text:006E7604                 jnz     short loc_6E760B
+.text:006E7606                 call    sub_6DB0D0
+.text:006E760B
+.text:006E760B loc_6E760B:                             ; CODE XREF: eDisplayFrame(void)+3D2↑j
+.text:006E760B                                         ; eDisplayFrame(void)+3E4↑j
+.text:006E760B                 cmp     dword_9885C4, edi
+.text:006E7611                 jz      short loc_6E761E
+.text:006E7613                 call    nullsub_36
+.text:006E7618                 mov     dword_9885C4, edi
+.text:006E761E
+.text:006E761E loc_6E761E:                             ; CODE XREF: eDisplayFrame(void)+3F1↑j
+.text:006E761E                 call    nullsub_35
+.text:006E7623                 call    ePostDisplay__Fv ; ePostDisplay(void)
+.text:006E7628                 mov     eax, dword_982BDC
+.text:006E762D                 mov     ecx, [eax]
+.text:006E762F                 push    edi
+.text:006E7630                 push    3F800000h
+.text:006E7635                 push    edi
+.text:006E7636                 push    7
+.text:006E7638                 push    edi
+.text:006E7639                 push    edi
+.text:006E763A                 push    eax
+.text:006E763B                 call    dword ptr [ecx+0ACh]
+.text:006E7641                 call    sub_4FAD80
+.text:006E7646                 call    nullsub_9
+.text:006E764B                 mov     eax, eFrameCounter
+.text:006E7650                 inc     eax
+.text:006E7651                 mov     ecx, offset unk_987F50
+.text:006E7656                 mov     dword_982CA0, edi
+.text:006E765C                 mov     dword_982CA4, edi
+.text:006E7662                 mov     eFrameCounter, eax
+.text:006E7667                 call    sub_6C9C80
+.text:006E766C                 pop     edi
+.text:006E766D                 pop     esi
+.text:006E766E                 pop     ebp
+.text:006E766F                 pop     ebx
+.text:006E7670                 add     esp, 10h
+.text:006E7673                 retn
+.text:006E7673 eDisplayFrame__Fv endp
