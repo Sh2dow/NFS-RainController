@@ -14,13 +14,13 @@ using namespace ngg::common;
 
 static auto& g_precipitationConfig = RainConfigController::precipitationConfig;
 
-static D3DXMATRIX g_mwViewMatrix{};
-static bool g_mwViewValid = false;
+static D3DXMATRIX g_ViewMatrix{};
+static bool g_ViewValid = false;
 static D3DXMATRIX g_d3dViewMatrix{};
 static D3DXMATRIX g_d3dProjMatrix{};
 static bool g_d3dViewValid = false;
 static bool g_d3dProjValid = false;
-static void* g_mwActiveViewPtr = nullptr;
+static void* g_ActiveViewPtr = nullptr;
 static constexpr bool kRainDebug = false;
 
 static inline void RainDebugOut(const char* msg)
@@ -62,7 +62,7 @@ static bool IsProjectionLike(const D3DXMATRIX& m)
     return m.m[3][3] == 0.0f && m.m[2][3] != 0.0f;
 }
 
-static bool UseAltEViewMatricesMW()
+static bool UseAltEViewMatrices()
 {
     if (detected_game != GameType::MW)
         return false;
@@ -125,28 +125,28 @@ bool PrecipitationController::IsActive() const
 
 void PrecipitationController::UpdateViewMatrix(const D3DXMATRIX& view)
 {
-    g_mwViewMatrix = view;
-    g_mwViewValid = true;
+    g_ViewMatrix = view;
+    g_ViewValid = true;
 }
 
-void PrecipitationController::ResetMWViewMatrix()
+void PrecipitationController::ResetViewMatrix()
 {
-    g_mwViewValid = false;
-    g_mwViewMatrix = D3DXMATRIX{};
+    g_ViewValid = false;
+    g_ViewMatrix = D3DXMATRIX{};
 }
 
-bool PrecipitationController::GetMWViewMatrix(D3DXMATRIX& outView)
+bool PrecipitationController::GetViewMatrix(D3DXMATRIX& outView)
 {
-    if (!g_mwViewValid)
+    if (!g_ViewValid)
         return false;
-    outView = g_mwViewMatrix;
+    outView = g_ViewMatrix;
     return true;
 }
 
 void PrecipitationController::UpdateActiveViewPtr(void* viewPtr)
 {
     if (viewPtr && core::IsReadable(viewPtr, Game::EViewMatrixOffset1 + sizeof(D3DXMATRIX)))
-        g_mwActiveViewPtr = viewPtr;
+        g_ActiveViewPtr = viewPtr;
 }
 
 void PrecipitationController::UpdateD3DTransform(D3DTRANSFORMSTATETYPE state, const D3DMATRIX* mat)
@@ -184,7 +184,7 @@ bool PrecipitationController::GetD3DProj(D3DXMATRIX& proj)
     return true;
 }
 
-static bool GetRainMatricesMW(D3DXMATRIX& outView, D3DXMATRIX& outProj)
+static bool GetRainMatrices(D3DXMATRIX& outView, D3DXMATRIX& outProj)
 {
     auto* rain = *reinterpret_cast<void**>(Game::RainInstancePtr);
     if (!rain ||
@@ -224,7 +224,7 @@ static bool GetRainMatricesMW(D3DXMATRIX& outView, D3DXMATRIX& outProj)
     return true;
 }
 
-static bool GetViewFromEViewCameraMW(void* viewPtr, D3DXMATRIX& outView)
+static bool GetViewFromEViewCamera(void* viewPtr, D3DXMATRIX& outView)
 {
     if (!viewPtr ||
         !core::IsReadable(viewPtr, Game::EViewCameraParamsOffset + sizeof(void*)))
@@ -240,14 +240,14 @@ static bool GetViewFromEViewCameraMW(void* viewPtr, D3DXMATRIX& outView)
     return !IsIdentityMatrix(outView);
 }
 
-static bool GetEViewMatrixMW(D3DXMATRIX& outView)
+static bool GetEViewMatrix(D3DXMATRIX& outView)
 {
-    void* view = g_mwActiveViewPtr;
+    void* view = g_ActiveViewPtr;
     if (!view)
         view = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
     if (!view || !core::IsReadable(view, sizeof(D3DXMATRIX)))
         return false;
-    const uintptr_t offset = UseAltEViewMatricesMW()
+    const uintptr_t offset = UseAltEViewMatrices()
         ? Game::EViewMatrixOffset2
         : Game::EViewMatrixOffset0;
     auto* mat = reinterpret_cast<D3DXMATRIX*>(reinterpret_cast<uintptr_t>(view) + offset);
@@ -257,11 +257,11 @@ static bool GetEViewMatrixMW(D3DXMATRIX& outView)
     return true;
 }
 
-static bool GetProjFromEViewMatrixMW(void* viewPtr, D3DXMATRIX& outProj)
+static bool GetProjFromEViewMatrix(void* viewPtr, D3DXMATRIX& outProj)
 {
     if (!viewPtr || !core::IsReadable(viewPtr, sizeof(D3DXMATRIX)))
         return false;
-    const uintptr_t offset = UseAltEViewMatricesMW()
+    const uintptr_t offset = UseAltEViewMatrices()
         ? Game::EViewMatrixOffset3
         : Game::EViewMatrixOffset1;
     auto* mat = reinterpret_cast<D3DXMATRIX*>(reinterpret_cast<uintptr_t>(viewPtr) + offset);
@@ -383,7 +383,7 @@ static bool GetProjFromEView(void* eViewPtr, const D3DVIEWPORT9& vp, D3DXMATRIX&
     if (!logged && kRainDebug)
     {
         char buf[256];
-        sprintf_s(buf, "[RainDebug MW] eView proj params fov=%.3f near=%.3f far=%.3f\n", fovDeg, nearZ, farZ);
+        sprintf_s(buf, "[RainDebug] eView proj params fov=%.3f near=%.3f far=%.3f\n", fovDeg, nearZ, farZ);
         RainDebugOut(buf);
         logged = true;
     }
@@ -422,7 +422,7 @@ static bool GetProjFromCameraParams(void* cameraPtr, const D3DVIEWPORT9& vp, D3D
     if (!logged && kRainDebug)
     {
         char buf[256];
-        sprintf_s(buf, "[RainDebug MW] camera params fovRaw=%u fovDeg=%.3f fovRad=%.5f near=%.3f far=%.3f\n",
+        sprintf_s(buf, "[RainDebug] camera params fovRaw=%u fovDeg=%.3f fovRad=%.5f near=%.3f far=%.3f\n",
                   fovRaw, fovDeg, fovRad, nearZ, farZ);
         RainDebugOut(buf);
         logged = true;
@@ -542,7 +542,7 @@ static void DebugLogProjectOnce(const char* tag, const D3DVIEWPORT9& vp, const D
         return;
     logged = true;
     char buf[256];
-    sprintf_s(buf, "[RainDebug MW] %s world=(%.2f,%.2f,%.2f) screen=(%.2f,%.2f,%.2f)\n",
+    sprintf_s(buf, "[RainDebug] %s world=(%.2f,%.2f,%.2f) screen=(%.2f,%.2f,%.2f)\n",
               tag, world.x, world.y, world.z, screen.x, screen.y, screen.z);
     RainDebugOut(buf);
 }
@@ -551,7 +551,7 @@ static void* GetCameraPtrFromEView()
 {
     if (!kRainDebug)
     {
-        void* view = g_mwActiveViewPtr;
+        void* view = g_ActiveViewPtr;
         if (!view)
             view = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
         if (!view)
@@ -571,7 +571,7 @@ static void* GetCameraPtrFromEView()
         return cam;
     }
     static bool logged = false;
-    void* view = g_mwActiveViewPtr;
+    void* view = g_ActiveViewPtr;
     if (!view)
         view = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
     if (!view)
@@ -590,7 +590,7 @@ static void* GetCameraPtrFromEView()
     {
         char buf[256];
         sprintf_s(buf,
-                  "[RainDebug MW] eViewPtr=0x%08X camParams=0x%08X pCamera=0x%08X pCameraNorm=0x%08X\n",
+                  "[RainDebug] eViewPtr=0x%08X camParams=0x%08X pCamera=0x%08X pCameraNorm=0x%08X\n",
                   (unsigned)(uintptr_t)view, (unsigned)(uintptr_t)camParams,
                   (unsigned)(uintptr_t)camFallback, (unsigned)(uintptr_t)camNorm);
         RainDebugOut(buf);
@@ -603,7 +603,7 @@ static void* GetCameraPtrFromEView()
 
 static void* GetCameraParamsFromEView()
 {
-    void* view = g_mwActiveViewPtr;
+    void* view = g_ActiveViewPtr;
     if (!view)
         view = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
     if (!view)
@@ -634,7 +634,7 @@ static void DebugLogCameraPtrOnce(const char* tag, void* camPtr)
         return;
     logged = true;
     char buf[256];
-    sprintf_s(buf, "[RainDebug MW] %s cameraPtr=0x%08X\n", tag, (unsigned)(uintptr_t)camPtr);
+    sprintf_s(buf, "[RainDebug] %s cameraPtr=0x%08X\n", tag, (unsigned)(uintptr_t)camPtr);
     RainDebugOut(buf);
 }
 
@@ -650,7 +650,7 @@ static void DebugLogCameraPtrDetailsOnce(void* camPtr)
     if (VirtualQuery(camPtr, &mbi, sizeof(mbi)))
     {
         char buf[256];
-        sprintf_s(buf, "[RainDebug MW] cameraPtr mbi Base=0x%08X Protect=0x%X State=0x%X\n",
+        sprintf_s(buf, "[RainDebug] cameraPtr mbi Base=0x%08X Protect=0x%X State=0x%X\n",
                   (unsigned)(uintptr_t)mbi.BaseAddress, (unsigned)mbi.Protect, (unsigned)mbi.State);
         RainDebugOut(buf);
     }
@@ -668,7 +668,7 @@ static void DebugLogCameraPtrDetailsOnce2(const char* tag, void* camPtr)
     if (VirtualQuery(camPtr, &mbi, sizeof(mbi)))
     {
         char buf[256];
-        sprintf_s(buf, "[RainDebug MW] %s ptr=0x%08X Base=0x%08X Protect=0x%X State=0x%X\n",
+        sprintf_s(buf, "[RainDebug] %s ptr=0x%08X Base=0x%08X Protect=0x%X State=0x%X\n",
                   tag, (unsigned)(uintptr_t)camPtr, (unsigned)(uintptr_t)mbi.BaseAddress,
                   (unsigned)mbi.Protect, (unsigned)mbi.State);
         RainDebugOut(buf);
@@ -753,14 +753,14 @@ D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe()
 {
     if (detected_game == GameType::MW)
     {
-        void* viewPtr = g_mwActiveViewPtr;
+        void* viewPtr = g_ActiveViewPtr;
         if (!viewPtr)
             viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
         static bool loggedViewPtrOnce = false;
         if (!loggedViewPtrOnce)
         {
             char buf[256];
-            sprintf_s(buf, "[GetCameraPositionSafe] MW viewPtr=0x%08X\n", (unsigned)(uintptr_t)viewPtr);
+            sprintf_s(buf, "[GetCameraPositionSafe] viewPtr=0x%08X\n", (unsigned)(uintptr_t)viewPtr);
             RainDebugOut(buf);
             loggedViewPtrOnce = true;
         }
@@ -776,7 +776,7 @@ D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe()
         }
         else if (!loggedViewPtrOnce)
         {
-            RainDebugOut("[GetCameraPositionSafe] MW viewPtr unreadable\n");
+            RainDebugOut("[GetCameraPositionSafe] viewPtr unreadable\n");
             loggedViewPtrOnce = true;
         }
         if (m_device)
@@ -809,7 +809,7 @@ D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe()
             if (!loggedPtr)
             {
                 char buf[256];
-                sprintf_s(buf, "[RainDebug MW] eView entry=0x%08X active=%u camera=0x%08X\n",
+                sprintf_s(buf, "[RainDebug] eView entry=0x%08X active=%u camera=0x%08X\n",
                           (unsigned)(uintptr_t)view, (unsigned)active,
                           (unsigned)(uintptr_t)camera);
                 RainDebugOut(buf);
@@ -923,7 +923,7 @@ static bool GetViewProjFromCameraParams(void* cameraPtr, const D3DVIEWPORT9& vp,
     return true;
 }
 
-static bool GetMWRainVolumeBounds(D3DXVECTOR3& outMin, D3DXVECTOR3& outMax)
+static bool GetRainVolumeBounds(D3DXVECTOR3& outMin, D3DXVECTOR3& outMax)
 {
     auto* rain = *reinterpret_cast<void**>(Game::RainInstancePtr);
     if (!rain)
@@ -1063,7 +1063,7 @@ PrecipitationController::Drop3D PrecipitationController::RespawnDrop(const RainG
     if (detected_game == GameType::MW || detected_game == GameType::CB)
     {
         D3DXVECTOR3 mn{}, mx{};
-        if (GetMWRainVolumeBounds(mn, mx))
+        if (GetRainVolumeBounds(mn, mx))
         {
             float rx = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
             float ry = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
@@ -1227,7 +1227,7 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
         static bool loggedRender3DEntry = false;
         if (!loggedRender3DEntry)
         {
-            RainDebugOut("[RainDebug MW] Render3D entry\n");
+            RainDebugOut("[RainDebug] Render3D entry\n");
             loggedRender3DEntry = true;
         }
         renderEntryLogged = true;
@@ -1262,7 +1262,7 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
     bool loggedVP = false;
     bool transposeVP = false;
     void* camPtr = nullptr;
-    bool mwLocked = false;
+    bool locked = false;
     
     // Estimated camera position (replace this with actual camera lookup if possible)
     // D3DXVECTOR3 camPos(0, 0, 0); // TODO: Replace with real camera pos if found
@@ -1272,31 +1272,31 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
     
     if (detected_game == GameType::MW)
     {
-        void* viewPtr = g_mwActiveViewPtr;
+        void* viewPtr = g_ActiveViewPtr;
         if (!viewPtr)
             viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
         if (!viewPtr)
             return;
-        if (!GetViewFromEViewCameraMW(viewPtr, matView))
+        if (!GetViewFromEViewCamera(viewPtr, matView))
             return;
-        if (!GetProjFromEViewMatrixMW(viewPtr, matProj))
+        if (!GetProjFromEViewMatrix(viewPtr, matProj))
             return;
         hasProj = true;
-        mwLocked = true;
+        locked = true;
     }
 
-    if (!mwLocked && !usedRainMatrices &&
-        !GetEViewMatrixMW(matView) &&
-        !(g_precipitationConfig.useMWLookAtMatrix && PrecipitationController::GetMWViewMatrix(matView)))
+    if (!locked && !usedRainMatrices &&
+        !GetEViewMatrix(matView) &&
+        !(g_precipitationConfig.useLookAtMatrix && PrecipitationController::GetViewMatrix(matView)))
     {
         m_device->GetTransform(D3DTS_VIEW, &matView);
         DebugLogMatrixSourceOnce("D3DTS_VIEW fallback");
         DebugLogMatrixOnce("D3DTS_VIEW", matView);
     }
 
-    if (!hasProj && !mwLocked)
+    if (!hasProj && !locked)
     {
-        void* viewPtr = g_mwActiveViewPtr;
+        void* viewPtr = g_ActiveViewPtr;
         if (!viewPtr)
             viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
         void* camPtr = PrecipitationController::Get()->m_cameraPtr;
@@ -1456,7 +1456,7 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
         if (!loggedFirstDropPos)
         {
             char buf[256];
-            sprintf_s(buf, "[RainDebug MW] dropPos=(%.2f,%.2f,%.2f)\n",
+            sprintf_s(buf, "[RainDebug] dropPos=(%.2f,%.2f,%.2f)\n",
                       drop.position.x, drop.position.y, drop.position.z);
             RainDebugOut(buf);
             loggedFirstDropPos = true;
@@ -1489,7 +1489,7 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
                     if (okB)
                     {
                         char buf[256];
-                        sprintf_s(buf, "[RainDebug MW] Render3D VP alt screen=(%.2f,%.2f,%.2f)\n",
+                        sprintf_s(buf, "[RainDebug] Render3D VP alt screen=(%.2f,%.2f,%.2f)\n",
                                   screenAlt.x, screenAlt.y, screenAlt.z);
                         RainDebugOut(buf);
                     }
@@ -1594,7 +1594,7 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
         static bool loggedSplattersEntry = false;
         if (!loggedSplattersEntry)
         {
-            RainDebugOut("[RainDebug MW] Splatters entry\n");
+            RainDebugOut("[RainDebug] Splatters entry\n");
             loggedSplattersEntry = true;
         }
         splatEntryLogged = true;
@@ -1646,34 +1646,34 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
     D3DXMATRIX matViewProj{};
     bool loggedVP = false;
     bool transposeVP = false;
-    bool mwLocked = false;
+    bool locked = false;
     if (detected_game == GameType::MW)
     {
-        void* viewPtr = g_mwActiveViewPtr;
+        void* viewPtr = g_ActiveViewPtr;
         if (!viewPtr)
             viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
         if (!viewPtr)
             return;
-        if (!GetViewFromEViewCameraMW(viewPtr, matView))
+        if (!GetViewFromEViewCamera(viewPtr, matView))
             return;
-        if (!GetProjFromEViewMatrixMW(viewPtr, matProj))
+        if (!GetProjFromEViewMatrix(viewPtr, matProj))
             return;
         hasProj = true;
-        mwLocked = true;
+        locked = true;
     }
 
-    if (!mwLocked && !usedRainMatrices &&
-        !GetEViewMatrixMW(matView) &&
-        !(g_precipitationConfig.useMWLookAtMatrix && PrecipitationController::GetMWViewMatrix(matView)))
+    if (!locked && !usedRainMatrices &&
+        !GetEViewMatrix(matView) &&
+        !(g_precipitationConfig.useLookAtMatrix && PrecipitationController::GetViewMatrix(matView)))
     {
         m_device->GetTransform(D3DTS_VIEW, &matView);
         DebugLogMatrixSourceOnce("Splatters D3DTS_VIEW fallback");
         DebugLogMatrixOnce("Splatters D3DTS_VIEW", matView);
     }
 
-    if (!hasProj && !mwLocked)
+    if (!hasProj && !locked)
     {
-        void* viewPtr = g_mwActiveViewPtr;
+        void* viewPtr = g_ActiveViewPtr;
         if (!viewPtr)
             viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
         void* camPtr = NormalizeCameraPtr(PrecipitationController::Get()->m_cameraPtr);
@@ -1712,7 +1712,7 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
         if (hasProj)
             DebugLogMatrixNoGuard("Render3D final proj", matProj);
         char buf[128];
-        sprintf_s(buf, "[RainDebug MW] Render3D hasProj=%d drops=%zu\n", hasProj ? 1 : 0, m_drops3D.size());
+        sprintf_s(buf, "[RainDebug] Render3D hasProj=%d drops=%zu\n", hasProj ? 1 : 0, m_drops3D.size());
         RainDebugOut(buf);
         loggedFinal = true;
     }
@@ -1909,7 +1909,7 @@ void PrecipitationController::Update()
                 *fogPct = g_precipitationConfig.fogIntensity;
         }
 
-        PrecipitationController::ResetMWViewMatrix();
+        PrecipitationController::ResetViewMatrix();
         D3DXMATRIX view{};
         D3DXMATRIX proj{};
         bool hasView = false;
@@ -1921,7 +1921,7 @@ void PrecipitationController::Update()
             DebugLogCameraPtrOnce("Update", camPtr);
         if (g_precipitationConfig.preferHookedView)
         {
-            if (PrecipitationController::GetMWViewMatrix(view) && !IsIdentityMatrix(view))
+            if (PrecipitationController::GetViewMatrix(view) && !IsIdentityMatrix(view))
                 hasView = true;
             else if (PrecipitationController::GetD3DViewProj(view, proj))
             {
@@ -1934,10 +1934,10 @@ void PrecipitationController::Update()
             hasView = true;
             hasProj = true;
         }
-        if (!hasView && GetEViewMatrixMW(view))
+        if (!hasView && GetEViewMatrix(view))
         {
             hasView = true;
-            void* viewPtr = g_mwActiveViewPtr;
+            void* viewPtr = g_ActiveViewPtr;
             if (!viewPtr)
                 viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
             D3DVIEWPORT9 vp{};
@@ -1992,7 +1992,7 @@ void PrecipitationController::Update()
                     DebugLogMatrixSourceOnce("Update cameraPtr view");
                     DebugLogMatrixNoGuard("Update cameraPtr", view);
                 }
-                void* viewPtr = g_mwActiveViewPtr;
+                void* viewPtr = g_ActiveViewPtr;
                 if (!viewPtr)
                     viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
                 D3DVIEWPORT9 vp{};
@@ -2011,12 +2011,12 @@ void PrecipitationController::Update()
                 }
             }
         }
-        if (!hasView && g_precipitationConfig.useMWLookAtMatrix && PrecipitationController::GetMWViewMatrix(view))
+        if (!hasView && g_precipitationConfig.useLookAtMatrix && PrecipitationController::GetViewMatrix(view))
         {
             hasView = true;
             hasProj = PrecipitationController::GetD3DProj(proj);
         }
-        if (!hasView && GetRainMatricesMW(view, proj))
+        if (!hasView && GetRainMatrices(view, proj))
         {
             hasView = true;
             hasProj = true;
@@ -2034,7 +2034,7 @@ void PrecipitationController::Update()
                 loggedUpdateMatrix = true;
             }
             // Always try eView projection in MW if available
-            void* viewPtr = g_mwActiveViewPtr;
+            void* viewPtr = g_ActiveViewPtr;
             if (!viewPtr)
                 viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
             D3DVIEWPORT9 vp{};
@@ -2079,7 +2079,7 @@ void PrecipitationController::Update()
                 if (!loggedCamPosFromView)
                 {
                     char buf[128];
-                    sprintf_s(buf, "[RainDebug MW] camPosFromView=(%.2f,%.2f,%.2f)\n",
+                    sprintf_s(buf, "[RainDebug] camPosFromView=(%.2f,%.2f,%.2f)\n",
                               camPos.x, camPos.y, camPos.z);
                     RainDebugOut(buf);
                     loggedCamPosFromView = true;

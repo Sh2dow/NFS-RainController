@@ -85,7 +85,7 @@ namespace ngg::common::RainConfigController
         float occlusionZone_ZMax;
 
         int rainMatrixMode;
-        int useMWLookAtMatrix;
+        int useLookAtMatrix;
         int preferHookedView;
     } precipitationConfig{};
 }

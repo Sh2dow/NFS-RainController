@@ -90,7 +90,7 @@ void RainConfigController::Load()
     precipitationConfig.occlusionZone_ZMax = iniReader.ReadFloat("OcclusionZone", "ZMax", 0.0f);
 
     precipitationConfig.rainMatrixMode = iniReader.ReadInteger("Precipitation", "RainMatrixMode", 0);
-    precipitationConfig.useMWLookAtMatrix = iniReader.ReadInteger("Precipitation", "UseMWLookAtMatrix", 0);
+    precipitationConfig.useLookAtMatrix = iniReader.ReadInteger("Precipitation", "UseMWLookAtMatrix", 0);
     precipitationConfig.preferHookedView = iniReader.ReadInteger("Precipitation", "PreferHookedView", 0);
 
 #ifdef _DEBUG

@@ -50,8 +50,8 @@ public:
     bool IsActive() const;
 
     static void UpdateViewMatrix(const D3DXMATRIX& view);
-    static void ResetMWViewMatrix();
-    static bool GetMWViewMatrix(D3DXMATRIX& outView);
+    static void ResetViewMatrix();
+    static bool GetViewMatrix(D3DXMATRIX& outView);
     static void UpdateActiveViewPtr(void* viewPtr);
 
 private:

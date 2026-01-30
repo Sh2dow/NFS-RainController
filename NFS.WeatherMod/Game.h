@@ -68,9 +68,9 @@ namespace Game
     inline uintptr_t RainTickAddr = 0;
     
     using RainTick_t = void(__thiscall*)(void*);
-    static RainTick_t g_originalRainTick = reinterpret_cast<RainTick_t>(Game::RainTick);
+    inline RainTick_t g_originalRainTick = nullptr;
     using RainRender_t = void(__thiscall*)(void*);
-    static RainRender_t g_originalRainRender = reinterpret_cast<RainRender_t>(Game::RainRender);
+    inline RainRender_t g_originalRainRender = nullptr;
     
     inline void Init(GameType type)
     {
@@ -116,6 +116,9 @@ namespace Game
             renderCtxAddr = MW::renderCtxAddr;
             particleCtxAddr = MW::particleCtxAddr;
             RainTickAddr = MW::RainTickAddr;
+            
+            g_originalRainTick   = reinterpret_cast<RainTick_t>(RainTick);
+            g_originalRainRender = reinterpret_cast<RainRender_t>(RainRender);
             
             break;
         case GameType::CB:
