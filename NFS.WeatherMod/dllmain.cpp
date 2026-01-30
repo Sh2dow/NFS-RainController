@@ -10,8 +10,6 @@
 #include "core.h"
 #include "PrecipitationController.h"
 #include "RainConfigController.h"
-#include "WeatherGameAddresses.h"
-#include "NFSMW_PreFEngHook.h"
 #include "injector/injector.hpp"
 #include <cstdio>
 #include "minhook/include/MinHook.h"
@@ -33,12 +31,8 @@ using BuildRenderView_t = int(__cdecl*)(void* a0, int a4, int a8);
 static BuildRenderView_t g_originalBuildRenderView = nullptr;
 using BuildRenderMatrix_t = void(__cdecl*)(void* outMat, void* inMat);
 static BuildRenderMatrix_t g_originalBuildRenderMatrix = nullptr;
-using DisplayFrameMW_t = void(__cdecl*)();
-static DisplayFrameMW_t g_originalDisplayFrameMW = nullptr;
-using RainTick_t = void(__thiscall*)(void*);
-static RainTick_t g_originalRainTickMW = reinterpret_cast<RainTick_t>(WeatherGameAddresses::RainTick_MW);
-using RainRender_t = void(__thiscall*)(void*);
-static RainRender_t g_originalRainRenderMW = reinterpret_cast<RainRender_t>(WeatherGameAddresses::RainRender_MW);
+using DisplayFrame_t = void(__cdecl*)();
+static DisplayFrame_t g_originalDisplayFrame = nullptr;
 
 static IDirect3DDevice9* GetGameDevice()
 {
@@ -51,7 +45,7 @@ static IDirect3DDevice9* GetGameDevice()
     return *devicePtr;
 }
 
-static void __fastcall HookedRainTickMW(void* ecx, void* edx)
+static void __fastcall HookedRainTick(void* ecx, void* edx)
 {
     (void)edx;
     static bool logged = false;
@@ -60,8 +54,8 @@ static void __fastcall HookedRainTickMW(void* ecx, void* edx)
         if (RainConfigController::precipitationConfig.enable3DRain ||
             RainConfigController::precipitationConfig.enable3DSplatters)
         {
-            auto* rainEnable = reinterpret_cast<int*>(WeatherGameAddresses::RainEnablePtr_MW);
-            auto* particleEnable = reinterpret_cast<int*>(WeatherGameAddresses::ParticleSystemEnablePtr_MW);
+            auto* rainEnable = reinterpret_cast<int*>(Game::RainEnablePtr);
+            auto* particleEnable = reinterpret_cast<int*>(Game::ParticleSystemEnablePtr);
             if (core::IsReadable(rainEnable, sizeof(int)))
                 *rainEnable = 1;
             if (core::IsReadable(particleEnable, sizeof(int)))
@@ -85,18 +79,18 @@ static void __fastcall HookedRainTickMW(void* ecx, void* edx)
     }
     if (!logged)
     {
-        OutputDebugStringA("[RainDebug MW] HookedRainTickMW called\n");
+        OutputDebugStringA("[RainDebug] HookedRainTick called\n");
         logged = true;
     }
     // Avoid running tick when render context is not set (dword_982C80 == 0).
-    auto* renderCtx = reinterpret_cast<void*>(0x00982C80);
+    auto* renderCtx = reinterpret_cast<void*>(Game::renderCtxAddr);
     if (!core::IsReadable(renderCtx, sizeof(void*)) || !*reinterpret_cast<void**>(renderCtx))
         return;
-    if (g_originalRainTickMW)
-        g_originalRainTickMW(ecx);
+    if (Game::g_originalRainTick)
+        Game::g_originalRainTick(ecx);
 }
 
-static void __fastcall HookedRainRenderMW(void* ecx, void* edx)
+static void __fastcall HookedRainRender(void* ecx, void* edx)
 {
     (void)edx;
     static bool logged = false;
@@ -122,7 +116,7 @@ static void __fastcall HookedRainRenderMW(void* ecx, void* edx)
         if (core::IsReadable(reinterpret_cast<void*>(MW::GAMEFLOWMGR_STATUS_ADDR), sizeof(int)))
             gameFlowStatus = *reinterpret_cast<int*>(MW::GAMEFLOWMGR_STATUS_ADDR);
         std::snprintf(buf, sizeof(buf),
-                      "[RainDebug MW] HookedRainRenderMW called precipEnable=%d precipRender=%d precipPct=%.2f rainPct=%.2f gameFlow=%d gameFlowStatus=%d\n",
+                      "[RainDebug] HookedRainRender called precipEnable=%d precipRender=%d precipPct=%.2f rainPct=%.2f gameFlow=%d gameFlowStatus=%d\n",
                       precipEnable, precipRender, precipPercent, rainPercent, gameFlow, gameFlowStatus);
         OutputDebugStringA(buf);
 
@@ -131,7 +125,7 @@ static void __fastcall HookedRainRenderMW(void* ecx, void* edx)
             void* p284 = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(ecx) + 0x284);
             void* p288 = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(ecx) + 0x288);
             std::snprintf(buf, sizeof(buf),
-                          "[RainDebug MW] Rain instance ptr=0x%p p284=0x%p p288=0x%p\n",
+                          "[RainDebug] Rain instance ptr=0x%p p284=0x%p p288=0x%p\n",
                           ecx, p284, p288);
             OutputDebugStringA(buf);
 
@@ -141,14 +135,14 @@ static void __fastcall HookedRainRenderMW(void* ecx, void* edx)
                 if (viewPlat)
                 {
                     *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(ecx) + 0x284) = viewPlat;
-                    OutputDebugStringA("[RainDebug MW] Patched Rain::mPtr284 = *(eView+0x44) (viewPlat)\n");
+                    OutputDebugStringA("[RainDebug] Patched Rain::mPtr284 = *(eView+0x44) (viewPlat)\n");
                 }
             }
         }
         logged = true;
     }
     // Avoid crashing when render context is not set (dword_982C80 == 0).
-    auto* renderCtx = reinterpret_cast<void*>(0x00982C80);
+    auto* renderCtx = reinterpret_cast<void*>(Game::renderCtxAddr);
     void* ctxVal = nullptr;
     if (core::IsReadable(renderCtx, sizeof(void*)))
         ctxVal = *reinterpret_cast<void**>(renderCtx);
@@ -156,7 +150,7 @@ static void __fastcall HookedRainRenderMW(void* ecx, void* edx)
     // If render context is missing, try to seed it from particle system context.
     if (!ctxVal)
     {
-        auto* particleCtx = reinterpret_cast<void*>(0x0093DEC0);
+        auto* particleCtx = reinterpret_cast<void*>(Game::particleCtxAddr);
         if (core::IsReadable(particleCtx, sizeof(void*)) && *reinterpret_cast<void**>(particleCtx))
         {
             *reinterpret_cast<void**>(renderCtx) = *reinterpret_cast<void**>(particleCtx);
@@ -164,15 +158,15 @@ static void __fastcall HookedRainRenderMW(void* ecx, void* edx)
         }
     }
 
-    if (ctxVal && g_originalRainRenderMW)
-        g_originalRainRenderMW(ecx);
+    if (ctxVal && Game::g_originalRainRender)
+        Game::g_originalRainRender(ecx);
 }
 
 // Forward declarations for per-frame logic
 static void OnFrameUpdate();
 static void HandleRainToggle();
 
-static void __cdecl HookedDisplayFrameMW()
+static void __cdecl HookedDisplayFrame()
 {
     // Get device from game global pointer each frame
     IDirect3DDevice9* device = GetGameDevice();
@@ -192,8 +186,8 @@ static void __cdecl HookedDisplayFrameMW()
     if (RainConfigController::precipitationConfig.enable3DRain ||
         RainConfigController::precipitationConfig.enable3DSplatters)
     {
-        auto* rainEnable = reinterpret_cast<int*>(WeatherGameAddresses::RainEnablePtr_MW);
-        auto* particleEnable = reinterpret_cast<int*>(WeatherGameAddresses::ParticleSystemEnablePtr_MW);
+        auto* rainEnable = reinterpret_cast<int*>(Game::RainEnablePtr);
+        auto* particleEnable = reinterpret_cast<int*>(Game::ParticleSystemEnablePtr);
         if (core::IsReadable(rainEnable, sizeof(int)))
             *rainEnable = 1;
         if (core::IsReadable(particleEnable, sizeof(int)))
@@ -208,8 +202,8 @@ static void __cdecl HookedDisplayFrameMW()
             *precipPercent = 1.0f;
     }
 
-    if (g_originalDisplayFrameMW)
-        g_originalDisplayFrameMW();
+    if (g_originalDisplayFrame)
+        g_originalDisplayFrame();
 }
 
 static void __cdecl HookedCreateLookAt(Mat4* mat, Vec3* eye, Vec3* center, Vec3* up)
@@ -222,10 +216,10 @@ static void __cdecl HookedCreateLookAt(Mat4* mat, Vec3* eye, Vec3* center, Vec3*
     {
         D3DXMATRIX view{};
         std::memcpy(&view, mat, sizeof(D3DXMATRIX));
-        PrecipitationController::UpdateMWViewMatrix(view);
+        PrecipitationController::UpdateViewMatrix(view);
         if (!logged)
         {
-            OutputDebugStringA("[RainDebug MW] HookedCreateLookAt fired\n");
+            OutputDebugStringA("[RainDebug] HookedCreateLookAt fired\n");
             logged = true;
         }
     }
@@ -239,7 +233,7 @@ static int __fastcall HookedBuildView(void* viewObj, void* edx, int a0, float a4
         D3DXMATRIX view{};
         std::memcpy(&view, reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(viewObj) + 0x80),
                     sizeof(D3DXMATRIX));
-        PrecipitationController::UpdateMWViewMatrix(view);
+        PrecipitationController::UpdateViewMatrix(view);
     }
     return result;
 }
@@ -249,12 +243,12 @@ static int __cdecl HookedBuildRenderView(void* a0, int a4, int a8)
     if (a0 && core::IsReadable(a0, 8))
     {
         int viewIndex = *reinterpret_cast<int*>(reinterpret_cast<uintptr_t>(a0) + 4);
-        if (viewIndex >= 0 && viewIndex < static_cast<int>(WeatherGameAddresses::EViewArrayCount_MW))
+        if (viewIndex >= 0 && viewIndex < static_cast<int>(Game::EViewArrayCount))
         {
-            uintptr_t entry = WeatherGameAddresses::EViewArrayBase_MW +
-                static_cast<uintptr_t>(viewIndex) * WeatherGameAddresses::EViewSize_MW;
-            if (core::IsReadable(reinterpret_cast<void*>(entry), WeatherGameAddresses::EViewCameraOffset_MW + sizeof(void*)))
-                PrecipitationController::UpdateMWActiveViewPtr(reinterpret_cast<void*>(entry));
+            uintptr_t entry = Game::EViewArrayBase +
+                static_cast<uintptr_t>(viewIndex) * Game::EViewSize;
+            if (core::IsReadable(reinterpret_cast<void*>(entry), Game::EViewCameraOffset + sizeof(void*)))
+                PrecipitationController::UpdateActiveViewPtr(reinterpret_cast<void*>(entry));
         }
     }
     return g_originalBuildRenderView ? g_originalBuildRenderView(a0, a4, a8) : 0;
@@ -270,10 +264,10 @@ static void __cdecl HookedBuildRenderMatrix(void* outMat, void* inMat)
     {
         D3DXMATRIX view{};
         std::memcpy(&view, outMat, sizeof(D3DXMATRIX));
-        PrecipitationController::UpdateMWViewMatrix(view);
+        PrecipitationController::UpdateViewMatrix(view);
         if (!logged)
         {
-            OutputDebugStringA("[RainDebug MW] HookedBuildRenderMatrix fired\n");
+            OutputDebugStringA("[RainDebug] HookedBuildRenderMatrix fired\n");
             logged = true;
         }
     }
@@ -283,18 +277,6 @@ static bool InitMinHook()
 {
     MH_STATUS status = MH_Initialize();
     return status == MH_OK || status == MH_ERROR_ALREADY_INITIALIZED;
-}
-
-static uintptr_t GetFeManagerInstanceAddress()
-{
-    switch (detected_game)
-    {
-    case GameType::PS: return WeatherGameAddresses::FeManagerInstance_PS;
-    case GameType::UC: return WeatherGameAddresses::FeManagerInstance_UC;
-    case GameType::CB: return WeatherGameAddresses::FeManagerInstance_CB;
-    case GameType::MW: return WeatherGameAddresses::FeManagerInstance_MW;
-    default: return 0;
-    }
 }
 
 static void SetupFeatures()
@@ -344,7 +326,7 @@ static void InitializeWeather()
 
 static bool IsWeatherInitReady()
 {
-    uintptr_t feAddr = GetFeManagerInstanceAddress();
+    uintptr_t feAddr = Game::FEMANAGER_INSTANCE_ADDR;
     if (feAddr)
     {
         auto* feManager = *reinterpret_cast<void**>(feAddr);
@@ -415,7 +397,7 @@ static void HandleRainToggle()
         if (detected_game == GameType::MW)
         {
             PrecipitationController::Get()->enable();
-            OutputDebugStringA("[RainToggle] Rain enabled (MW)\n");
+            OutputDebugStringA("[RainToggle] Rain enabled\n");
             rainEnabled = true;
             lastKeyState = keyPressed;
             return;
@@ -491,44 +473,44 @@ DWORD WINAPI MainThread(void*)
         if (InitMinHook())
         {
             MH_CreateHook(
-                reinterpret_cast<void*>(WeatherGameAddresses::CreateLookAtAddr_MW),
+                reinterpret_cast<void*>(Game::CreateLookAtAddr),
                 &HookedCreateLookAt,
                 reinterpret_cast<void**>(&g_originalCreateLookAt));
-            MH_EnableHook(reinterpret_cast<void*>(WeatherGameAddresses::CreateLookAtAddr_MW));
+            MH_EnableHook(reinterpret_cast<void*>(Game::CreateLookAtAddr));
 
             MH_CreateHook(
-                reinterpret_cast<void*>(WeatherGameAddresses::BuildViewMatrixAddr_MW),
+                reinterpret_cast<void*>(Game::BuildViewMatrixAddr),
                 &HookedBuildView,
                 reinterpret_cast<void**>(&g_originalBuildView));
-            MH_EnableHook(reinterpret_cast<void*>(WeatherGameAddresses::BuildViewMatrixAddr_MW));
+            MH_EnableHook(reinterpret_cast<void*>(Game::BuildViewMatrixAddr));
 
             MH_CreateHook(
-                reinterpret_cast<void*>(WeatherGameAddresses::BuildRenderViewAddr_MW),
+                reinterpret_cast<void*>(Game::BuildRenderViewAddr),
                 &HookedBuildRenderView,
                 reinterpret_cast<void**>(&g_originalBuildRenderView));
-            MH_EnableHook(reinterpret_cast<void*>(WeatherGameAddresses::BuildRenderViewAddr_MW));
+            MH_EnableHook(reinterpret_cast<void*>(Game::BuildRenderViewAddr));
 
             MH_CreateHook(
-                reinterpret_cast<void*>(WeatherGameAddresses::BuildRenderMatrixAddr_MW),
+                reinterpret_cast<void*>(Game::BuildRenderMatrixAddr),
                 &HookedBuildRenderMatrix,
                 reinterpret_cast<void**>(&g_originalBuildRenderMatrix));
-            MH_EnableHook(reinterpret_cast<void*>(WeatherGameAddresses::BuildRenderMatrixAddr_MW));
+            MH_EnableHook(reinterpret_cast<void*>(Game::BuildRenderMatrixAddr));
 
             MH_CreateHook(
-                reinterpret_cast<void*>(0x006DE300),
-                &HookedDisplayFrameMW,
-                reinterpret_cast<void**>(&g_originalDisplayFrameMW));
-            MH_EnableHook(reinterpret_cast<void*>(0x006DE300));
+                reinterpret_cast<void*>(Game::eDisplayFrameAddr),
+                &HookedDisplayFrame,
+                reinterpret_cast<void**>(&g_originalDisplayFrame));
+            MH_EnableHook(reinterpret_cast<void*>(Game::eDisplayFrameAddr));
 
-            injector::MakeCALL(0x006DF545, HookedRainTickMW, true);
+            injector::MakeCALL(Game::RainTickAddr, HookedRainTick, true);
 
             MH_CreateHook(
-                reinterpret_cast<void*>(WeatherGameAddresses::RainRender_MW),
-                &HookedRainRenderMW,
-                reinterpret_cast<void**>(&g_originalRainRenderMW));
-            MH_EnableHook(reinterpret_cast<void*>(WeatherGameAddresses::RainRender_MW));
+                reinterpret_cast<void*>(Game::RainRender),
+                &HookedRainRender,
+                reinterpret_cast<void**>(&Game::g_originalRainRender));
+            MH_EnableHook(reinterpret_cast<void*>(Game::RainRender));
 
-            OutputDebugStringA("[MainThread] MW hooks installed (no D3D9 Present hook)\n");
+            OutputDebugStringA("[WeatherMod MainThread] hooks installed (no D3D9 Present hook)\n");
         }
     }
 

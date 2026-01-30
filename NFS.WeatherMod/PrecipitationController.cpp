@@ -8,7 +8,6 @@
 #include "Hooking.Patterns.h"
 #include "PerlinNoise.h"
 #include "Game.h"
-#include "WeatherGameAddresses.h"
 #include "NFSMW_PreFEngHook.h"
 
 using namespace ngg::common;
@@ -67,7 +66,7 @@ static bool UseAltEViewMatricesMW()
 {
     if (detected_game != GameType::MW)
         return false;
-    auto* flagPtr = reinterpret_cast<const unsigned char*>(WeatherGameAddresses::EViewAltMatrixFlagPtr_MW);
+    auto* flagPtr = reinterpret_cast<const unsigned char*>(Game::EViewAltMatrixFlagPtr);
     if (!core::IsReadable(const_cast<unsigned char*>(flagPtr), sizeof(unsigned char)))
         return false;
     const unsigned char* inst = *reinterpret_cast<const unsigned char* const*>(flagPtr);
@@ -105,7 +104,7 @@ static void* NormalizeCameraPtr(void* camPtr)
 
 static inline float GetUpCoord(const D3DXVECTOR3& v)
 {
-    // MW/Carbon are Z-up; ProStreet/Undercover are Y-up.
+    // MW/CB are Z-up; ProStreet/Undercover are Y-up.
     if (detected_game == GameType::MW || detected_game == GameType::CB)
         return v.z;
     return v.y;
@@ -124,7 +123,7 @@ bool PrecipitationController::IsActive() const
     return m_active;
 }
 
-void PrecipitationController::UpdateMWViewMatrix(const D3DXMATRIX& view)
+void PrecipitationController::UpdateViewMatrix(const D3DXMATRIX& view)
 {
     g_mwViewMatrix = view;
     g_mwViewValid = true;
@@ -144,9 +143,9 @@ bool PrecipitationController::GetMWViewMatrix(D3DXMATRIX& outView)
     return true;
 }
 
-void PrecipitationController::UpdateMWActiveViewPtr(void* viewPtr)
+void PrecipitationController::UpdateActiveViewPtr(void* viewPtr)
 {
-    if (viewPtr && core::IsReadable(viewPtr, WeatherGameAddresses::EViewMatrixOffset1_MW + sizeof(D3DXMATRIX)))
+    if (viewPtr && core::IsReadable(viewPtr, Game::EViewMatrixOffset1 + sizeof(D3DXMATRIX)))
         g_mwActiveViewPtr = viewPtr;
 }
 
@@ -187,15 +186,15 @@ bool PrecipitationController::GetD3DProj(D3DXMATRIX& proj)
 
 static bool GetRainMatricesMW(D3DXMATRIX& outView, D3DXMATRIX& outProj)
 {
-    auto* rain = *reinterpret_cast<void**>(WeatherGameAddresses::RainInstancePtr_MW);
+    auto* rain = *reinterpret_cast<void**>(Game::RainInstancePtr);
     if (!rain ||
-        !core::IsReadable(rain, WeatherGameAddresses::RainProjMatrixOffset_MW + sizeof(D3DXMATRIX)))
+        !core::IsReadable(rain, Game::RainProjMatrixOffset + sizeof(D3DXMATRIX)))
         return false;
 
     D3DXMATRIX viewRaw = *reinterpret_cast<D3DXMATRIX*>(
-        reinterpret_cast<uintptr_t>(rain) + WeatherGameAddresses::RainViewMatrixOffset_MW);
+        reinterpret_cast<uintptr_t>(rain) + Game::RainViewMatrixOffset);
     D3DXMATRIX projRaw = *reinterpret_cast<D3DXMATRIX*>(
-        reinterpret_cast<uintptr_t>(rain) + WeatherGameAddresses::RainProjMatrixOffset_MW);
+        reinterpret_cast<uintptr_t>(rain) + Game::RainProjMatrixOffset);
 
     switch (g_precipitationConfig.rainMatrixMode)
     {
@@ -228,10 +227,10 @@ static bool GetRainMatricesMW(D3DXMATRIX& outView, D3DXMATRIX& outProj)
 static bool GetViewFromEViewCameraMW(void* viewPtr, D3DXMATRIX& outView)
 {
     if (!viewPtr ||
-        !core::IsReadable(viewPtr, WeatherGameAddresses::EViewCameraParamsOffset_MW + sizeof(void*)))
+        !core::IsReadable(viewPtr, Game::EViewCameraParamsOffset + sizeof(void*)))
         return false;
     void* cam = *reinterpret_cast<void**>(
-        reinterpret_cast<uintptr_t>(viewPtr) + WeatherGameAddresses::EViewCameraParamsOffset_MW);
+        reinterpret_cast<uintptr_t>(viewPtr) + Game::EViewCameraParamsOffset);
     if (!cam)
         return false;
     auto* mat = reinterpret_cast<D3DXMATRIX*>(reinterpret_cast<uintptr_t>(cam) + 0x50);
@@ -245,12 +244,12 @@ static bool GetEViewMatrixMW(D3DXMATRIX& outView)
 {
     void* view = g_mwActiveViewPtr;
     if (!view)
-        view = *reinterpret_cast<void**>(WeatherGameAddresses::EViewCurrentPtr_MW);
+        view = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
     if (!view || !core::IsReadable(view, sizeof(D3DXMATRIX)))
         return false;
     const uintptr_t offset = UseAltEViewMatricesMW()
-        ? WeatherGameAddresses::EViewMatrixOffset2_MW
-        : WeatherGameAddresses::EViewMatrixOffset0_MW;
+        ? Game::EViewMatrixOffset2
+        : Game::EViewMatrixOffset0;
     auto* mat = reinterpret_cast<D3DXMATRIX*>(reinterpret_cast<uintptr_t>(view) + offset);
     if (!core::IsReadable(mat, sizeof(D3DXMATRIX)))
         return false;
@@ -263,8 +262,8 @@ static bool GetProjFromEViewMatrixMW(void* viewPtr, D3DXMATRIX& outProj)
     if (!viewPtr || !core::IsReadable(viewPtr, sizeof(D3DXMATRIX)))
         return false;
     const uintptr_t offset = UseAltEViewMatricesMW()
-        ? WeatherGameAddresses::EViewMatrixOffset3_MW
-        : WeatherGameAddresses::EViewMatrixOffset1_MW;
+        ? Game::EViewMatrixOffset3
+        : Game::EViewMatrixOffset1;
     auto* mat = reinterpret_cast<D3DXMATRIX*>(reinterpret_cast<uintptr_t>(viewPtr) + offset);
     if (!core::IsReadable(mat, sizeof(D3DXMATRIX)))
         return false;
@@ -344,7 +343,7 @@ static bool GetViewFromCameraParams(void* cameraPtr, D3DXMATRIX& outView)
     if (!readVec3(0x00, right) ||
         !readVec3(0x10, up) ||
         !readVec3(0x20, back) ||
-        !readVec3(WeatherGameAddresses::CameraPositionOffset_MW, pos))
+        !readVec3(Game::CameraPositionOffset, pos))
         return false;
 
     if (D3DXVec3LengthSq(&right) < 0.0001f ||
@@ -554,17 +553,17 @@ static void* GetCameraPtrFromEView()
     {
         void* view = g_mwActiveViewPtr;
         if (!view)
-            view = *reinterpret_cast<void**>(WeatherGameAddresses::EViewCurrentPtr_MW);
+            view = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
         if (!view)
             return nullptr;
-        if (!core::IsReadable(view, WeatherGameAddresses::EViewCameraParamsOffset_MW + sizeof(void*)))
+        if (!core::IsReadable(view, Game::EViewCameraParamsOffset + sizeof(void*)))
             return nullptr;
         void* camParams = *reinterpret_cast<void**>(
-            reinterpret_cast<uintptr_t>(view) + WeatherGameAddresses::EViewCameraParamsOffset_MW);
+            reinterpret_cast<uintptr_t>(view) + Game::EViewCameraParamsOffset);
         if (!camParams)
             return nullptr;
         void* camFallback = *reinterpret_cast<void**>(
-            reinterpret_cast<uintptr_t>(view) + WeatherGameAddresses::EViewCameraOffset_MW);
+            reinterpret_cast<uintptr_t>(view) + Game::EViewCameraOffset);
         void* cam = camParams ? camParams : camFallback;
         void* camNorm = NormalizeCameraPtr(cam);
         if (core::IsReadable(camNorm, sizeof(void*)))
@@ -574,17 +573,17 @@ static void* GetCameraPtrFromEView()
     static bool logged = false;
     void* view = g_mwActiveViewPtr;
     if (!view)
-        view = *reinterpret_cast<void**>(WeatherGameAddresses::EViewCurrentPtr_MW);
+        view = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
     if (!view)
         return nullptr;
-    if (!core::IsReadable(view, WeatherGameAddresses::EViewCameraParamsOffset_MW + sizeof(void*)))
+    if (!core::IsReadable(view, Game::EViewCameraParamsOffset + sizeof(void*)))
         return nullptr;
     void* camParams = *reinterpret_cast<void**>(
-        reinterpret_cast<uintptr_t>(view) + WeatherGameAddresses::EViewCameraParamsOffset_MW);
+        reinterpret_cast<uintptr_t>(view) + Game::EViewCameraParamsOffset);
     if (!camParams)
         return nullptr;
     void* camFallback = *reinterpret_cast<void**>(
-        reinterpret_cast<uintptr_t>(view) + WeatherGameAddresses::EViewCameraOffset_MW);
+        reinterpret_cast<uintptr_t>(view) + Game::EViewCameraOffset);
     void* cam = camParams ? camParams : camFallback;
     void* camNorm = NormalizeCameraPtr(cam);
     if (!logged)
@@ -606,24 +605,24 @@ static void* GetCameraParamsFromEView()
 {
     void* view = g_mwActiveViewPtr;
     if (!view)
-        view = *reinterpret_cast<void**>(WeatherGameAddresses::EViewCurrentPtr_MW);
+        view = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
     if (!view)
         return nullptr;
     void* viewObj = view;
-    if (!core::IsReadable(viewObj, WeatherGameAddresses::EViewCameraParamsOffset_MW + sizeof(void*)))
+    if (!core::IsReadable(viewObj, Game::EViewCameraParamsOffset + sizeof(void*)))
     {
         if (core::IsReadable(viewObj, sizeof(void*)))
         {
             void* indirect = *reinterpret_cast<void**>(viewObj);
             if (indirect &&
-                core::IsReadable(indirect, WeatherGameAddresses::EViewCameraParamsOffset_MW + sizeof(void*)))
+                core::IsReadable(indirect, Game::EViewCameraParamsOffset + sizeof(void*)))
                 viewObj = indirect;
         }
     }
-    if (!core::IsReadable(viewObj, WeatherGameAddresses::EViewCameraParamsOffset_MW + sizeof(void*)))
+    if (!core::IsReadable(viewObj, Game::EViewCameraParamsOffset + sizeof(void*)))
         return nullptr;
     return *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(viewObj) +
-                                     WeatherGameAddresses::EViewCameraParamsOffset_MW);
+                                     Game::EViewCameraParamsOffset);
 }
 
 static void DebugLogCameraPtrOnce(const char* tag, void* camPtr)
@@ -756,7 +755,7 @@ D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe()
     {
         void* viewPtr = g_mwActiveViewPtr;
         if (!viewPtr)
-            viewPtr = *reinterpret_cast<void**>(WeatherGameAddresses::EViewCurrentPtr_MW);
+            viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
         static bool loggedViewPtrOnce = false;
         if (!loggedViewPtrOnce)
         {
@@ -791,20 +790,20 @@ D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe()
             }
         }
 
-        uintptr_t base = WeatherGameAddresses::EViewArrayBase_MW;
+        uintptr_t base = Game::EViewArrayBase;
         D3DXVECTOR3 fallbackPos(0, 0, 0);
         bool hasFallback = false;
         static bool loggedPtr = false;
-        for (size_t i = 0; i < WeatherGameAddresses::EViewArrayCount_MW; ++i)
+        for (size_t i = 0; i < Game::EViewArrayCount; ++i)
         {
-            auto* view = reinterpret_cast<void*>(base + i * WeatherGameAddresses::EViewSize_MW);
-            if (!view || !core::IsReadable(view, WeatherGameAddresses::EViewCameraOffset_MW + sizeof(void*)))
+            auto* view = reinterpret_cast<void*>(base + i * Game::EViewSize);
+            if (!view || !core::IsReadable(view, Game::EViewCameraOffset + sizeof(void*)))
                 continue;
 
             auto active = *reinterpret_cast<unsigned char*>(
-                reinterpret_cast<uintptr_t>(view) + WeatherGameAddresses::EViewActiveFlagOffset_MW);
+                reinterpret_cast<uintptr_t>(view) + Game::EViewActiveFlagOffset);
             auto* camera = *reinterpret_cast<void**>(
-                reinterpret_cast<uintptr_t>(view) + WeatherGameAddresses::EViewCameraOffset_MW);
+                reinterpret_cast<uintptr_t>(view) + Game::EViewCameraOffset);
             if (reinterpret_cast<uintptr_t>(camera) & 0x80000000u)
                 camera = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(camera) & 0x7FFFFFFFu);
             if (!loggedPtr)
@@ -822,7 +821,7 @@ D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe()
             D3DXVECTOR3 candidate(0, 0, 0);
             bool hasCandidate = false;
 
-            if (core::IsReadable(camera, WeatherGameAddresses::CameraMatrixV3Offset_MW + sizeof(float) * 16))
+            if (core::IsReadable(camera, Game::CameraMatrixV3Offset + sizeof(float) * 16))
             {
                 auto* camMat = reinterpret_cast<D3DXMATRIX*>(camera);
                 D3DXMATRIX invView{};
@@ -834,10 +833,10 @@ D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe()
             }
 
             if (!hasCandidate &&
-                core::IsReadable(camera, WeatherGameAddresses::CameraPositionOffset_MW + sizeof(float) * 3))
+                core::IsReadable(camera, Game::CameraPositionOffset + sizeof(float) * 3))
             {
                 auto* pos = reinterpret_cast<float*>(
-                    reinterpret_cast<uintptr_t>(camera) + WeatherGameAddresses::CameraPositionOffset_MW);
+                    reinterpret_cast<uintptr_t>(camera) + Game::CameraPositionOffset);
                 candidate = D3DXVECTOR3(pos[0], pos[1], pos[2]);
                 hasCandidate = (candidate != D3DXVECTOR3(0, 0, 0));
             }
@@ -857,11 +856,11 @@ D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe()
     }
     else if (detected_game == GameType::UC)
     {
-        auto head = reinterpret_cast<EViewNode*>(WeatherGameAddresses::EViewListHeadPtr_UC);
+        auto head = reinterpret_cast<EViewNode*>(Game::EViewListHeadPtr);
         if (head)
         {
             auto mat = reinterpret_cast<D3DXMATRIX*>(
-                reinterpret_cast<uintptr_t>(head) + WeatherGameAddresses::NodeMatrixOffset);
+                reinterpret_cast<uintptr_t>(head) + Game::NodeMatrixOffset);
             return D3DXVECTOR3(mat->_41, mat->_42, mat->_43);
         }
     }
@@ -878,7 +877,7 @@ D3DXVECTOR3 PrecipitationController::GetCameraPositionSafe()
             if (head)
             {
                 auto mat = reinterpret_cast<D3DXMATRIX*>(
-                    reinterpret_cast<uintptr_t>(head) + WeatherGameAddresses::NodeMatrixOffset);
+                    reinterpret_cast<uintptr_t>(head) + Game::NodeMatrixOffset);
                 return D3DXVECTOR3(mat->_41, mat->_42, mat->_43);
             }
         }
@@ -926,7 +925,7 @@ static bool GetViewProjFromCameraParams(void* cameraPtr, const D3DVIEWPORT9& vp,
 
 static bool GetMWRainVolumeBounds(D3DXVECTOR3& outMin, D3DXVECTOR3& outMax)
 {
-    auto* rain = *reinterpret_cast<void**>(WeatherGameAddresses::RainInstancePtr_MW);
+    auto* rain = *reinterpret_cast<void**>(Game::RainInstancePtr);
     if (!rain)
         return false;
     auto minPtr = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(rain) + 0x3830);
@@ -1275,7 +1274,7 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
     {
         void* viewPtr = g_mwActiveViewPtr;
         if (!viewPtr)
-            viewPtr = *reinterpret_cast<void**>(WeatherGameAddresses::EViewCurrentPtr_MW);
+            viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
         if (!viewPtr)
             return;
         if (!GetViewFromEViewCameraMW(viewPtr, matView))
@@ -1299,7 +1298,7 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
     {
         void* viewPtr = g_mwActiveViewPtr;
         if (!viewPtr)
-            viewPtr = *reinterpret_cast<void**>(WeatherGameAddresses::EViewCurrentPtr_MW);
+            viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
         void* camPtr = PrecipitationController::Get()->m_cameraPtr;
         if (!camPtr)
             camPtr = GetCameraPtrFromEView();
@@ -1652,7 +1651,7 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
     {
         void* viewPtr = g_mwActiveViewPtr;
         if (!viewPtr)
-            viewPtr = *reinterpret_cast<void**>(WeatherGameAddresses::EViewCurrentPtr_MW);
+            viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
         if (!viewPtr)
             return;
         if (!GetViewFromEViewCameraMW(viewPtr, matView))
@@ -1676,7 +1675,7 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
     {
         void* viewPtr = g_mwActiveViewPtr;
         if (!viewPtr)
-            viewPtr = *reinterpret_cast<void**>(WeatherGameAddresses::EViewCurrentPtr_MW);
+            viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
         void* camPtr = NormalizeCameraPtr(PrecipitationController::Get()->m_cameraPtr);
         if (!GetProjFromEView(viewPtr, viewport, matProj) &&
             !GetProjFromCameraParams(camPtr, viewport, matProj))
@@ -1884,8 +1883,8 @@ void PrecipitationController::Update()
     {
         if (g_precipitationConfig.enable3DRain || g_precipitationConfig.enable3DSplatters)
         {
-            auto* rainEnable = reinterpret_cast<int*>(WeatherGameAddresses::RainEnablePtr_MW);
-            auto* particleEnable = reinterpret_cast<int*>(WeatherGameAddresses::ParticleSystemEnablePtr_MW);
+            auto* rainEnable = reinterpret_cast<int*>(Game::RainEnablePtr);
+            auto* particleEnable = reinterpret_cast<int*>(Game::ParticleSystemEnablePtr);
             if (core::IsReadable(rainEnable, sizeof(int)))
                 *rainEnable = 1;
             if (core::IsReadable(particleEnable, sizeof(int)))
@@ -1940,7 +1939,7 @@ void PrecipitationController::Update()
             hasView = true;
             void* viewPtr = g_mwActiveViewPtr;
             if (!viewPtr)
-                viewPtr = *reinterpret_cast<void**>(WeatherGameAddresses::EViewCurrentPtr_MW);
+                viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
             D3DVIEWPORT9 vp{};
             if (FAILED(m_device->GetViewport(&vp)))
                 vp = {0, 0, 1920, 1080, 0.0f, 1.0f};
@@ -1995,7 +1994,7 @@ void PrecipitationController::Update()
                 }
                 void* viewPtr = g_mwActiveViewPtr;
                 if (!viewPtr)
-                    viewPtr = *reinterpret_cast<void**>(WeatherGameAddresses::EViewCurrentPtr_MW);
+                    viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
                 D3DVIEWPORT9 vp{};
                 if (FAILED(m_device->GetViewport(&vp)))
                     vp = {0, 0, 1920, 1080, 0.0f, 1.0f};
@@ -2037,7 +2036,7 @@ void PrecipitationController::Update()
             // Always try eView projection in MW if available
             void* viewPtr = g_mwActiveViewPtr;
             if (!viewPtr)
-                viewPtr = *reinterpret_cast<void**>(WeatherGameAddresses::EViewCurrentPtr_MW);
+                viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
             D3DVIEWPORT9 vp{};
             if (FAILED(m_device->GetViewport(&vp)))
                 vp = {0, 0, 1920, 1080, 0.0f, 1.0f};
@@ -2090,10 +2089,10 @@ void PrecipitationController::Update()
 
         if (g_precipitationConfig.enable3DRain || g_precipitationConfig.enable3DSplatters)
         {
-            auto* rain = *reinterpret_cast<void**>(WeatherGameAddresses::RainInstancePtr_MW);
+            auto* rain = *reinterpret_cast<void**>(Game::RainInstancePtr);
             if (rain && core::IsReadable(rain, 0x400))
             {
-                auto tick = reinterpret_cast<void(__thiscall*)(void*)>(WeatherGameAddresses::RainTick_MW);
+                auto tick = reinterpret_cast<void(__thiscall*)(void*)>(Game::RainTick);
                 tick(rain);
             }
         }

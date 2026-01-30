@@ -49,10 +49,10 @@ public:
     void Update();
     bool IsActive() const;
 
-    static void UpdateMWViewMatrix(const D3DXMATRIX& view);
+    static void UpdateViewMatrix(const D3DXMATRIX& view);
     static void ResetMWViewMatrix();
     static bool GetMWViewMatrix(D3DXMATRIX& outView);
-    static void UpdateMWActiveViewPtr(void* viewPtr);
+    static void UpdateActiveViewPtr(void* viewPtr);
 
 private:
     size_t m_callbackId = static_cast<size_t>(-1);

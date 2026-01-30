@@ -172,7 +172,6 @@
         <ClInclude Include="NFSPS_PreFEngHook.h"/>
         <ClInclude Include="NFSUC_PreFEngHook.h"/>
         <ClInclude Include="RainConfigController.h"/>
-        <ClInclude Include="WeatherGameAddresses.h" />
 
         <ClInclude Include="..\includes\CPatch.h"/>
         <ClInclude Include="..\includes\hooking\Hooking.Patterns.h"/>
