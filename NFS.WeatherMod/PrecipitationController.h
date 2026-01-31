@@ -78,6 +78,9 @@ private:
         D3DXVECTOR3 velocity;
         float life;
         float angle; // in radians
+        bool alive = true;
+        int windFrame = -1;
+        float windCache = 0.0f;
     };
 
     std::vector<Drop2D> m_drops2D;
@@ -86,6 +89,7 @@ private:
     std::vector<Drop3D> nearDrops, midDrops, farDrops;
 
     bool m_active{false};
+    size_t m_splatterWrite = 0;
 
     bool m_registered{false};
 

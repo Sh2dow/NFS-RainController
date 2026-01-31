@@ -186,6 +186,7 @@
         <ClInclude Include="..\includes\minhook\src\trampoline.h"/>
         <ClInclude Include="Math.h" />
         <ClInclude Include="Game.h"/>
+        <ClInclude Include="RainFlow\RainFlowMW.h" />
     </ItemGroup>
 
     <ItemGroup>
@@ -204,6 +205,7 @@
         <ClCompile Include="PrecipitationController.cpp" />
         <ClCompile Include="RainConfigController.cpp" />
         <ClCompile Include="dllmain.cpp"/>
+        <ClCompile Include="RainFlow\RainFlowMW.cpp" />
     </ItemGroup>
 
     <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets"/>

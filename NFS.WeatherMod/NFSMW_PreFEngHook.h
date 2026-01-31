@@ -130,7 +130,15 @@ namespace MW
     constexpr uintptr_t RainProjMatrixOffset = 0x3650;
     constexpr uintptr_t RainRender3D = 0x0074A5D0;
     constexpr uintptr_t RainRender = 0x0074ACC0;
+    constexpr uintptr_t RainUpdate = 0x00757770;
     constexpr uintptr_t RainTick = 0x00758100;
+    constexpr uintptr_t RainUpdateCallsiteAddr = 0x007584B7;
+    constexpr uintptr_t RainRenderCallsiteAddr = 0x007584BE;
+    constexpr uintptr_t RainRenderCallsiteAddr2 = 0x007581E3;
+    constexpr uintptr_t RenderCtxCallsiteAddr = 0x006DE52D;
+    constexpr uintptr_t RenderCtxCallsiteAddr2 = 0x006DE53C;
+    constexpr uintptr_t RainSetIntensityAddr = 0x0073CC80;
+    constexpr uintptr_t RainSetOverrideIntensityAddr = 0x0073C970;
     constexpr uintptr_t RainEnablePtr = 0x00901810; // g_RainEnable
     constexpr uintptr_t ParticleSystemEnablePtr = 0x009017EC; // g_ParticleSystemEnable
 
@@ -278,6 +286,19 @@ namespace MW
     constexpr uintptr_t eDisplayFrameAddr = 0x006DE300;
     constexpr uintptr_t renderCtxAddr = 0x00982C80;
     constexpr uintptr_t particleCtxAddr = 0x0093DEC0;
+    constexpr uintptr_t renderPlatAddr = 0x0093DEBC;
     constexpr uintptr_t RainTickAddr = 0x006DF545;
+    constexpr uintptr_t epInitViewsAddr = 0x006C06A0;
+
+    constexpr uintptr_t kWorldTimeElapsed = 0x00925970;   // A1 70599200
+    
+    constexpr uintptr_t kParamMapLayerRain = 0x009B2A9C;
+    constexpr uintptr_t kParamMapLayerClouds = 0x009B0C48;
+    constexpr uintptr_t kParamDataRain = 0x009B2AA8;
+    constexpr uintptr_t kParamDataClouds = 0x009B0C54;
+    constexpr uintptr_t GameSetChanceOfRainAddr = 0x006054A0;
+    constexpr uintptr_t kOnlineFlag = 0x009B0FB9;
+    constexpr uintptr_t kWindMod = 0x009B0A48;
+    constexpr uintptr_t kCloudBase = 0x009B0A3C;
     
 }

@@ -48,7 +48,16 @@ namespace Game
     inline uintptr_t RainProjMatrixOffset = 0;
     inline uintptr_t RainRender3D = 0;
     inline uintptr_t RainRender = 0;
+    inline uintptr_t RainUpdate = 0;
     inline uintptr_t RainTick = 0;
+    inline uintptr_t RainUpdateCallsiteAddr = 0;
+    inline uintptr_t RainRenderCallsiteAddr = 0;
+    inline uintptr_t RainRenderCallsiteAddr2 = 0;
+    inline uintptr_t RenderCtxCallsiteAddr = 0;
+    inline uintptr_t RenderCtxCallsiteAddr2 = 0;
+    inline uintptr_t RainSetIntensityAddr = 0;
+    inline uintptr_t RainSetOverrideIntensityAddr = 0;
+    inline uintptr_t GameSetChanceOfRainAddr = 0;
     inline uintptr_t RainEnablePtr = 0; // g_RainEnable
     inline uintptr_t ParticleSystemEnablePtr = 0; // g_ParticleSystemEnable
 
@@ -66,11 +75,24 @@ namespace Game
     inline uintptr_t renderCtxAddr = 0;
     inline uintptr_t particleCtxAddr = 0;
     inline uintptr_t RainTickAddr = 0;
+    inline uintptr_t InitViewsAddr = 0;
     
     using RainTick_t = void(__thiscall*)(void*);
     inline RainTick_t g_originalRainTick = nullptr;
+    using RainUpdate_t = void(__thiscall*)(void*);
+    inline RainUpdate_t g_originalRainUpdate = nullptr;
     using RainRender_t = void(__thiscall*)(void*);
     inline RainRender_t g_originalRainRender = nullptr;
+    using RainRender3D_t = void(__thiscall*)(void*);
+    inline RainRender3D_t g_originalRainRender3D = nullptr;
+    using RainSetIntensity_t = void(__thiscall*)(void*, float);
+    inline RainSetIntensity_t g_originalRainSetIntensity = nullptr;
+    using RainSetOverrideIntensity_t = void(__cdecl*)(float);
+    inline RainSetOverrideIntensity_t g_originalRainSetOverrideIntensity = nullptr;
+    using GameSetChanceOfRain_t = void(__cdecl*)(float);
+    inline GameSetChanceOfRain_t g_originalGameSetChanceOfRain = nullptr;
+    using InitViews_t = int(__cdecl*)();
+    inline InitViews_t g_originalInitViews = nullptr;
     
     inline void Init(GameType type)
     {
@@ -100,7 +122,16 @@ namespace Game
             RainProjMatrixOffset = MW::RainProjMatrixOffset;
             RainRender3D = MW::RainRender3D;
             RainRender = MW::RainRender;
+            RainUpdate = MW::RainUpdate;
             RainTick = MW::RainTick;
+            RainUpdateCallsiteAddr = MW::RainUpdateCallsiteAddr;
+            RainRenderCallsiteAddr = MW::RainRenderCallsiteAddr;
+            RainRenderCallsiteAddr2 = MW::RainRenderCallsiteAddr2;
+            RenderCtxCallsiteAddr = MW::RenderCtxCallsiteAddr;
+            RenderCtxCallsiteAddr2 = MW::RenderCtxCallsiteAddr2;
+            RainSetIntensityAddr = MW::RainSetIntensityAddr;
+            RainSetOverrideIntensityAddr = MW::RainSetOverrideIntensityAddr;
+            GameSetChanceOfRainAddr = MW::GameSetChanceOfRainAddr;
             RainEnablePtr = MW::RainEnablePtr;
             ParticleSystemEnablePtr = MW::ParticleSystemEnablePtr;
 
@@ -116,9 +147,16 @@ namespace Game
             renderCtxAddr = MW::renderCtxAddr;
             particleCtxAddr = MW::particleCtxAddr;
             RainTickAddr = MW::RainTickAddr;
+            InitViewsAddr = MW::epInitViewsAddr;
             
             g_originalRainTick   = reinterpret_cast<RainTick_t>(RainTick);
+            g_originalRainUpdate = reinterpret_cast<RainUpdate_t>(RainUpdate);
             g_originalRainRender = reinterpret_cast<RainRender_t>(RainRender);
+            g_originalRainRender3D = reinterpret_cast<RainRender3D_t>(RainRender3D);
+            g_originalRainSetIntensity = reinterpret_cast<RainSetIntensity_t>(RainSetIntensityAddr);
+            g_originalRainSetOverrideIntensity = reinterpret_cast<RainSetOverrideIntensity_t>(RainSetOverrideIntensityAddr);
+            g_originalGameSetChanceOfRain = reinterpret_cast<GameSetChanceOfRain_t>(GameSetChanceOfRainAddr);
+            g_originalInitViews = reinterpret_cast<InitViews_t>(InitViewsAddr);
             
             break;
         case GameType::CB:

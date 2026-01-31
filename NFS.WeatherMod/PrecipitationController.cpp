@@ -1,6 +1,8 @@
 #include "PrecipitationController.h"
 #include "RainConfigController.h"
 #include <algorithm>
+#include <cstring>
+#include <vector>
 #include <d3d9.h>
 #include <d3dx9.h>
 
@@ -13,6 +15,124 @@
 using namespace ngg::common;
 
 static auto& g_precipitationConfig = RainConfigController::precipitationConfig;
+
+namespace
+{
+    struct RHWVertex
+    {
+        float x, y, z, rhw;
+        DWORD color;
+        float u, v;
+    };
+
+    struct WorldVertex
+    {
+        float x, y, z;
+        DWORD color;
+        float u, v;
+    };
+
+    struct LineVertex
+    {
+        float x, y, z, rhw;
+        DWORD color;
+    };
+
+    struct DynamicVB
+    {
+        IDirect3DVertexBuffer9* vb = nullptr;
+        UINT capacity = 0;
+        DWORD fvf = 0;
+        UINT stride = 0;
+    };
+
+    static DynamicVB g_rhwQuadVB{nullptr, 0, D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1, sizeof(RHWVertex)};
+    static DynamicVB g_worldQuadVB{nullptr, 0, D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1, sizeof(WorldVertex)};
+    static DynamicVB g_lineVB{nullptr, 0, D3DFVF_XYZRHW | D3DFVF_DIFFUSE, sizeof(LineVertex)};
+
+    static uint32_t g_rngState = 0xA341316C;
+
+    static inline uint32_t NextRandU32()
+    {
+        uint32_t x = g_rngState;
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        g_rngState = x;
+        return x;
+    }
+
+    static inline float RandFloat01()
+    {
+        return (NextRandU32() & 0x00FFFFFF) / 16777215.0f;
+    }
+
+    static inline int RandRangeInt(int minVal, int maxVal)
+    {
+        if (maxVal <= minVal)
+            return minVal;
+        const uint32_t span = static_cast<uint32_t>(maxVal - minVal + 1);
+        return static_cast<int>(minVal + (NextRandU32() % span));
+    }
+
+    static bool EnsureDynamicVB(IDirect3DDevice9* device, DynamicVB& vb, UINT neededVerts)
+    {
+        if (!device || neededVerts == 0)
+            return false;
+
+        if (vb.vb && vb.capacity >= neededVerts)
+            return true;
+
+        if (vb.vb)
+        {
+            vb.vb->Release();
+            vb.vb = nullptr;
+            vb.capacity = 0;
+        }
+
+        UINT newCapacity = vb.capacity ? vb.capacity * 2 : 1024;
+        if (newCapacity < neededVerts)
+            newCapacity = neededVerts;
+
+        if (FAILED(device->CreateVertexBuffer(newCapacity * vb.stride,
+                                             D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
+                                             vb.fvf,
+                                             D3DPOOL_DEFAULT,
+                                             &vb.vb,
+                                             nullptr)))
+        {
+            vb.vb = nullptr;
+            vb.capacity = 0;
+            return false;
+        }
+
+        vb.capacity = newCapacity;
+        return true;
+    }
+
+    template <typename TVertex>
+    static void DrawDynamicVB(IDirect3DDevice9* device, DynamicVB& vb, const std::vector<TVertex>& verts,
+                              D3DPRIMITIVETYPE primType, UINT primCount)
+    {
+        if (!device || verts.empty())
+            return;
+
+        if (!EnsureDynamicVB(device, vb, static_cast<UINT>(verts.size())))
+            return;
+
+        void* dst = nullptr;
+        const UINT byteCount = static_cast<UINT>(verts.size()) * vb.stride;
+        if (FAILED(vb.vb->Lock(0, byteCount, &dst, D3DLOCK_DISCARD)))
+            return;
+
+        std::memcpy(dst, verts.data(), byteCount);
+        vb.vb->Unlock();
+
+        device->SetStreamSource(0, vb.vb, 0, vb.stride);
+        device->SetFVF(vb.fvf);
+        device->DrawPrimitive(primType, 0, primCount);
+    }
+}
 
 static D3DXMATRIX g_ViewMatrix{};
 static bool g_ViewValid = false;
@@ -295,14 +415,43 @@ static bool GetViewFromCameraPtr(void* cameraPtr, D3DXMATRIX& outView)
 
 static bool IsLikelyPointer(void* p)
 {
+    if (!p)
+        return false;
+
+    struct CacheEntry
+    {
+        void* ptr;
+        DWORD time;
+        bool ok;
+    };
+
+    static CacheEntry cache[4] = {};
+    const DWORD now = core::CurrentTime;
+
+    for (auto& entry : cache)
+    {
+        if (entry.ptr == p && entry.time == now)
+            return entry.ok;
+    }
+
     MEMORY_BASIC_INFORMATION mbi;
-    if (!p || !VirtualQuery(p, &mbi, sizeof(mbi)))
-        return false;
-    if (mbi.State != MEM_COMMIT)
-        return false;
-    if (mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD))
-        return false;
-    return true;
+    bool ok = VirtualQuery(p, &mbi, sizeof(mbi)) != 0 &&
+        mbi.State == MEM_COMMIT &&
+        (mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD)) == 0;
+
+    for (auto& entry : cache)
+    {
+        if (entry.time != now)
+        {
+            entry.ptr = p;
+            entry.time = now;
+            entry.ok = ok;
+            return ok;
+        }
+    }
+
+    cache[0] = {p, now, ok};
+    return ok;
 }
 
 static bool GetCameraMatrixFromPtr(void* cameraPtr, D3DXMATRIX& outMat)
@@ -623,6 +772,86 @@ static void* GetCameraParamsFromEView()
         return nullptr;
     return *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(viewObj) +
                                      Game::EViewCameraParamsOffset);
+}
+
+static void GetFrameViewProj(const D3DVIEWPORT9& viewport, D3DXMATRIX& outView, D3DXMATRIX& outProj,
+                             bool& outHasProj, bool& outLocked)
+{
+    static DWORD cachedTime = 0;
+    static D3DXMATRIX cachedView{};
+    static D3DXMATRIX cachedProj{};
+    static bool cachedHasProj = false;
+    static bool cachedLocked = false;
+
+    if (cachedTime == core::CurrentTime)
+    {
+        outView = cachedView;
+        outProj = cachedProj;
+        outHasProj = cachedHasProj;
+        outLocked = cachedLocked;
+        return;
+    }
+
+    D3DXMATRIX view{};
+    D3DXMATRIX proj{};
+    bool hasProj = false;
+    bool locked = false;
+    IDirect3DDevice9* device = PrecipitationController::Get()->m_device;
+
+    if (detected_game == GameType::MW)
+    {
+        void* viewPtr = g_ActiveViewPtr;
+        if (!viewPtr)
+            viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
+        if (viewPtr && GetViewFromEViewCamera(viewPtr, view) && GetProjFromEViewMatrix(viewPtr, proj))
+        {
+            hasProj = true;
+            locked = true;
+        }
+    }
+
+    if (!locked &&
+        !GetEViewMatrix(view) &&
+        !(g_precipitationConfig.useLookAtMatrix && PrecipitationController::GetViewMatrix(view)) &&
+        device)
+    {
+        device->GetTransform(D3DTS_VIEW, &view);
+        DebugLogMatrixSourceOnce("D3DTS_VIEW fallback");
+        DebugLogMatrixOnce("D3DTS_VIEW", view);
+    }
+
+    if (!hasProj && !locked)
+    {
+        void* viewPtr = g_ActiveViewPtr;
+        if (!viewPtr)
+            viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
+        void* camPtr = PrecipitationController::Get()->m_cameraPtr;
+        if (!camPtr)
+            camPtr = GetCameraPtrFromEView();
+        void* camPtrNorm = NormalizeCameraPtr(camPtr);
+        if (!GetProjFromEView(viewPtr, viewport, proj) &&
+            !GetProjFromCameraParams(camPtrNorm, viewport, proj))
+        {
+            if (device && FAILED(device->GetTransform(D3DTS_PROJECTION, &proj)))
+            {
+                float aspect = static_cast<float>(viewport.Width) / static_cast<float>(viewport.Height);
+                D3DXMatrixPerspectiveFovLH(&proj, D3DXToRadian(60.0f), aspect, 1.0f, 500.0f);
+                DebugLogMatrixSourceOnce("Render3D fallback proj");
+                DebugLogMatrixNoGuard("Render3D fallback proj", proj);
+            }
+        }
+    }
+
+    cachedTime = core::CurrentTime;
+    cachedView = view;
+    cachedProj = proj;
+    cachedHasProj = hasProj;
+    cachedLocked = locked;
+
+    outView = view;
+    outProj = proj;
+    outHasProj = hasProj;
+    outLocked = locked;
 }
 
 static void DebugLogCameraPtrOnce(const char* tag, void* camPtr)
@@ -983,11 +1212,11 @@ void PrecipitationController::enable()
 
     int drops3dSize = g_precipitationConfig.dropCountNear + g_precipitationConfig.dropCountMid + g_precipitationConfig.
         dropCountFar;
-    if (m_drops3D.empty()) m_drops3D.resize(drops3dSize);
-    m_drops3D.clear(); // important
-
-    if (m_splatters3D.empty()) m_splatters3D.resize(drops3dSize / 3);
-    m_splatters3D.clear(); // important
+    m_drops3D.resize(drops3dSize);
+    m_splatters3D.resize(drops3dSize / 3);
+    for (auto& s : m_splatters3D)
+        s.alive = false;
+    m_splatterWrite = 0;
 
     // Get camera position early for consistent reference
     static bool printedCameraReady = false;
@@ -1019,22 +1248,35 @@ void PrecipitationController::enable()
         splatter.velocity = D3DXVECTOR3(0, 0, 0);
         SetUpCoord(splatter.velocity, -3.0f); // or adjustable by config
 
-        splatter.length = 4.0f + (rand() % 3);
-        splatter.life = 3.5f + static_cast<float>(rand() % 100) / 100.0f;
-        splatter.angle = static_cast<float>((rand() % 360)) * (D3DX_PI / 180.0f);
+        splatter.length = 4.0f + static_cast<float>(RandRangeInt(0, 2));
+        splatter.life = 3.5f + RandFloat01();
+        splatter.angle = static_cast<float>(RandRangeInt(0, 359)) * (D3DX_PI / 180.0f);
         return splatter;
     };
 
     // Preallocate the drops with separate logic per group
     // Generate initial 3D splatters (fewer than raindrops)
+    size_t dropIndex = 0;
     for (int group = 0; group < 3; ++group)
     {
         const RainGroupSettings& settings = m_rainSettings[group];
-        for (int i = 0; i < settings.dropCount; ++i)
-            m_drops3D.push_back(RespawnDrop(settings, m_cameraY));
+        for (int i = 0; i < settings.dropCount && dropIndex < m_drops3D.size(); ++i, ++dropIndex)
+        {
+            Drop3D drop = RespawnDrop(settings, m_cameraY);
+            drop.alive = true;
+            m_drops3D[dropIndex] = drop;
+        }
 
         for (int i = 0; i < settings.dropCount / 2; ++i)
-            m_splatters3D.push_back(spawnSplatter(RespawnDrop(settings, m_cameraY).position));
+        {
+            Drop3D splat = spawnSplatter(RespawnDrop(settings, m_cameraY).position);
+            splat.alive = true;
+            if (!m_splatters3D.empty())
+            {
+                m_splatters3D[m_splatterWrite] = splat;
+                m_splatterWrite = (m_splatterWrite + 1) % m_splatters3D.size();
+            }
+        }
     }
 
     // Do not register a post-Present DX9 loop; we render in HookedPresent only.
@@ -1065,9 +1307,9 @@ PrecipitationController::Drop3D PrecipitationController::RespawnDrop(const RainG
         D3DXVECTOR3 mn{}, mx{};
         if (GetRainVolumeBounds(mn, mx))
         {
-            float rx = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-            float ry = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-            float rz = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+            float rx = RandFloat01();
+            float ry = RandFloat01();
+            float rz = RandFloat01();
             drop.position = D3DXVECTOR3(
                 mn.x + (mx.x - mn.x) * rx,
                 mn.y + (mx.y - mn.y) * ry,
@@ -1076,22 +1318,22 @@ PrecipitationController::Drop3D PrecipitationController::RespawnDrop(const RainG
         else
         {
             drop.position = D3DXVECTOR3(
-                camPos.x + static_cast<float>((rand() % 400) - 200),
+                camPos.x + static_cast<float>(RandRangeInt(-200, 199)),
                 0.0f,
-                camPos.z + static_cast<float>((rand() % 1000) - 200));
+                camPos.z + static_cast<float>(RandRangeInt(-200, 799)));
             SetUpCoord(drop.position, camY + 25.0f);
         }
     }
     else
     {
         drop.position = D3DXVECTOR3(
-            camPos.x + static_cast<float>((rand() % 400) - 200),
+            camPos.x + static_cast<float>(RandRangeInt(-200, 199)),
             0.0f,
-            camPos.z + static_cast<float>((rand() % 1000) - 200));
+            camPos.z + static_cast<float>(RandRangeInt(-200, 799)));
         SetUpCoord(drop.position, camY + 25.0f);
     }
-    drop.life = 3.5f + static_cast<float>(rand() % 100) / 100.0f;
-    drop.angle = static_cast<float>((rand() % 360)) * (D3DX_PI / 180.0f);
+    drop.life = 3.5f + RandFloat01();
+    drop.angle = static_cast<float>(RandRangeInt(0, 359)) * (D3DX_PI / 180.0f);
     return drop;
 }
 
@@ -1163,7 +1405,7 @@ bool PrecipitationController::IsCreatedRainTexture()
         // First pass: thin rain lines (near group with fewer & smaller streaks)
         for (int x = 6; x < 26; x += 16)
         {
-            int startY = rand() % (256 - 12);
+            int startY = RandRangeInt(0, 256 - 13);
             for (int y = 0; y < 12; ++y)
             {
                 DWORD* row = reinterpret_cast<DWORD*>((BYTE*)rect.pBits + (startY + y) * rect.Pitch);
@@ -1175,7 +1417,7 @@ bool PrecipitationController::IsCreatedRainTexture()
         // Second pass: thick core streaks (mid group)
         for (int x = 10; x < 22; x += 10)
         {
-            int startY = rand() % (256 - 32);
+            int startY = RandRangeInt(0, 256 - 33);
             for (int y = 0; y < 32; ++y)
             {
                 DWORD* row = reinterpret_cast<DWORD*>((BYTE*)rect.pBits + (startY + y) * rect.Pitch);
@@ -1192,7 +1434,7 @@ bool PrecipitationController::IsCreatedRainTexture()
         // Third pass: high-alpha streaks (far group, smaller & faint)
         for (int x = 0; x < 32; x += 6)
         {
-            int startY = rand() % (256 - 8);
+            int startY = RandRangeInt(0, 256 - 9);
             for (int y = 0; y < 8; ++y)
             {
                 DWORD* row = reinterpret_cast<DWORD*>((BYTE*)rect.pBits + (startY + y) * rect.Pitch);
@@ -1255,10 +1497,10 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
     D3DXMATRIX matView, matProj, matIdentity;
     D3DXMATRIX savedView{}, savedProj{}, savedWorld{};
     bool restoreTransforms = false;
-    bool usedRainMatrices = false;
     bool hasProj = false;
     bool useViewProjOnly = false;
     D3DXMATRIX matViewProj{};
+    D3DXMATRIX matViewProjT{};
     bool loggedVP = false;
     bool transposeVP = false;
     void* camPtr = nullptr;
@@ -1270,52 +1512,14 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
     static bool loggedFirstDropPos = false;
 
     
-    if (detected_game == GameType::MW)
-    {
-        void* viewPtr = g_ActiveViewPtr;
-        if (!viewPtr)
-            viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
-        if (!viewPtr)
-            return;
-        if (!GetViewFromEViewCamera(viewPtr, matView))
-            return;
-        if (!GetProjFromEViewMatrix(viewPtr, matProj))
-            return;
-        hasProj = true;
-        locked = true;
-    }
-
-    if (!locked && !usedRainMatrices &&
-        !GetEViewMatrix(matView) &&
-        !(g_precipitationConfig.useLookAtMatrix && PrecipitationController::GetViewMatrix(matView)))
-    {
-        m_device->GetTransform(D3DTS_VIEW, &matView);
-        DebugLogMatrixSourceOnce("D3DTS_VIEW fallback");
-        DebugLogMatrixOnce("D3DTS_VIEW", matView);
-    }
-
-    if (!hasProj && !locked)
-    {
-        void* viewPtr = g_ActiveViewPtr;
-        if (!viewPtr)
-            viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
-        void* camPtr = PrecipitationController::Get()->m_cameraPtr;
-        if (!camPtr)
-            camPtr = GetCameraPtrFromEView();
-        void* camPtrNorm = NormalizeCameraPtr(camPtr);
-        if (!GetProjFromEView(viewPtr, viewport, matProj) &&
-            !GetProjFromCameraParams(camPtrNorm, viewport, matProj))
-        {
-            if (FAILED(m_device->GetTransform(D3DTS_PROJECTION, &matProj)) && !usedRainMatrices)
-            {
-                float aspect = static_cast<float>(viewport.Width) / static_cast<float>(viewport.Height);
-                D3DXMatrixPerspectiveFovLH(&matProj, D3DXToRadian(60.0f), aspect, 1.0f, 500.0f);
-                DebugLogMatrixSourceOnce("Render3D fallback proj");
-                DebugLogMatrixNoGuard("Render3D fallback proj", matProj);
-            }
-        }
-    }
+    GetFrameViewProj(viewport, matView, matProj, hasProj, locked);
     D3DXMatrixIdentity(&matIdentity);
+
+    if (useViewProjOnly)
+    {
+        D3DXMatrixMultiply(&matViewProj, &matView, &matProj);
+        D3DXMatrixTranspose(&matViewProjT, &matViewProj);
+    }
 
     if (detected_game == GameType::MW)
     {
@@ -1355,6 +1559,24 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
 
     m_device->SetTexture(0, m_rainTex);
 
+    const auto ProjectFast = [&](const D3DXVECTOR3& world, const D3DVIEWPORT9& vp,
+                                 const D3DXMATRIX& vpMat, D3DXVECTOR3& outScreen) -> bool
+    {
+        D3DXVECTOR4 v(world.x, world.y, world.z, 1.0f);
+        D3DXVECTOR4 clip{};
+        D3DXVec4Transform(&clip, &v, &vpMat);
+        if (clip.w == 0.0f)
+            return false;
+        const float invW = 1.0f / clip.w;
+        const float ndcX = clip.x * invW;
+        const float ndcY = clip.y * invW;
+        const float ndcZ = clip.z * invW;
+        outScreen.x = vp.X + (ndcX + 1.0f) * 0.5f * vp.Width;
+        outScreen.y = vp.Y + (1.0f - ndcY) * 0.5f * vp.Height;
+        outScreen.z = (ndcZ + 1.0f) * 0.5f;
+        return true;
+    };
+
     // Move drops
     D3DXVECTOR3 windDir(1.0f, 0.0f, 0.0f);
     if (detected_game == GameType::MW || detected_game == GameType::CB)
@@ -1373,12 +1595,32 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
         else
             windDir = D3DXVECTOR3(1.0f, 0.0f, 0.0f);
     }
+    D3DXVECTOR3 forwardXZ(0.0f, 0.0f, 1.0f);
+    {
+        D3DXMATRIX invView{};
+        if (D3DXMatrixInverse(&invView, nullptr, &matView))
+        {
+            D3DXVECTOR3 camForward(invView._31, invView._32, invView._33);
+            forwardXZ = D3DXVECTOR3(camForward.x, 0.0f, camForward.z);
+            if (D3DXVec3LengthSq(&forwardXZ) < 0.0001f)
+                forwardXZ = D3DXVECTOR3(0.0f, 0.0f, 1.0f);
+            else
+                D3DXVec3Normalize(&forwardXZ, &forwardXZ);
+        }
+    }
+
+    const int windFrameId = static_cast<int>(core::CurrentTime / 66);
     for (auto& drop : m_drops3D)
     {
         const RainGroupSettings* group = ChooseGroupByY(GetUpCoord(drop.position));
 
         float up = GetUpCoord(drop.position);
-        float wind = (noise.noise3D(up * 0.05f, core::CurrentTime * 0.0005f, 0.0f) - 0.5f) * 2.0f * group->windSway;
+        if (drop.windFrame != windFrameId)
+        {
+            drop.windCache = (noise.noise3D(up * 0.05f, core::CurrentTime * 0.0005f, 0.0f) - 0.5f) * 2.0f;
+            drop.windFrame = windFrameId;
+        }
+        float wind = drop.windCache * group->windSway;
         if (detected_game == GameType::MW || detected_game == GameType::CB)
             drop.position += windDir * wind;
         else
@@ -1389,23 +1631,8 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
         {
             Drop3D splatter;
 
-            // Compute correct forward vector from view matrix
-            D3DXMATRIX invView;
-            D3DXMatrixInverse(&invView, nullptr, &matView); // Invert the view matrix
-            D3DXVECTOR3 camForward(invView._31, invView._32, invView._33); // World-space forward
-
-            D3DXVECTOR3 forwardXZ(camForward.x, 0.0f, camForward.z);
-            if (D3DXVec3LengthSq(&forwardXZ) < 0.0001f)
-            {
-                forwardXZ = D3DXVECTOR3(0.0f, 0.0f, 1.0f); // fallback if facing directly up/down
-            }
-            else
-            {
-                D3DXVec3Normalize(&forwardXZ, &forwardXZ);
-            }
-
-            float randX = ((rand() % 100) - 50) * 0.05f;
-            float randZ = ((rand() % 100) - 50) * 0.5f;
+            float randX = static_cast<float>(RandRangeInt(-50, 49)) * 0.05f;
+            float randZ = static_cast<float>(RandRangeInt(-50, 49)) * 0.5f;
             D3DXVECTOR3 offset = forwardXZ * 6.0f + D3DXVECTOR3(randX, 0.0f, randZ);
 
             D3DXVECTOR3 splatterPos = camPos + offset;
@@ -1413,15 +1640,20 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
 
             splatter.position = splatterPos;
             splatter.velocity = D3DXVECTOR3(0, -3.0f, 0);
-            splatter.length = 4.0f + (rand() % 3);
-            splatter.life = 3.5f + static_cast<float>(rand() % 100) / 100.0f;
+            splatter.length = 4.0f + static_cast<float>(RandRangeInt(0, 2));
+            splatter.life = 3.5f + RandFloat01();
             splatter.angle = atan2f(forwardXZ.x, forwardXZ.z);
 
             // char dbg[128];
             // sprintf_s(dbg, "[Splatter] forwardXZ: %.2f %.2f %.2f\n", forwardXZ.x, forwardXZ.y, forwardXZ.z);
             // RainDebugOut(dbg);
 
-            m_splatters3D.push_back(splatter);
+            splatter.alive = true;
+            if (!m_splatters3D.empty())
+            {
+                m_splatters3D[m_splatterWrite] = splatter;
+                m_splatterWrite = (m_splatterWrite + 1) % m_splatters3D.size();
+            }
             drop = RespawnDrop(*group, m_cameraY);
         }
     }
@@ -1432,15 +1664,24 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
 
         D3DXMATRIX viewUse = matView;
         D3DXMATRIX projUse = matProj;
-        D3DXMATRIX invViewUse{};
-        bool haveInvViewUse = false;
+        D3DXVECTOR3 right(1.0f, 0.0f, 0.0f);
+        D3DXVECTOR3 up(0.0f, 1.0f, 0.0f);
         if (useWorldSpace)
         {
             // Use the already-selected view/proj (camera params preferred for MW)
             m_device->SetTransform(D3DTS_VIEW, &viewUse);
             m_device->SetTransform(D3DTS_PROJECTION, &projUse);
             m_device->SetTransform(D3DTS_WORLD, &matIdentity);
-            haveInvViewUse = D3DXMatrixInverse(&invViewUse, nullptr, &viewUse) != nullptr;
+            D3DXMATRIX invViewUse{};
+            if (D3DXMatrixInverse(&invViewUse, nullptr, &viewUse) != nullptr)
+            {
+                right = D3DXVECTOR3(invViewUse._11, invViewUse._12, invViewUse._13);
+                up = D3DXVECTOR3(invViewUse._21, invViewUse._22, invViewUse._23);
+                if (D3DXVec3LengthSq(&right) > 1e-6f)
+                    D3DXVec3Normalize(&right, &right);
+                if (D3DXVec3LengthSq(&up) > 1e-6f)
+                    D3DXVec3Normalize(&up, &up);
+            }
             m_device->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
         }
         else
@@ -1448,8 +1689,15 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
             m_device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
         }
 
-    for (const auto& drop : m_drops3D)
-    {
+        std::vector<RHWVertex> rhwVerts;
+        std::vector<WorldVertex> worldVerts;
+        if (useWorldSpace)
+            worldVerts.reserve(m_drops3D.size() * 6);
+        else
+            rhwVerts.reserve(m_drops3D.size() * 6);
+
+        for (const auto& drop : m_drops3D)
+        {
             if (GetUpCoord(drop.position) < minY || GetUpCoord(drop.position) >= maxY)
                 continue;
 
@@ -1474,8 +1722,8 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
             if (useViewProjOnly)
             {
                 D3DXVECTOR3 screenAlt{};
-                bool okA = ProjectWithViewProj(drop.position, viewport, matViewProj, screen, transposeVP);
-                bool okB = ProjectWithViewProj(drop.position, viewport, matViewProj, screenAlt, !transposeVP);
+                bool okA = ProjectFast(drop.position, viewport, transposeVP ? matViewProjT : matViewProj, screen);
+                bool okB = ProjectFast(drop.position, viewport, transposeVP ? matViewProj : matViewProjT, screenAlt);
                 if (!okA && okB)
                 {
                     screen = screenAlt;
@@ -1518,30 +1766,18 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
                 };
             }
 
-            m_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, quad, sizeof(RHWVertex));
+            rhwVerts.push_back(quad[0]);
+            rhwVerts.push_back(quad[1]);
+            rhwVerts.push_back(quad[2]);
+            rhwVerts.push_back(quad[0]);
+            rhwVerts.push_back(quad[2]);
+            rhwVerts.push_back(quad[3]);
         }
         else
         {
-            D3DXVECTOR3 right(1.0f, 0.0f, 0.0f);
-            D3DXVECTOR3 up(0.0f, 1.0f, 0.0f);
-            if (haveInvViewUse)
-            {
-                right = D3DXVECTOR3(invViewUse._11, invViewUse._12, invViewUse._13);
-                up = D3DXVECTOR3(invViewUse._21, invViewUse._22, invViewUse._23);
-                if (D3DXVec3LengthSq(&right) > 1e-6f)
-                    D3DXVec3Normalize(&right, &right);
-                if (D3DXVec3LengthSq(&up) > 1e-6f)
-                    D3DXVec3Normalize(&up, &up);
-            }
             D3DXVECTOR3 r = right * (half * cosA) + up * (half * sinA);
             D3DXVECTOR3 u = right * (-half * sinA) + up * (half * cosA);
 
-            struct WorldVertex
-            {
-                float x, y, z;
-                DWORD color;
-                float u, v;
-            };
             D3DXVECTOR3 worldPos = drop.position;
             WorldVertex quad[4] = {
                 {worldPos.x - r.x - u.x, worldPos.y - r.y - u.y, worldPos.z - r.z - u.z, color, 0.0f, 0.0f},
@@ -1549,9 +1785,21 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
                 {worldPos.x + r.x + u.x, worldPos.y + r.y + u.y, worldPos.z + r.z + u.z, color, 1.0f, 1.0f},
                 {worldPos.x - r.x + u.x, worldPos.y - r.y + u.y, worldPos.z - r.z + u.z, color, 0.0f, 1.0f},
             };
-            m_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, quad, sizeof(WorldVertex));
+            worldVerts.push_back(quad[0]);
+            worldVerts.push_back(quad[1]);
+            worldVerts.push_back(quad[2]);
+            worldVerts.push_back(quad[0]);
+            worldVerts.push_back(quad[2]);
+            worldVerts.push_back(quad[3]);
         }
         }
+
+        if (useWorldSpace)
+            DrawDynamicVB(m_device, g_worldQuadVB, worldVerts, D3DPT_TRIANGLELIST,
+                          static_cast<UINT>(worldVerts.size() / 3));
+        else
+            DrawDynamicVB(m_device, g_rhwQuadVB, rhwVerts, D3DPT_TRIANGLELIST,
+                          static_cast<UINT>(rhwVerts.size() / 3));
     };
 
     const float nearMin = m_cameraY + g_precipitationConfig.nearMinOffset;
@@ -1566,13 +1814,7 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
     RenderGroup(midMax, farMax, g_precipitationConfig.alphaBlend3DRainFar,
                 g_precipitationConfig.alphaBlendFarValue);
 
-    // After moving, respawning, and generating splatters
-    if (m_drops3D.size() > 600) // 200 per group × 3
-        m_drops3D.erase(m_drops3D.begin(), m_drops3D.begin() + (m_drops3D.size() - 600));
-
-    // ✅ After all spawning is done
-    if (m_splatters3D.size() > 600)
-        m_splatters3D.erase(m_splatters3D.begin(), m_splatters3D.begin() + (m_splatters3D.size() - 600));
+    // Fixed-size pools avoid erase churn.
 
     m_device->SetTexture(0, nullptr);
 
@@ -1640,55 +1882,13 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
     D3DXMATRIX savedView{}, savedProj{}, savedWorld{};
     bool restoreTransforms = false;
     D3DXMatrixIdentity(&matWorld);
-    bool usedRainMatrices = false;
     bool hasProj = false;
     bool useViewProjOnly = false;
     D3DXMATRIX matViewProj{};
     bool loggedVP = false;
     bool transposeVP = false;
     bool locked = false;
-    if (detected_game == GameType::MW)
-    {
-        void* viewPtr = g_ActiveViewPtr;
-        if (!viewPtr)
-            viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
-        if (!viewPtr)
-            return;
-        if (!GetViewFromEViewCamera(viewPtr, matView))
-            return;
-        if (!GetProjFromEViewMatrix(viewPtr, matProj))
-            return;
-        hasProj = true;
-        locked = true;
-    }
-
-    if (!locked && !usedRainMatrices &&
-        !GetEViewMatrix(matView) &&
-        !(g_precipitationConfig.useLookAtMatrix && PrecipitationController::GetViewMatrix(matView)))
-    {
-        m_device->GetTransform(D3DTS_VIEW, &matView);
-        DebugLogMatrixSourceOnce("Splatters D3DTS_VIEW fallback");
-        DebugLogMatrixOnce("Splatters D3DTS_VIEW", matView);
-    }
-
-    if (!hasProj && !locked)
-    {
-        void* viewPtr = g_ActiveViewPtr;
-        if (!viewPtr)
-            viewPtr = *reinterpret_cast<void**>(Game::EViewCurrentPtr);
-        void* camPtr = NormalizeCameraPtr(PrecipitationController::Get()->m_cameraPtr);
-        if (!GetProjFromEView(viewPtr, viewport, matProj) &&
-            !GetProjFromCameraParams(camPtr, viewport, matProj))
-        {
-            if (FAILED(m_device->GetTransform(D3DTS_PROJECTION, &matProj)) && !usedRainMatrices)
-            {
-                float aspect = static_cast<float>(viewport.Width) / static_cast<float>(viewport.Height);
-                D3DXMatrixPerspectiveFovLH(&matProj, D3DXToRadian(60.0f), aspect, 0.1f, 1000.0f);
-                DebugLogMatrixSourceOnce("Splatters fallback proj");
-                DebugLogMatrixNoGuard("Splatters fallback proj", matProj);
-            }
-        }
-    }
+    GetFrameViewProj(viewport, matView, matProj, hasProj, locked);
 
     D3DXMatrixIdentity(&matWorld);
 
@@ -1721,23 +1921,48 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
     m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, g_precipitationConfig.alphaBlendSplatters);
     m_device->SetTexture(0, m_splatterTex);
 
-    // Update splatter positions and life
-    for (auto it = m_splatters3D.begin(); it != m_splatters3D.end();)
+    // Update splatter positions and life (swap-remove to avoid memmove)
+    for (size_t i = 0; i < m_splatters3D.size();)
     {
-        it->position += it->velocity * core::fpsDeltaTime;
-        it->life -= core::fpsDeltaTime;
+        auto& splat = m_splatters3D[i];
+        if (!splat.alive)
+        {
+            ++i;
+            continue;
+        }
+        splat.position += splat.velocity * core::fpsDeltaTime;
+        splat.life -= core::fpsDeltaTime;
 
-        if (it->life <= 0.0f)
-            it = m_splatters3D.erase(it);
+        if (splat.life <= 0.0f)
+        {
+            splat.alive = false;
+            ++i;
+        }
         else
-            ++it;
+        {
+            ++i;
+        }
     }
 
-    if (m_splatters3D.empty())
+    bool anyAlive = false;
+    for (const auto& splat : m_splatters3D)
+    {
+        if (splat.alive)
+        {
+            anyAlive = true;
+            break;
+        }
+    }
+    if (!anyAlive)
         return;
+
+    std::vector<RHWVertex> rhwVerts;
+    rhwVerts.reserve(m_splatters3D.size() * 6);
 
     for (const auto& drop : m_splatters3D)
     {
+        if (!drop.alive)
+            continue;
         D3DXVECTOR3 screen{};
         if (useViewProjOnly)
         {
@@ -1757,7 +1982,7 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
         if (screen.z < 0.0f || screen.z > 1.0f)
             continue;
 
-        float flicker = (rand() % 100) / 500.0f; // up to ±0.2
+        float flicker = static_cast<float>(RandRangeInt(0, 99)) / 500.0f; // up to ±0.2
         float size = std::clamp((drop.length + flicker) * 4.0f, 1.0f, 6.5f);
         float half = size * 0.5f;
 
@@ -1793,8 +2018,16 @@ void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewp
             };
         }
 
-        m_device->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, quad, sizeof(RHWVertex));
+        rhwVerts.push_back(quad[0]);
+        rhwVerts.push_back(quad[1]);
+        rhwVerts.push_back(quad[2]);
+        rhwVerts.push_back(quad[0]);
+        rhwVerts.push_back(quad[2]);
+        rhwVerts.push_back(quad[3]);
     }
+
+    DrawDynamicVB(m_device, g_rhwQuadVB, rhwVerts, D3DPT_TRIANGLELIST,
+                  static_cast<UINT>(rhwVerts.size() / 3));
 
     m_device->SetTexture(0, nullptr);
 
@@ -1824,17 +2057,20 @@ void PrecipitationController::Render2DRainOverlay(const D3DVIEWPORT9& viewport)
     m_device->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
     m_device->SetTexture(0, nullptr);
 
+    std::vector<LineVertex> lineVerts;
+    lineVerts.reserve(m_drops2D.size() * 2);
+
     for (auto& drop : m_drops2D)
     {
         if (!drop.initialized)
         {
-            drop.x = ((float)rand() / RAND_MAX) * width;
-            drop.y = ((float)rand() / RAND_MAX) * height;
+            drop.x = RandFloat01() * width;
+            drop.y = RandFloat01() * height;
             drop.speed = g_precipitationConfig.baseSpeed + g_precipitationConfig.rainIntensity * g_precipitationConfig.
                 speedScale;
             drop.length = g_precipitationConfig.baseLength + g_precipitationConfig.rainIntensity * g_precipitationConfig
                 .lengthScale;
-            drop.noiseSeed = static_cast<float>(rand()) / RAND_MAX * 100.0f;
+            drop.noiseSeed = RandFloat01() * 100.0f;
             drop.initialized = true;
         }
 
@@ -1847,17 +2083,21 @@ void PrecipitationController::Render2DRainOverlay(const D3DVIEWPORT9& viewport)
 
         if (drop.y > height)
         {
-            drop.x = ((float)rand() / RAND_MAX) * width;
+            drop.x = RandFloat01() * width;
             drop.y = -drop.length;
         }
 
-        Vertex verts[2] = {
+        LineVertex verts[2] = {
             {drop.x, drop.y, 0.0f, 1.0f, color},
             {drop.x, drop.y + drop.length, 0.0f, 1.0f, color}
         };
 
-        m_device->DrawPrimitiveUP(D3DPT_LINELIST, 1, verts, sizeof(Vertex));
+        lineVerts.push_back(verts[0]);
+        lineVerts.push_back(verts[1]);
     }
+
+    DrawDynamicVB(m_device, g_lineVB, lineVerts, D3DPT_LINELIST,
+                  static_cast<UINT>(lineVerts.size() / 2));
 }
 
 void PrecipitationController::Update()
@@ -1871,6 +2111,13 @@ void PrecipitationController::Update()
             loggedInactive = true;
         }
         return;
+    }
+
+    static bool rngSeeded = false;
+    if (!rngSeeded)
+    {
+        g_rngState ^= static_cast<uint32_t>(core::CurrentTime);
+        rngSeeded = true;
     }
 
     if (!m_device)
@@ -2087,15 +2334,6 @@ void PrecipitationController::Update()
             }
         }
 
-        if (g_precipitationConfig.enable3DRain || g_precipitationConfig.enable3DSplatters)
-        {
-            auto* rain = *reinterpret_cast<void**>(Game::RainInstancePtr);
-            if (rain && core::IsReadable(rain, 0x400))
-            {
-                auto tick = reinterpret_cast<void(__thiscall*)(void*)>(Game::RainTick);
-                tick(rain);
-            }
-        }
     }
 
     if (camPos == D3DXVECTOR3(0, 0, 0))

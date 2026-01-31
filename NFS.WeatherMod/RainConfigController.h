@@ -4,7 +4,7 @@
 
 #include "CPatch.h"
 
-namespace ngg::common::RainConfigController
+namespace RainConfigController
 {
     inline int toggleKey = VK_F3; // Default to F3
 
