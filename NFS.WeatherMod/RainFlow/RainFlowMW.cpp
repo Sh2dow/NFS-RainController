@@ -7,6 +7,8 @@
 #include <windows.h>
 #include <cmath>
 
+#include "../Game.h"
+
 namespace
 {
     inline uint8_t* Ptr(uintptr_t addr) { return reinterpret_cast<uint8_t*>(addr); }
@@ -14,7 +16,7 @@ namespace
     inline int* IPtr(uintptr_t addr) { return reinterpret_cast<int*>(addr); }
     inline uint8_t* RainPtr()
     {
-        return *reinterpret_cast<uint8_t**>(MW::RainInstancePtr);
+        return *reinterpret_cast<uint8_t**>(Game::RainInstancePtr);
     }
 
     inline float ReadF(uint8_t* base, uintptr_t off)
@@ -44,14 +46,14 @@ namespace
 
     static uint8_t* GetActiveView()
     {
-        if (!MW::EViewArrayBase || !MW::EViewSize || !MW::EViewArrayCount)
+        if (!Game::EViewArrayBase || !Game::EViewSize || !Game::EViewArrayCount)
             return nullptr;
-        for (uintptr_t i = 0; i < MW::EViewArrayCount; ++i)
+        for (uintptr_t i = 0; i < Game::EViewArrayCount; ++i)
         {
-            uintptr_t entry = MW::EViewArrayBase + i * MW::EViewSize;
-            if (!core::IsReadable(reinterpret_cast<void*>(entry), MW::EViewActiveFlagOffset + 1))
+            uintptr_t entry = Game::EViewArrayBase + i * Game::EViewSize;
+            if (!core::IsReadable(reinterpret_cast<void*>(entry), Game::EViewActiveFlagOffset + 1))
                 continue;
-            unsigned char active = *reinterpret_cast<unsigned char*>(entry + MW::EViewActiveFlagOffset);
+            unsigned char active = *reinterpret_cast<unsigned char*>(entry + Game::EViewActiveFlagOffset);
             if (!active)
                 continue;
             uint8_t* view = *reinterpret_cast<uint8_t**>(entry);
@@ -60,28 +62,6 @@ namespace
         }
         return nullptr;
     }
-
-    // Global addresses inferred from IDA
-    constexpr uintptr_t kTheGameFlowManager = MW::GAMEFLOWMGR_STATUS_ADDR; // A1 905E9200
-    constexpr uintptr_t kWorldTimeElapsed = MW::kWorldTimeElapsed;   // A1 70599200
-    constexpr uintptr_t kAlwaysRain = MW::PRECIP_CAMERAMOD_ADDR;          // PRECIP_CAMERAMOD_ADDR used as AlwaysRain in flow
-    constexpr uintptr_t kRoadReflection = MW::PRECIP_RAINPERCENT_ADDR;      // PRECIP_RAINPERCENT_ADDR
-    constexpr uintptr_t kWindAngle = MW::PRECIP_WINDANG_ADDR; // 0x009B0A50
-    constexpr uintptr_t kOnscreenDripSpeed = MW::PRECIP_ONSCREEN_DRIPSPEED_ADDR; // 0x00904B2C
-    constexpr uintptr_t kOnscreenSpeedMod = MW::PRECIP_ONSCREEN_SPEEDMOD_ADDR;  // 0x00904B30
-    constexpr uintptr_t kOnscreenDropShapeSpeedChange = MW::PRECIP_ONSCREEN_DROPSHAPESPEEDCHANGE_ADDR; //0x00904B34
-    constexpr uintptr_t kRainRateOfChange = MW::PRECIP_RAINRATEOFCHANGE_ADDR;   // 0x00904AC4
-    constexpr uintptr_t kCloudsRateOfChange = MW::PRECIP_CLOUDSRATEOFCHANGE_ADDR; //0x00904AC8
-    constexpr uintptr_t kPrecipEnable = MW::PRECIPITATION_ENABLE_ADDR; //0x008F86E4
-    constexpr uintptr_t kPrecipRender = MW::PRECIPITATION_RENDER_ADDR; //0x00904AD0
-
-    constexpr uintptr_t kParamMapLayerRain = MW::kParamMapLayerRain;
-    constexpr uintptr_t kParamMapLayerClouds = MW::kParamMapLayerClouds;
-    constexpr uintptr_t kParamDataRain = MW::kParamDataRain;
-    constexpr uintptr_t kParamDataClouds = MW::kParamDataClouds;
-    constexpr uintptr_t kOnlineFlag = MW::kOnlineFlag;
-    constexpr uintptr_t kWindMod = MW::kWindMod;
-    constexpr uintptr_t kCloudBase = MW::kCloudBase;
 
     // Helper math
     inline Vec3 Vec3FromPtr(float* p) { return {p[0], p[1], p[2]}; }
@@ -163,7 +143,7 @@ namespace
         float out = c;
         if (out < 0.0f)
         {
-            uint8_t online = *reinterpret_cast<uint8_t*>(kOnlineFlag);
+            uint8_t online = *reinterpret_cast<uint8_t*>(Game::kOnlineFlag);
             if (!online)
                 out = 0.0f;
         }
@@ -172,10 +152,10 @@ namespace
 
     static float Sub7539D0(float x, float y)
     {
-        uint8_t online = *reinterpret_cast<uint8_t*>(kOnlineFlag);
+        uint8_t online = *reinterpret_cast<uint8_t*>(Game::kOnlineFlag);
         if (!online)
         {
-            float v = *FPtr(kWindMod);
+            float v = *FPtr(Game::kWindMod);
             if (v > 0.0f)
                 return v;
             if (v < 0.0f)
@@ -185,14 +165,14 @@ namespace
         if (online)
             t = t * t;
 
-        void* layer = *reinterpret_cast<void**>(kParamMapLayerRain);
+        void* layer = *reinterpret_cast<void**>(Game::kParamMapLayerRain);
         if (!layer)
             return 0.0f;
 
         using GetParam_t = void* (__thiscall*)(void*, float, float);
         auto getParam = reinterpret_cast<GetParam_t>(0x0074B5C0); // ParameterMapLayer::GetParameterData
         void* param = getParam(layer, x, y);
-        *reinterpret_cast<void**>(kParamDataRain) = param;
+        *reinterpret_cast<void**>(Game::kParamDataRain) = param;
         float minVal = 0.0f;
         if (param)
         {
@@ -218,14 +198,14 @@ namespace
     static float Sub753AC0(float x, float y)
     {
         float t = Sub73CA50(x);
-        void* layer = *reinterpret_cast<void**>(kParamMapLayerClouds);
+        void* layer = *reinterpret_cast<void**>(Game::kParamMapLayerClouds);
         if (!layer)
-            return *reinterpret_cast<float*>(kCloudBase);
+            return *reinterpret_cast<float*>(Game::kCloudBase);
 
         using GetParam_t = void* (__thiscall*)(void*, float, float);
         auto getParam = reinterpret_cast<GetParam_t>(0x0074B5C0);
         void* param = getParam(layer, x, y);
-        *reinterpret_cast<void**>(kParamDataClouds) = param;
+        *reinterpret_cast<void**>(Game::kParamDataClouds) = param;
         float minVal = 0.0f;
         if (param)
         {
@@ -237,7 +217,7 @@ namespace
             }
         }
         if (t > minVal)
-            return *reinterpret_cast<float*>(kCloudBase);
+            return *reinterpret_cast<float*>(Game::kCloudBase);
         if (param)
         {
             auto table = *reinterpret_cast<uint8_t**>(reinterpret_cast<uint8_t*>(layer) + 0x10);
@@ -277,7 +257,7 @@ namespace
 
     static void Sub73CDB0(uint8_t* out, uint8_t* view)
     {
-        float dt = *FPtr(kWorldTimeElapsed);
+        float dt = *FPtr(Game::kWorldTimeElapsed);
         float* cam = *reinterpret_cast<float**>(view + 0x40);
         if (!core::IsReadable(cam, sizeof(float) * 132))
         {
@@ -285,7 +265,7 @@ namespace
             return;
         }
         float speed = std::sqrt(cam[128] * cam[128] + cam[129] * cam[129] + cam[130] * cam[130]) *
-            *FPtr(kOnscreenSpeedMod);
+            *FPtr(Game::kOnscreenSpeedMod);
 
         uint8_t* viewData = *reinterpret_cast<uint8_t**>(view + 0x68);
         if (!viewData)
@@ -300,7 +280,7 @@ namespace
         }
 
         int count = 0;
-        if (reinterpret_cast<int(__cdecl*)()>(0x006BF530)() < 3)
+        if (Game::eCurrentViewMode() < 3)
             count = ReadF(*reinterpret_cast<uint8_t**>(view + 0x68), 0x28C) == 0.0f ? 0 : 20;
         else
             count = ReadF(*reinterpret_cast<uint8_t**>(view + 0x68), 0x28C) == 0.0f ? 0 : 10;
@@ -312,11 +292,11 @@ namespace
         float* ptr = reinterpret_cast<float*>(out + 0x0C);
         for (int i = 0; i < count; ++i, ptr += 7)
         {
-            if (*reinterpret_cast<int*>(0x009B0A58) == 0)
+            if (*reinterpret_cast<int*>(Game::DripFreeze) == 0)
                 ptr[0] -= dt;
             if (ptr[0] > 0.0f)
             {
-                float v = *FPtr(kOnscreenDripSpeed) * ptr[3] * dt + ptr[-1];
+                float v = *FPtr(Game::kOnscreenDripSpeed) * ptr[3] * dt + ptr[-1];
                 ptr[-1] = v;
                 if (v > 1.0f || ptr[-2] > 1.0f || ptr[-2] < 0.0f)
                 {
@@ -329,7 +309,7 @@ namespace
                     ptr[-2] = d.x * speed + ptr[-2];
                     ptr[-1] = d.y * speed;
                 }
-                if (speed > *FPtr(kOnscreenDropShapeSpeedChange))
+                if (speed > *FPtr(Game::kOnscreenDropShapeSpeedChange))
                 {
                     int idx = *reinterpret_cast<int*>(&ptr[4]);
                     idx = (idx + 1) % 4;
@@ -370,14 +350,14 @@ namespace
 
         float a[2] = {x - w, y - h};
         float b[2] = {x + w, y + h};
-        reinterpret_cast<void(__cdecl*)(float*, float*, float*)>(0x00723330)(a, reinterpret_cast<float*>(rain + 0x3810),
+        reinterpret_cast<void(__cdecl*)(float*, float*, float*)>(Game::TunnelCameraRelative)(a, reinterpret_cast<float*>(rain + 0x3810),
                                                                              reinterpret_cast<float*>(rain + 0x3808));
         float v[2] = {*(float*)(rain + 0x3808) - *(float*)(rain + 0x3810),
                       -(*(float*)(rain + 0x3814) - *(float*)(rain + 0x3818))};
         v[0] = v[0];
         v[1] = v[1];
-        reinterpret_cast<float*(__cdecl*)(float*, float*)>(0x0045F3C0)(v, v);
-        reinterpret_cast<void(__cdecl*)(float*, float*, float*, float*, float*)>(0x00722E90)(
+        reinterpret_cast<float*(__cdecl*)(float*, float*)>(Game::Normalize2DAddr)(v, v);
+        reinterpret_cast<void(__cdecl*)(float*, float*, float*, float*, float*)>(Game::FindBestFacingEdgeAddr)(
             reinterpret_cast<float*>(rain + 0x3810),
             reinterpret_cast<float*>(rain + 0x3808),
             reinterpret_cast<float*>(rain + 0x3820),
@@ -418,7 +398,7 @@ namespace
             {
                 float z = *(float*)(data + 0x28);
                 float z2 = z + 0.5f;
-                reinterpret_cast<void(__cdecl*)(float, float, float, float, float, float, float, float, float, float, float, float)>(0x00749FB0)(
+                reinterpret_cast<void(__cdecl*)(float, float, float, float, float, float, float, float, float, float, float, float)>(Game::TunnelBloom_SetParams)(
                     *(float*)(rain + 0x3818), *(float*)(rain + 0x381C), z2,
                     *(float*)(rain + 0x3820), *(float*)(rain + 0x3824), z2,
                     *(float*)(rain + 0x3818), *(float*)(rain + 0x381C), z,
@@ -431,7 +411,7 @@ namespace
         {
             float z = *(float*)(data + 0x28);
             float z2 = z + 0.5f;
-            reinterpret_cast<void(__cdecl*)(float, float, float, float, float, float, float, float, float, float, float, float)>(0x00749FB0)(
+            reinterpret_cast<void(__cdecl*)(float, float, float, float, float, float, float, float, float, float, float, float)>(Game::TunnelBloom_SetParams)(
                 *(float*)(rain + 0x3808), *(float*)(rain + 0x380C), z2,
                 *(float*)(rain + 0x3810), *(float*)(rain + 0x3814), z2,
                 *(float*)(rain + 0x3808), *(float*)(rain + 0x380C), z,
@@ -472,49 +452,49 @@ namespace
     static void Render3D(uint8_t* rain)
     {
         using Render3D_t = void(__thiscall*)(void*);
-        auto render3d = reinterpret_cast<Render3D_t>(0x0074A5D0);
+        auto render3d = reinterpret_cast<Render3D_t>(Game::RainRender3D);
         render3d(rain);
     }
 
     static void RenderRain(uint8_t* rain)
     {
         using Render_t = void(__thiscall*)(void*);
-        auto render = reinterpret_cast<Render_t>(0x0074ACC0);
+        auto render = reinterpret_cast<Render_t>(Game::RainRender);
         render(rain);
     }
 
     static void UpdateRain(uint8_t* rain)
     {
         using Update_t = void(__thiscall*)(void*);
-        auto update = reinterpret_cast<Update_t>(0x00757770);
+        auto update = reinterpret_cast<Update_t>(Game::RainUpdate);
         update(rain);
     }
 
     static void SetRainIntensity(uint8_t* rain, float intensity)
     {
         using SetIntensity_t = void(__thiscall*)(void*, float);
-        auto setIntensity = reinterpret_cast<SetIntensity_t>(0x0073CC80);
+        auto setIntensity = reinterpret_cast<SetIntensity_t>(Game::RainSetIntensityAddr);
         setIntensity(rain, intensity);
     }
 
     static uint8_t IsPaused()
     {
         using IsPaused_t = uint8_t(__thiscall*)(void*);
-        auto isPaused = reinterpret_cast<IsPaused_t>(0x0064B680);
-        return isPaused(reinterpret_cast<void*>(kTheGameFlowManager));
+        auto isPaused = reinterpret_cast<IsPaused_t>(Game::PausedAddr);
+        return isPaused(reinterpret_cast<void*>(Game::GAMEFLOWMGR_STATUS_ADDR));
     }
 
     static int GetViewMode()
     {
         using GetViewMode_t = int(__cdecl*)();
-        auto fn = reinterpret_cast<GetViewMode_t>(0x006BF530);
+        auto fn = reinterpret_cast<GetViewMode_t>(Game::CurrentViewMode);
         return fn();
     }
 
     static uint8_t AmIinATunnelSlow(uint8_t* view, int mode)
     {
         using Fn_t = uint8_t(__cdecl*)(void*, int);
-        auto fn = reinterpret_cast<Fn_t>(0x0074B000);
+        auto fn = reinterpret_cast<Fn_t>(Game::AmIinATunnelSlow);
         return fn(view, mode);
     }
 }
@@ -523,25 +503,25 @@ namespace RainFlowMW
 {
     void EnforceState(bool enable)
     {
-        *reinterpret_cast<int*>(kPrecipEnable) = enable ? 1 : 0;
-        *reinterpret_cast<int*>(kPrecipRender) = enable ? 1 : 0;
-        *reinterpret_cast<int*>(MW::RainEnablePtr) = enable ? 1 : 0;
-        *reinterpret_cast<int*>(MW::ParticleSystemEnablePtr) = enable ? 1 : 0;
+        *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = enable ? 1 : 0;
+        *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = enable ? 1 : 0;
+        *reinterpret_cast<int*>(Game::RainEnablePtr) = enable ? 1 : 0;
+        // *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = enable ? 1 : 0;
     }
 
     void Disable()
     {
         EnforceState(false);
-        *reinterpret_cast<float*>(MW::PRECIP_RAINPERCENT_ADDR) = 0.0f;
-        *reinterpret_cast<float*>(MW::PRECIP_FOGPERCENT_ADDR) = 0.0f;
-        *reinterpret_cast<float*>(MW::PRECIPITATION_PERCENT_ADDR) = 0.0f;
+        *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR) = 0.0f;
+        *reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR) = 0.0f;
+        *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR) = 0.0f;
 
         uint8_t* rain = RainPtr();
         if (!rain || !core::IsReadable(rain, 0x4000))
             return;
 
         WriteF(rain, 0x28C, 0.0f);
-        WriteF(rain, 0x290, *FPtr(kCloudBase));
+        WriteF(rain, 0x290, *FPtr(Game::kCloudBase));
         WriteF(rain, 0x3694, 0.0f);
         WriteF(rain, 0x3698, 0.0f);
         WriteF(rain, 0x369C, 0.0f);
@@ -553,28 +533,28 @@ namespace RainFlowMW
     void Tick()
     {
         uint8_t* rain = RainPtr();
-        if (!rain || !core::IsReadable(rain, 0x4000))
+        if (!rain)
             return;
 
-        if (*reinterpret_cast<int*>(kTheGameFlowManager) != 6)
-            return;
+        // if (*reinterpret_cast<int*>(Game::GAMEFLOWMGR_STATUS_ADDR) != 6)
+        //     return;
 
-        uint8_t* view = GetActiveView();
-        if (!view)
-            return;
+        // uint8_t* view = GetActiveView();
+        // if (!view)
+        //     return;
 
-        void* viewPlat = *reinterpret_cast<void**>(view + 0x44);
-        if (viewPlat && viewPlat != reinterpret_cast<void*>(view + 0x44))
-        {
-            WriteP(rain, 0x284, viewPlat);
-            WriteP(rain, 0x288, view);
-        }
-        else
-        {
-            WriteP(rain, 0x284, nullptr);
-        }
+        // void* viewPlat = *reinterpret_cast<void**>(view + 0x44);
+        // if (viewPlat && viewPlat != reinterpret_cast<void*>(view + 0x44))
+        // {
+        //     WriteP(rain, 0x284, viewPlat);
+        //     WriteP(rain, 0x288, view);
+        // }
+        // else
+        // {
+        //     WriteP(rain, 0x284, nullptr);
+        // }
 
-        EnforceState(true);
+        // EnforceState(true);
 
         float rainPct = RainConfigController::precipitationConfig.rainIntensity;
         if (rainPct <= 0.0f)
@@ -583,146 +563,36 @@ namespace RainFlowMW
         if (fogPct < 0.0f)
             fogPct = 0.0f;
 
-        *reinterpret_cast<float*>(MW::PRECIP_RAINPERCENT_ADDR) = rainPct;
-        *reinterpret_cast<float*>(MW::PRECIP_FOGPERCENT_ADDR) = fogPct;
-        *reinterpret_cast<float*>(MW::PRECIPITATION_PERCENT_ADDR) = rainPct;
+        *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR) = rainPct;
+        *reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR) = fogPct;
+        *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR) = rainPct;
+        *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR) = rainPct;
+        *reinterpret_cast<float*>(Game::PRECIP_DRIVEFACTOR_ADDR) = rainPct;
 
-        float* cam = *reinterpret_cast<float**>(view + 0x40);
-        D3DXVECTOR3 camPosFallback{};
-        if (!core::IsReadable(cam, sizeof(float) * 32))
-        {
-            static bool warned = false;
-            if (!warned)
-            {
-                OutputDebugStringA("[RainFlowMW] view->cam params null, using fallback camera position\n");
-                warned = true;
-            }
-            camPosFallback = PrecipitationController::Get()->GetCameraPositionSafe();
-            *reinterpret_cast<float*>(MW::PRECIP_RAINX_ADDR) = camPosFallback.x;
-            *reinterpret_cast<float*>(MW::PRECIP_RAINY_ADDR) = camPosFallback.y;
-            *reinterpret_cast<float*>(MW::PRECIP_RAINZ_ADDR) = camPosFallback.z;
-        }
-        else
-        {
-            *reinterpret_cast<float*>(MW::PRECIP_RAINX_ADDR) = cam[16];
-            *reinterpret_cast<float*>(MW::PRECIP_RAINY_ADDR) = cam[17];
-            *reinterpret_cast<float*>(MW::PRECIP_RAINZ_ADDR) = cam[18];
-        }
+        // Stabilize rate-of-change to avoid flicker.
+        *reinterpret_cast<float*>(Game::PRECIP_RAINRATEOFCHANGE_ADDR) = 1.0f;
+        *reinterpret_cast<float*>(Game::PRECIP_CLOUDSRATEOFCHANGE_ADDR) = 10.0f;
+        *reinterpret_cast<int*>(Game::RoadReflectionStateAddr) = 3;
+
+        // float* cam = *reinterpret_cast<float**>(view + 0x40);
 
         if (IsPaused())
         {
-            RenderRain(rain);
+            Game::g_originalRainRender(rain);
             return;
         }
 
-        Sub73CDB0(rain, view);
+        // Sub73CDB0(rain, view);
 
-        float dt = *FPtr(kWorldTimeElapsed);
-        if (dt <= 0.0f)
-            dt = 0.001f;
-
-        float windStep = *FPtr(0x00904AEC);
-        float wind = *FPtr(kWindAngle) + windStep * dt;
-        if (wind > 360.0f)
-            wind = 0.0f;
-        *FPtr(kWindAngle) = wind;
-
-        if (*IPtr(kPrecipEnable) == 0)
-        {
-            int inTunnel = AmIinATunnelSlow(view, 1);
-            WriteI(rain, 0x23C, inTunnel);
-            if (inTunnel & 2)
-            {
-                WriteI(rain, 0x240, 1);
-                WriteI(rain, 0x23C, 0);
-            }
-            if (ReadI(rain, 0x23C))
-                WriteI(rain, 0x23C, 1);
-            WriteF(rain, 0x28C, 0.0f);
-            WriteF(rain, 0x36A0, 0.0f);
-            return;
-        }
-
-        // Force targets from config (no map-layer/AlwaysRain dependency).
-        WriteF(rain, 0x3694, rainPct);
-        WriteF(rain, 0x3698, fogPct);
-
-        WriteF(rain, 0x369C, rainPct);
-        WriteF(rain, 0x36A0, rainPct);
-
-        // Force current rain intensity directly from config.
+        // Lock intensities to avoid dampness flicker.
         WriteF(rain, 0x28C, rainPct);
-
-        float invDt = 1.0f / dt;
-        float rainRate = *FPtr(kRainRateOfChange);
-        float cloudRate = *FPtr(kCloudsRateOfChange);
-
-        float curRain = ReadF(rain, 0x28C);
-        float targetRain = ReadF(rain, 0x3694);
-        float newRain = ((targetRain - curRain) / (invDt * rainRate)) + curRain;
-        if (targetRain == 0.0f && newRain < 0.01f)
-            newRain = 0.0f;
-        if (newRain > 1.0f)
-            newRain = 1.0f;
-        WriteF(rain, 0x28C, newRain);
-
-        float curCloud = ReadF(rain, 0x290);
-        float targetCloud = ReadF(rain, 0x3698);
-        float newCloud = ((targetCloud - curCloud) / (invDt * cloudRate)) + curCloud;
-        if (targetCloud == 0.0f && newCloud < (*FPtr(kCloudBase) + 0.01f))
-            newCloud = *FPtr(kCloudBase);
-        if (newCloud > 1.0f)
-            newCloud = 1.0f;
-        WriteF(rain, 0x290, newCloud);
-
-        static DWORD lastLog = 0;
-        DWORD now = timeGetTime();
-        if (now - lastLog > 1000)
-        {
-            lastLog = now;
-            char buf[256];
-            std::snprintf(buf, sizeof(buf),
-                          "[RainFlowMW] rain=%.3f cloud=%.3f road=%.3f precip=%.3f preEn=%d\n",
-                          ReadF(rain, 0x28C), ReadF(rain, 0x290), ReadF(rain, 0x36A0),
-                          *reinterpret_cast<float*>(MW::PRECIP_RAINPERCENT_ADDR),
-                          *reinterpret_cast<int*>(kPrecipEnable));
-            OutputDebugStringA(buf);
-        }
-
-        // Skip native helpers (they crash without fully initialized rain internals).
-        WriteF(rain, 0x36A4, 1.0f);
-
-        uint8_t* viewData = *reinterpret_cast<uint8_t**>(view + 0x68);
-        if (core::IsReadable(viewData, 0x244) && (ReadI(viewData, 0x23C) || ReadI(viewData, 0x240)))
-        {
-            switch (ReadI(rain, 0x280))
-            {
-            case 0:
-                WriteI(rain, 0x280, 2);
-                Sub74A070(rain);
-                Sub74A160(rain);
-                for (int i = 0; i < 200; ++i)
-                    Sub74A320(rain, rain + 0x3880 + i * 0x20);
-                Render3D(rain);
-                break;
-            case 2:
-                WriteI(rain, 0x280, 1);
-                // fallthrough
-            case 1:
-                Sub74A160(rain);
-                Render3D(rain);
-                break;
-            case 3:
-                WriteI(rain, 0x280, 1);
-                // fallthrough
-            default:
-                Render3D(rain);
-                break;
-            }
-        }
-        else
-        {
-            WriteI(rain, 0x280, 0);
-        }
+        WriteF(rain, 0x290, rainPct);
+        // WriteF(rain, 0x36A0, rainPct); // road dampness
+        // WriteF(rain, 0x36A4, 1.0f);
+        // Clear tunnel/overpass flags that can toggle reflections.
+        // WriteI(rain, 0x23C, 0);
+        // WriteI(rain, 0x240, 0);
+        
+        return;
     }
 }

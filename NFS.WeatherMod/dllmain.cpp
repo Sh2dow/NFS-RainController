@@ -44,13 +44,12 @@ static IDirect3DDevice9* GetGameDevice()
     if (detected_game != GameType::MW)
         return nullptr;
 
-    auto** devicePtr = reinterpret_cast<IDirect3DDevice9**>(MW::NFS_D3D9_DEVICE_ADDRESS);
+    auto** devicePtr = reinterpret_cast<IDirect3DDevice9**>(Game::NFS_D3D9_DEVICE_ADDRESS);
     if (!core::IsReadable(devicePtr, sizeof(void*)))
         return nullptr;
     return *devicePtr;
 }
 
-static bool g_inDisplayFrame = false;
 static void __fastcall HookedRainUpdateCallsite(void* ecx, void*);
 static void __fastcall HookedRainRenderCallsite(void* ecx, void*);
 static void HookedRenderCtxCallsite();
@@ -65,7 +64,7 @@ static void RunNativeRainFlow(void* rain)
     static bool entryLogged = false;
     if (!entryLogged)
     {
-        OutputDebugStringA("[RainFlowMW] RunNativeRainFlow entered\n");
+        OutputDebugStringA("[WeatherMod] RunNativeRainFlow entered\n");
         entryLogged = true;
     }
 
@@ -90,7 +89,7 @@ static void RunNativeRainFlow(void* rain)
                     char dbg[256];
                     unsigned char active = *reinterpret_cast<unsigned char*>(entry + Game::EViewActiveFlagOffset);
                     std::snprintf(dbg, sizeof(dbg),
-                                  "[RainFlowMW] eView[%u]=0x%p active=%u viewPlat=0x%p\n",
+                                  "[WeatherMod] eView[%u]=0x%p active=%u viewPlat=0x%p\n",
                                   static_cast<unsigned>(i), candidateView, active, candidatePlat);
                     OutputDebugStringA(dbg);
                 }
@@ -127,7 +126,7 @@ static void RunNativeRainFlow(void* rain)
     {
         char dbg[256];
         std::snprintf(dbg, sizeof(dbg),
-                      "[RainFlowMW] rain=0x%p view=0x%p viewPlat=0x%p p284=0x%p p288=0x%p\n",
+                      "[WeatherMod] rain=0x%p view=0x%p viewPlat=0x%p p284=0x%p p288=0x%p\n",
                       rain, viewPtr, viewPlat, p284, p288);
         OutputDebugStringA(dbg);
         stateLogged = true;
@@ -137,7 +136,7 @@ static void RunNativeRainFlow(void* rain)
         static bool logged = false;
         if (!logged)
         {
-            OutputDebugStringA("[RainFlowMW] early-exit: p284/p288 null\n");
+            OutputDebugStringA("[WeatherMod] early-exit: p284/p288 null\n");
             logged = true;
         }
         return;
@@ -147,7 +146,7 @@ static void RunNativeRainFlow(void* rain)
         static bool logged = false;
         if (!logged)
         {
-            OutputDebugStringA("[RainFlowMW] early-exit: p288 is array base\n");
+            OutputDebugStringA("[WeatherMod] early-exit: p288 is array base\n");
             logged = true;
         }
         return;
@@ -159,7 +158,7 @@ static void RunNativeRainFlow(void* rain)
         static bool logged = false;
         if (!logged)
         {
-            OutputDebugStringA("[RainFlowMW] early-exit: p284/p288 unreadable\n");
+            OutputDebugStringA("[WeatherMod] early-exit: p284/p288 unreadable\n");
             logged = true;
         }
         return;
@@ -171,7 +170,7 @@ static void RunNativeRainFlow(void* rain)
         static bool logged = false;
         if (!logged)
         {
-            OutputDebugStringA("[RainFlowMW] early-exit: viewPlat vtable unreadable\n");
+            OutputDebugStringA("[WeatherMod] early-exit: viewPlat vtable unreadable\n");
             logged = true;
         }
         return;
@@ -183,7 +182,7 @@ static void RunNativeRainFlow(void* rain)
     if (!*reinterpret_cast<void**>(renderCtx))
     {
         // Prefer render platform pointer if available, otherwise fall back to particle ctx.
-        auto* renderPlat = reinterpret_cast<void*>(MW::renderPlatAddr);
+        auto* renderPlat = reinterpret_cast<void*>(Game::renderPlatAddr);
         if (core::IsReadable(renderPlat, sizeof(void*)) && *reinterpret_cast<void**>(renderPlat))
         {
             *reinterpret_cast<void**>(renderCtx) = *reinterpret_cast<void**>(renderPlat);
@@ -210,8 +209,8 @@ static void RunNativeRainFlow(void* rain)
     {
         auto* rainEnable = reinterpret_cast<int*>(Game::RainEnablePtr);
         auto* particleEnable = reinterpret_cast<int*>(Game::ParticleSystemEnablePtr);
-        auto* precipEnable = reinterpret_cast<int*>(MW::PRECIPITATION_ENABLE_ADDR);
-        auto* precipRender = reinterpret_cast<int*>(MW::PRECIPITATION_RENDER_ADDR);
+        auto* precipEnable = reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR);
+        auto* precipRender = reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR);
 
         if (core::IsReadable(rainEnable, sizeof(int)))
             *rainEnable = 0;
@@ -222,10 +221,10 @@ static void RunNativeRainFlow(void* rain)
         if (core::IsReadable(precipRender, sizeof(int)))
             *precipRender = 0;
 
-        auto* precipPercent = reinterpret_cast<float*>(MW::PRECIPITATION_PERCENT_ADDR);
-        auto* rainPercent = reinterpret_cast<float*>(MW::PRECIP_RAINPERCENT_ADDR);
-        auto* fogPercent = reinterpret_cast<float*>(MW::PRECIP_FOGPERCENT_ADDR);
-        auto* roadReflection = reinterpret_cast<float*>(0x00904B38);
+        auto* precipPercent = reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR);
+        auto* rainPercent = reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR);
+        auto* fogPercent = reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR);
+        auto* roadReflection = reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR);
         if (core::IsReadable(precipPercent, sizeof(float)))
             *precipPercent = 0.0f;
         if (core::IsReadable(rainPercent, sizeof(float)))
@@ -234,14 +233,14 @@ static void RunNativeRainFlow(void* rain)
             *fogPercent = 0.0f;
         if (core::IsReadable(roadReflection, sizeof(float)))
             *roadReflection = 0.0f;
-        OutputDebugStringA("[RainFlowMW] early-exit: disabled\n");
+        OutputDebugStringA("[WeatherMod] early-exit: disabled\n");
         return;
     }
 
     auto* rainEnable = reinterpret_cast<int*>(Game::RainEnablePtr);
     auto* particleEnable = reinterpret_cast<int*>(Game::ParticleSystemEnablePtr);
-    auto* precipEnable = reinterpret_cast<int*>(MW::PRECIPITATION_ENABLE_ADDR);
-    auto* precipRender = reinterpret_cast<int*>(MW::PRECIPITATION_RENDER_ADDR);
+    auto* precipEnable = reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR);
+    auto* precipRender = reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR);
 
     if (core::IsReadable(rainEnable, sizeof(int)))
         *rainEnable = 1;
@@ -263,7 +262,7 @@ static void RunNativeRainFlow(void* rain)
     {
         char dbg[256];
         std::snprintf(dbg, sizeof(dbg),
-                      "[RainFlowMW] cfg rain=%.3f fog=%.3f enable3DRain=%d enable3DSplatters=%d\n",
+                      "[WeatherMod] cfg rain=%.3f fog=%.3f enable3DRain=%d enable3DSplatters=%d\n",
                       rainPct, fogPct,
                       RainConfigController::precipitationConfig.enable3DRain ? 1 : 0,
                       RainConfigController::precipitationConfig.enable3DSplatters ? 1 : 0);
@@ -279,16 +278,16 @@ static void RunNativeRainFlow(void* rain)
         Game::g_originalGameSetChanceOfRain(rainPct);
 
     // Force weather param-map rain layer intensity (MW).
-    auto* paramMapRain = reinterpret_cast<float*>(MW::kParamMapLayerRain);
-    auto* paramDataRain = reinterpret_cast<float*>(MW::kParamDataRain);
+    auto* paramMapRain = reinterpret_cast<float*>(Game::kParamMapLayerRain);
+    auto* paramDataRain = reinterpret_cast<float*>(Game::kParamDataRain);
     if (core::IsReadable(paramMapRain, sizeof(float)))
         *paramMapRain = rainPct;
     if (core::IsReadable(paramDataRain, sizeof(float)))
         *paramDataRain = rainPct;
 
-    auto* precipPercent = reinterpret_cast<float*>(MW::PRECIPITATION_PERCENT_ADDR);
-    auto* rainPercent = reinterpret_cast<float*>(MW::PRECIP_RAINPERCENT_ADDR);
-    auto* fogPercent = reinterpret_cast<float*>(MW::PRECIP_FOGPERCENT_ADDR);
+    auto* precipPercent = reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR);
+    auto* rainPercent = reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR);
+    auto* fogPercent = reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR);
     if (core::IsReadable(precipPercent, sizeof(float)))
         *precipPercent = rainPct;
     if (core::IsReadable(rainPercent, sizeof(float)))
@@ -297,13 +296,13 @@ static void RunNativeRainFlow(void* rain)
         *fogPercent = fogPct;
 
     // Native rain tuning globals (from IDA)
-    auto* generalRainAmount = reinterpret_cast<float*>(0x00904A14);
-    auto* rainCrossing = reinterpret_cast<float*>(0x00904A24);
-    auto* rainFallSpeed = reinterpret_cast<float*>(0x00904A28);
-    auto* rainGravity = reinterpret_cast<float*>(0x00904A2C);
-    auto* fallingRainSize = reinterpret_cast<float*>(0x00904A90);
-    auto* rainIntensity = reinterpret_cast<float*>(0x00904A94);
-    auto* roadReflection = reinterpret_cast<float*>(0x00904B38);
+    auto* generalRainAmount = reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR);
+    auto* rainCrossing = reinterpret_cast<float*>(Game::PRECIP_RAINY_ADDR);
+    auto* rainFallSpeed = reinterpret_cast<float*>(Game::PRECIP_RAINZ_ADDR);
+    auto* rainGravity = reinterpret_cast<float*>(Game::PRECIP_RAINZCONSTANT_ADDR);
+    auto* fallingRainSize = reinterpret_cast<float*>(Game::PRECIP_RAINRADIUSX_ADDR);
+    auto* rainIntensity = reinterpret_cast<float*>(Game::PRECIP_RAINRADIUSY_ADDR);
+    auto* roadReflection = reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR);
 
     if (core::IsReadable(generalRainAmount, sizeof(float)))
         *generalRainAmount = rainPct;
@@ -329,9 +328,9 @@ static void RunNativeRainFlow(void* rain)
     }
 
     D3DXVECTOR3 camPos = PrecipitationController::Get()->GetCameraPositionSafe();
-    auto* rainX = reinterpret_cast<float*>(MW::PRECIP_RAINX_ADDR);
-    auto* rainY = reinterpret_cast<float*>(MW::PRECIP_RAINY_ADDR);
-    auto* rainZ = reinterpret_cast<float*>(MW::PRECIP_RAINZ_ADDR);
+    auto* rainX = reinterpret_cast<float*>(Game::PRECIP_RAINX_ADDR);
+    auto* rainY = reinterpret_cast<float*>(Game::PRECIP_RAINY_ADDR);
+    auto* rainZ = reinterpret_cast<float*>(Game::PRECIP_RAINZ_ADDR);
     if (core::IsReadable(rainX, sizeof(float)) &&
         core::IsReadable(rainY, sizeof(float)) &&
         core::IsReadable(rainZ, sizeof(float)))
@@ -349,7 +348,7 @@ static void RunNativeRainFlow(void* rain)
     if (!renderLogged)
     {
         char dbg[160];
-        std::snprintf(dbg, sizeof(dbg), "[RainFlowMW] renderCtx=0x%p\n", ctxVal);
+        std::snprintf(dbg, sizeof(dbg), "[WeatherMod] renderCtx=0x%p\n", ctxVal);
         OutputDebugStringA(dbg);
         renderLogged = true;
     }
@@ -387,7 +386,7 @@ static void __fastcall HookedRainTickCallsite(void* ecx, void*)
         {
             if (!triedInit && PrecipitationController::Get()->IsActive() && Game::g_originalInitViews)
             {
-                OutputDebugStringA("[RainFlowMW] Rain instance missing, calling epInitViews\n");
+                OutputDebugStringA("[WeatherMod] Rain instance missing, calling epInitViews\n");
                 Game::g_originalInitViews();
                 triedInit = true;
                 rain = *reinterpret_cast<void**>(Game::RainInstancePtr);
@@ -403,13 +402,13 @@ static void __fastcall HookedRainTickCallsite(void* ecx, void*)
                     float f28c = *reinterpret_cast<float*>(reinterpret_cast<uintptr_t>(rain) + 0x28C);
                     float f290 = *reinterpret_cast<float*>(reinterpret_cast<uintptr_t>(rain) + 0x290);
                     std::snprintf(dbg, sizeof(dbg),
-                                  "[RainFlowMW] Rain instance missing (ecx=0x%p, ptr=0x%p) p284=0x%p p288=0x%p f28c=%.3f f290=%.3f\n",
+                                  "[WeatherMod] Rain instance missing (ecx=0x%p, ptr=0x%p) p284=0x%p p288=0x%p f28c=%.3f f290=%.3f\n",
                                   ecx, rain, p284, p288, f28c, f290);
                 }
                 else
                 {
                     std::snprintf(dbg, sizeof(dbg),
-                                  "[RainFlowMW] Rain instance missing (ecx=0x%p, ptr=0x%p)\n",
+                                  "[WeatherMod] Rain instance missing (ecx=0x%p, ptr=0x%p)\n",
                                   ecx, rain);
                 }
                 OutputDebugStringA(dbg);
@@ -420,8 +419,8 @@ static void __fastcall HookedRainTickCallsite(void* ecx, void*)
             {
                 auto* rainEnable = reinterpret_cast<int*>(Game::RainEnablePtr);
                 auto* particleEnable = reinterpret_cast<int*>(Game::ParticleSystemEnablePtr);
-                auto* precipEnable = reinterpret_cast<int*>(MW::PRECIPITATION_ENABLE_ADDR);
-                auto* precipRender = reinterpret_cast<int*>(MW::PRECIPITATION_RENDER_ADDR);
+                auto* precipEnable = reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR);
+                auto* precipRender = reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR);
                 if (core::IsReadable(rainEnable, sizeof(int)))
                     *rainEnable = 1;
                 if (core::IsReadable(particleEnable, sizeof(int)))
@@ -438,9 +437,9 @@ static void __fastcall HookedRainTickCallsite(void* ecx, void*)
                 if (fogPct < 0.0f)
                     fogPct = 0.0f;
 
-                auto* precipPercent = reinterpret_cast<float*>(MW::PRECIPITATION_PERCENT_ADDR);
-                auto* rainPercent = reinterpret_cast<float*>(MW::PRECIP_RAINPERCENT_ADDR);
-                auto* fogPercent = reinterpret_cast<float*>(MW::PRECIP_FOGPERCENT_ADDR);
+                auto* precipPercent = reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR);
+                auto* rainPercent = reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR);
+                auto* fogPercent = reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR);
                 if (core::IsReadable(precipPercent, sizeof(float)))
                     *precipPercent = rainPct;
                 if (core::IsReadable(rainPercent, sizeof(float)))
@@ -448,9 +447,9 @@ static void __fastcall HookedRainTickCallsite(void* ecx, void*)
                 if (core::IsReadable(fogPercent, sizeof(float)))
                     *fogPercent = fogPct;
 
-                auto* generalRainAmount = reinterpret_cast<float*>(0x00904A14);
-                auto* rainIntensity = reinterpret_cast<float*>(0x00904A94);
-                auto* roadReflection = reinterpret_cast<float*>(0x00904B38);
+                auto* generalRainAmount = reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR);
+                auto* rainIntensity = reinterpret_cast<float*>(Game::PRECIP_RAINRADIUSY_ADDR);
+                auto* roadReflection = reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR);
                 if (core::IsReadable(generalRainAmount, sizeof(float)))
                     *generalRainAmount = rainPct;
                 if (core::IsReadable(rainIntensity, sizeof(float)))
@@ -459,9 +458,9 @@ static void __fastcall HookedRainTickCallsite(void* ecx, void*)
                     *roadReflection = rainPct;
 
                 D3DXVECTOR3 camPos = PrecipitationController::Get()->GetCameraPositionSafe();
-                auto* rainX = reinterpret_cast<float*>(MW::PRECIP_RAINX_ADDR);
-                auto* rainY = reinterpret_cast<float*>(MW::PRECIP_RAINY_ADDR);
-                auto* rainZ = reinterpret_cast<float*>(MW::PRECIP_RAINZ_ADDR);
+                auto* rainX = reinterpret_cast<float*>(Game::PRECIP_RAINX_ADDR);
+                auto* rainY = reinterpret_cast<float*>(Game::PRECIP_RAINY_ADDR);
+                auto* rainZ = reinterpret_cast<float*>(Game::PRECIP_RAINZ_ADDR);
                 if (core::IsReadable(rainX, sizeof(float)) &&
                     core::IsReadable(rainY, sizeof(float)) &&
                     core::IsReadable(rainZ, sizeof(float)))
@@ -493,7 +492,7 @@ static void __fastcall HookedRainUpdateCallsite(void* ecx, void*)
         return;
     if (!logged)
     {
-        OutputDebugStringA("[RainFlowMW] HookedRainUpdateCallsite hit\n");
+        OutputDebugStringA("[WeatherMod] HookedRainUpdateCallsite hit\n");
         logged = true;
     }
     // Apply globals and wire view pointers before the engine update runs.
@@ -512,7 +511,7 @@ static void __fastcall HookedRainRenderCallsite(void* ecx, void*)
         return;
     if (!logged)
     {
-        OutputDebugStringA("[RainFlowMW] HookedRainRenderCallsite hit\n");
+        OutputDebugStringA("[WeatherMod] HookedRainRenderCallsite hit\n");
         logged = true;
     }
     // Ensure globals are applied before the engine render.
@@ -528,7 +527,7 @@ static void AfterRenderCtxCallsite()
     static bool logged = false;
     if (!logged)
     {
-        OutputDebugStringA("[RainFlowMW] AfterRenderCtxCallsite hit\n");
+        OutputDebugStringA("[WeatherMod] AfterRenderCtxCallsite hit\n");
         logged = true;
     }
     if (detected_game != GameType::MW)
@@ -583,6 +582,7 @@ static void __declspec(naked) HookedRenderCtxCallsite2()
         ret
     }
 }
+
 static void __fastcall HookedRainTick(void* ecx, void* edx)
 {
     (void)edx;
@@ -604,11 +604,11 @@ static void __fastcall HookedRainTick(void* ecx, void* edx)
             if (core::IsReadable(particleEnable, sizeof(int)))
                 *particleEnable = 1;
 
-            auto* precipEnable = reinterpret_cast<int*>(MW::PRECIPITATION_ENABLE_ADDR);
+            auto* precipEnable = reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR);
             if (core::IsReadable(precipEnable, sizeof(int)))
                 *precipEnable = 1;
 
-            auto* precipPercent = reinterpret_cast<float*>(MW::PRECIPITATION_PERCENT_ADDR);
+            auto* precipPercent = reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR);
             if (core::IsReadable(precipPercent, sizeof(float)))
                 *precipPercent = 1.0f;
 
@@ -651,18 +651,18 @@ static void __fastcall HookedRainRender(void* ecx, void* edx)
         float rainPercent = 0.0f;
         int gameFlow = 0;
         int gameFlowStatus = 0;
-        if (core::IsReadable(reinterpret_cast<void*>(MW::PRECIPITATION_ENABLE_ADDR), sizeof(int)))
-            precipEnable = *reinterpret_cast<int*>(MW::PRECIPITATION_ENABLE_ADDR);
-        if (core::IsReadable(reinterpret_cast<void*>(MW::PRECIPITATION_RENDER_ADDR), sizeof(int)))
-            precipRender = *reinterpret_cast<int*>(MW::PRECIPITATION_RENDER_ADDR);
-        if (core::IsReadable(reinterpret_cast<void*>(MW::PRECIPITATION_PERCENT_ADDR), sizeof(float)))
-            precipPercent = *reinterpret_cast<float*>(MW::PRECIPITATION_PERCENT_ADDR);
-        if (core::IsReadable(reinterpret_cast<void*>(MW::PRECIP_RAINPERCENT_ADDR), sizeof(float)))
-            rainPercent = *reinterpret_cast<float*>(MW::PRECIP_RAINPERCENT_ADDR);
-        if (core::IsReadable(reinterpret_cast<void*>(MW::GAMEFLOWMGR_ADDR), sizeof(int)))
-            gameFlow = *reinterpret_cast<int*>(MW::GAMEFLOWMGR_ADDR);
-        if (core::IsReadable(reinterpret_cast<void*>(MW::GAMEFLOWMGR_STATUS_ADDR), sizeof(int)))
-            gameFlowStatus = *reinterpret_cast<int*>(MW::GAMEFLOWMGR_STATUS_ADDR);
+        if (core::IsReadable(reinterpret_cast<void*>(Game::PRECIPITATION_ENABLE_ADDR), sizeof(int)))
+            precipEnable = *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR);
+        if (core::IsReadable(reinterpret_cast<void*>(Game::PRECIPITATION_RENDER_ADDR), sizeof(int)))
+            precipRender = *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR);
+        if (core::IsReadable(reinterpret_cast<void*>(Game::PRECIPITATION_PERCENT_ADDR), sizeof(float)))
+            precipPercent = *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR);
+        if (core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINPERCENT_ADDR), sizeof(float)))
+            rainPercent = *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR);
+        if (core::IsReadable(reinterpret_cast<void*>(Game::GAMEFLOWMGR_ADDR), sizeof(int)))
+            gameFlow = *reinterpret_cast<int*>(Game::GAMEFLOWMGR_ADDR);
+        if (core::IsReadable(reinterpret_cast<void*>(Game::GAMEFLOWMGR_STATUS_ADDR), sizeof(int)))
+            gameFlowStatus = *reinterpret_cast<int*>(Game::GAMEFLOWMGR_STATUS_ADDR);
         std::snprintf(buf, sizeof(buf),
                       "[RainDebug] HookedRainRender called precipEnable=%d precipRender=%d precipPct=%.2f rainPct=%.2f gameFlow=%d gameFlowStatus=%d\n",
                       precipEnable, precipRender, precipPercent, rainPercent, gameFlow, gameFlowStatus);
@@ -725,7 +725,6 @@ static DWORD WINAPI RainGuardWorker(void*)
 {
     while (true)
     {
-        Sleep(16);
         if (detected_game != GameType::MW)
             continue;
 
@@ -740,14 +739,14 @@ static DWORD WINAPI RainGuardWorker(void*)
                 if (kUseIndependentRainFlow)
                     RainFlowMW::Tick();
                 // Force rain/particle globals so the engine doesn't skip the block.
-                *reinterpret_cast<int*>(MW::PRECIPITATION_ENABLE_ADDR) = 1;
-                *reinterpret_cast<int*>(MW::PRECIPITATION_RENDER_ADDR) = 1;
-                *reinterpret_cast<int*>(MW::RainEnablePtr) = 1;
-                *reinterpret_cast<int*>(MW::ParticleSystemEnablePtr) = 1;
+                *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 1;
+                *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 1;
+                *reinterpret_cast<int*>(Game::RainEnablePtr) = 1;
+                *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 1;
 
                 // Ensure particle context pointer is valid for sub_6DE300 path.
-                void** particleCtx = reinterpret_cast<void**>(MW::particleCtxAddr);
-                void** renderCtx = reinterpret_cast<void**>(MW::renderCtxAddr);
+                void** particleCtx = reinterpret_cast<void**>(Game::particleCtxAddr);
+                void** renderCtx = reinterpret_cast<void**>(Game::renderCtxAddr);
                 if (core::IsReadable(particleCtx, sizeof(void*)) && *particleCtx)
                 {
                     if (core::IsReadable(renderCtx, sizeof(void*)) && !*renderCtx)
@@ -758,10 +757,10 @@ static DWORD WINAPI RainGuardWorker(void*)
             {
                 if (kUseIndependentRainFlow)
                     RainFlowMW::Disable();
-                *reinterpret_cast<int*>(MW::PRECIPITATION_ENABLE_ADDR) = 0;
-                *reinterpret_cast<int*>(MW::PRECIPITATION_RENDER_ADDR) = 0;
-                *reinterpret_cast<int*>(MW::RainEnablePtr) = 0;
-                *reinterpret_cast<int*>(MW::ParticleSystemEnablePtr) = 0;
+                *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 0;
+                *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 0;
+                *reinterpret_cast<int*>(Game::RainEnablePtr) = 0;
+                *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 0;
             }
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
@@ -1072,7 +1071,7 @@ DWORD WINAPI MainThread(void*)
         if (!kUseIndependentRainFlow)
         {
             // Hook the rain tick callsite inside sub_6DE300 (0x006DF545).
-            int callsite = EXE_ADDR(MW::RainTickAddr);
+            int callsite = EXE_ADDR(Game::RainTickAddr);
             CPatch::RedirectCall(callsite, HookedRainTickCallsite);
 
             unsigned char opcode = *reinterpret_cast<unsigned char*>(callsite);
@@ -1083,15 +1082,15 @@ DWORD WINAPI MainThread(void*)
             OutputDebugStringA(buf);
 
             // Hook Rain::Update/Render callsites to run in the native context.
-            int updateCallsite = EXE_ADDR(MW::RainUpdateCallsiteAddr);
+            int updateCallsite = EXE_ADDR(Game::RainUpdateCallsiteAddr);
             CPatch::RedirectCall(updateCallsite, HookedRainUpdateCallsite);
-            int renderCallsite = EXE_ADDR(MW::RainRenderCallsiteAddr);
+            int renderCallsite = EXE_ADDR(Game::RainRenderCallsiteAddr);
             CPatch::RedirectCall(renderCallsite, HookedRainRenderCallsite);
-            int renderCallsite2 = EXE_ADDR(MW::RainRenderCallsiteAddr2);
+            int renderCallsite2 = EXE_ADDR(Game::RainRenderCallsiteAddr2);
             CPatch::RedirectCall(renderCallsite2, HookedRainRenderCallsite);
-            int renderCtxCallsite = EXE_ADDR(MW::RenderCtxCallsiteAddr);
+            int renderCtxCallsite = EXE_ADDR(Game::RenderCtxCallsiteAddr);
             CPatch::RedirectCall(renderCtxCallsite, HookedRenderCtxCallsite);
-            int renderCtxCallsite2 = EXE_ADDR(MW::RenderCtxCallsiteAddr2);
+            int renderCtxCallsite2 = EXE_ADDR(Game::RenderCtxCallsiteAddr2);
             CPatch::RedirectCall(renderCtxCallsite2, HookedRenderCtxCallsite2);
             {
                 unsigned char opcode2 = *reinterpret_cast<unsigned char*>(renderCtxCallsite);

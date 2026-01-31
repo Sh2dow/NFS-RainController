@@ -108,6 +108,7 @@ namespace MW
     constexpr uintptr_t PRECIP_CLOUDSRATEOFCHANGE_ADDR = 0x00904AC8;
     constexpr uintptr_t PRECIP_CAMERAMOD_ADDR = 0x00904AE0;
     constexpr uintptr_t FOG_CTRLOVERRIDE_ADDR = 0x009B0A70;
+    constexpr uintptr_t RoadReflectionStateAddr = 0x008FAE6C; // dword_8FAE6C
 
     // MW view/camera chain
     constexpr uintptr_t EViewArrayBase = 0x009195E0; // eViews[22]
@@ -141,6 +142,7 @@ namespace MW
     constexpr uintptr_t RainSetOverrideIntensityAddr = 0x0073C970;
     constexpr uintptr_t RainEnablePtr = 0x00901810; // g_RainEnable
     constexpr uintptr_t ParticleSystemEnablePtr = 0x009017EC; // g_ParticleSystemEnable
+    constexpr uintptr_t RoadReflectionEnablePtr = 0x009017D4; // g_RoadReflectionEnable
 
     constexpr uintptr_t CreateLookAtAddr = 0x006CF0A0;
     constexpr uintptr_t BuildViewMatrixAddr = 0x006CF400;
@@ -261,8 +263,8 @@ namespace MW
     // Engine globals
     // ------------------------------------------------------------
     inline float* DeltaTime = reinterpret_cast<float*>(0x009259BC);
-    inline bool* IsPaused = nullptr;
-
+    constexpr uintptr_t PausedAddr = 0x0064B680;
+    constexpr uintptr_t AmIinATunnelSlowAddr = 0x0074B000;
     // ------------------------------------------------------------
     // Functions / addresses
     // ------------------------------------------------------------
@@ -273,7 +275,7 @@ namespace MW
         reinterpret_cast<CreateLookAtFn>(CreateLookAtAddr);
 
     // CALL site (not used by MinHook, but kept for reference)
-    constexpr uintptr_t HookAddr = 0X0047DCBC;
+    constexpr uintptr_t HookAddr = 0x0047DCBC;
 
     // Sim::GetTime (ADDRESS, not float!)
     constexpr uintptr_t SimGetTimeAddr = 0x006E8DE0;
@@ -300,5 +302,12 @@ namespace MW
     constexpr uintptr_t kOnlineFlag = 0x009B0FB9;
     constexpr uintptr_t kWindMod = 0x009B0A48;
     constexpr uintptr_t kCloudBase = 0x009B0A3C;
+    constexpr uintptr_t CurrentViewMode = 0x006BF530;
+    constexpr uintptr_t DripFreeze = 0x009B0A58;
+    constexpr uintptr_t TunnelCameraRelative = 0x00723330;
+    constexpr uintptr_t Normalize2DAddr = 0x0045F3C0;
+    constexpr uintptr_t FindBestFacingEdgeAddr = 0x00722E90;
+    constexpr uintptr_t TunnelBloom_SetParams = 0x00749FB0;
     
+        
 }

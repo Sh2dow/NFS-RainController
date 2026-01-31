@@ -23,11 +23,44 @@ namespace Game
 {
     inline const char* Name = "NFS - Weather Mod";
     inline const char* Error = "This .exe is not supported.";
-
-    inline uintptr_t NSF_D3D9_DEVICE_ADDRESS = 0;
+    
+    // Global addresses inferred from IDA
+    inline uintptr_t GAMEFLOWMGR_STATUS_ADDR = 0;
+    inline uintptr_t kWorldTimeElapsed = 0;
+    inline uintptr_t kAlwaysRain = 0;
+    inline uintptr_t kRoadReflection = 0;
+    inline uintptr_t kWindAngle = 0;
+    inline uintptr_t kOnscreenDripSpeed = 0;
+    inline uintptr_t kOnscreenSpeedMod = 0;
+    inline uintptr_t kOnscreenDropShapeSpeedChange = 0;
+    inline uintptr_t PRECIP_RAINRATEOFCHANGE_ADDR = 0;
+    inline uintptr_t PRECIP_CLOUDSRATEOFCHANGE_ADDR = 0;
+    inline uintptr_t kParamMapLayerRain = 0;
+    inline uintptr_t kParamMapLayerClouds = 0;
+    inline uintptr_t kParamDataRain = 0;
+    inline uintptr_t kParamDataClouds = 0;
+    inline uintptr_t kOnlineFlag = 0;
+    inline uintptr_t kWindMod = 0;
+    inline uintptr_t kCloudBase = 0;
+    
+    inline uintptr_t PRECIPITATION_ENABLE_ADDR = 0;
+    inline uintptr_t PRECIPITATION_RENDER_ADDR = 0;
+    inline uintptr_t PRECIP_RAINPERCENT_ADDR = 0;
+    inline uintptr_t PRECIP_FOGPERCENT_ADDR = 0;
+    inline uintptr_t PRECIPITATION_PERCENT_ADDR = 0;
+    inline uintptr_t PRECIP_BASEDAMPNESS_ADDR = 0;
+    inline uintptr_t PRECIP_DRIVEFACTOR_ADDR = 0;
+    inline uintptr_t PRECIP_RAINX_ADDR = 0;
+    inline uintptr_t PRECIP_RAINY_ADDR = 0;
+    inline uintptr_t PRECIP_RAINZ_ADDR = 0;
+    inline uintptr_t PRECIP_RAINZCONSTANT_ADDR = 0;
+    inline uintptr_t PRECIP_RAINRADIUSX_ADDR = 0;
+    inline uintptr_t PRECIP_RAINRADIUSY_ADDR = 0;
+    
+    inline uintptr_t RoadReflectionStateAddr = 0;
+    inline uintptr_t NFS_D3D9_DEVICE_ADDRESS = 0;
     inline uintptr_t NodeMatrixOffset = 0;
-
-
+    
     inline uintptr_t EViewArrayBase = 0; // eViews[22]
     inline uintptr_t EViewArrayCount = 0;
     inline uintptr_t EViewSize = 0;
@@ -70,12 +103,23 @@ namespace Game
     inline uintptr_t EViewListHeadPtr = 0;
 
     inline uintptr_t FEMANAGER_INSTANCE_ADDR = 0;
-
+    inline uintptr_t GAMEFLOWMGR_ADDR = 0;
+    inline uintptr_t renderPlatAddr = 0;
+    
     inline uintptr_t eDisplayFrameAddr = 0;
     inline uintptr_t renderCtxAddr = 0;
     inline uintptr_t particleCtxAddr = 0;
     inline uintptr_t RainTickAddr = 0;
     inline uintptr_t InitViewsAddr = 0;
+    inline uintptr_t CurrentViewMode = 0;
+    inline uintptr_t DripFreeze = 0;
+    inline uintptr_t TunnelCameraRelative = 0;
+    inline uintptr_t Normalize2DAddr = 0;
+    inline uintptr_t FindBestFacingEdgeAddr = 0;
+    inline uintptr_t TunnelBloom_SetParams = 0;
+    
+    inline uintptr_t PausedAddr = 0;
+    inline uintptr_t AmIinATunnelSlow = 0;
     
     using RainTick_t = void(__thiscall*)(void*);
     inline RainTick_t g_originalRainTick = nullptr;
@@ -93,6 +137,8 @@ namespace Game
     inline GameSetChanceOfRain_t g_originalGameSetChanceOfRain = nullptr;
     using InitViews_t = int(__cdecl*)();
     inline InitViews_t g_originalInitViews = nullptr;
+    using GetViewMode_t = int(__cdecl*)();
+    inline GetViewMode_t eCurrentViewMode = nullptr;
     
     inline void Init(GameType type)
     {
@@ -101,7 +147,7 @@ namespace Game
         case GameType::MW:
             Name = "NFSMW - Weather Mod";
             Error = "This .exe is not supported.";
-            NSF_D3D9_DEVICE_ADDRESS = MW::NFS_D3D9_DEVICE_ADDRESS;
+            NFS_D3D9_DEVICE_ADDRESS = MW::NFS_D3D9_DEVICE_ADDRESS;
             NodeMatrixOffset = 0x40;
             EViewArrayBase = MW::EViewArrayBase;
             EViewArrayCount = MW::EViewArrayCount;
@@ -117,6 +163,12 @@ namespace Game
             CameraPositionOffset = MW::CameraPositionOffset;
             CameraMatrixV3Offset = MW::CameraMatrixV3Offset;
 
+            PRECIP_RAINX_ADDR = MW::PRECIP_RAINX_ADDR;
+            PRECIP_RAINY_ADDR = MW::PRECIP_RAINY_ADDR;
+            PRECIP_RAINZ_ADDR = MW::PRECIP_RAINZ_ADDR;
+            PRECIP_RAINZCONSTANT_ADDR = MW::PRECIP_RAINZCONSTANT_ADDR;
+            PRECIP_RAINRADIUSX_ADDR = MW::PRECIP_RAINRADIUSX_ADDR;
+            PRECIP_RAINRADIUSY_ADDR = MW::PRECIP_RAINRADIUSY_ADDR;
             RainInstancePtr = MW::RainInstancePtr;
             RainViewMatrixOffset = MW::RainViewMatrixOffset;
             RainProjMatrixOffset = MW::RainProjMatrixOffset;
@@ -142,12 +194,48 @@ namespace Game
             EViewCurrentPtr = MW::EViewCurrentPtr;
             
             FEMANAGER_INSTANCE_ADDR = MW::FEMANAGER_INSTANCE_ADDR;
+            GAMEFLOWMGR_ADDR = MW::GAMEFLOWMGR_ADDR;
+            renderPlatAddr = MW::renderPlatAddr;
             
             eDisplayFrameAddr = MW::eDisplayFrameAddr;
             renderCtxAddr = MW::renderCtxAddr;
             particleCtxAddr = MW::particleCtxAddr;
             RainTickAddr = MW::RainTickAddr;
             InitViewsAddr = MW::epInitViewsAddr;
+            CurrentViewMode = MW::CurrentViewMode;
+            DripFreeze = MW::DripFreeze;
+            TunnelCameraRelative = MW::TunnelCameraRelative;
+            Normalize2DAddr = MW::Normalize2DAddr;
+            FindBestFacingEdgeAddr = MW::FindBestFacingEdgeAddr;
+            TunnelBloom_SetParams = MW::TunnelBloom_SetParams;
+            
+            GAMEFLOWMGR_STATUS_ADDR = MW::GAMEFLOWMGR_STATUS_ADDR; // A1 905E9200
+            kWorldTimeElapsed = MW::kWorldTimeElapsed;   // A1 70599200
+            kAlwaysRain = MW::PRECIP_CAMERAMOD_ADDR;          // PRECIP_CAMERAMOD_ADDR used as AlwaysRain in flow
+            kRoadReflection = MW::PRECIP_BASEDAMPNESS_ADDR;      // Road dampness / base dampness
+            kWindAngle = MW::PRECIP_WINDANG_ADDR; // 0x009B0A50
+            kOnscreenDripSpeed = MW::PRECIP_ONSCREEN_DRIPSPEED_ADDR; // 0x00904B2C
+            kOnscreenSpeedMod = MW::PRECIP_ONSCREEN_SPEEDMOD_ADDR;  // 0x00904B30
+            kOnscreenDropShapeSpeedChange = MW::PRECIP_ONSCREEN_DROPSHAPESPEEDCHANGE_ADDR; //0x00904B34
+            PRECIP_RAINRATEOFCHANGE_ADDR = MW::PRECIP_RAINRATEOFCHANGE_ADDR;   // 0x00904AC4
+            PRECIP_CLOUDSRATEOFCHANGE_ADDR = MW::PRECIP_CLOUDSRATEOFCHANGE_ADDR; //0x00904AC8
+            PRECIPITATION_ENABLE_ADDR = MW::PRECIPITATION_ENABLE_ADDR; //0x008F86E4
+            PRECIPITATION_RENDER_ADDR = MW::PRECIPITATION_RENDER_ADDR; //0x00904AD0
+            kParamMapLayerRain = MW::kParamMapLayerRain;
+            kParamMapLayerClouds = MW::kParamMapLayerClouds;
+            kParamDataRain = MW::kParamDataRain;
+            kParamDataClouds = MW::kParamDataClouds;
+            kOnlineFlag = MW::kOnlineFlag;
+            kWindMod = MW::kWindMod;
+            kCloudBase = MW::kCloudBase;
+            
+            PRECIP_RAINPERCENT_ADDR = MW::PRECIP_RAINPERCENT_ADDR;
+            PRECIP_FOGPERCENT_ADDR = MW::PRECIP_FOGPERCENT_ADDR;
+            PRECIPITATION_PERCENT_ADDR = MW::PRECIPITATION_PERCENT_ADDR;
+            PRECIP_BASEDAMPNESS_ADDR = MW::PRECIP_BASEDAMPNESS_ADDR;
+            PRECIP_DRIVEFACTOR_ADDR = MW::PRECIP_DRIVEFACTOR_ADDR;
+            
+            RoadReflectionStateAddr = MW::RoadReflectionStateAddr;
             
             g_originalRainTick   = reinterpret_cast<RainTick_t>(RainTick);
             g_originalRainUpdate = reinterpret_cast<RainUpdate_t>(RainUpdate);
@@ -157,12 +245,16 @@ namespace Game
             g_originalRainSetOverrideIntensity = reinterpret_cast<RainSetOverrideIntensity_t>(RainSetOverrideIntensityAddr);
             g_originalGameSetChanceOfRain = reinterpret_cast<GameSetChanceOfRain_t>(GameSetChanceOfRainAddr);
             g_originalInitViews = reinterpret_cast<InitViews_t>(InitViewsAddr);
+            eCurrentViewMode = reinterpret_cast<InitViews_t>(CurrentViewMode);
+            
+            AmIinATunnelSlow = MW::AmIinATunnelSlowAddr;
+            PausedAddr = MW::PausedAddr;
             
             break;
         case GameType::CB:
             Name = "NFSC - Weather Mod";
             Error = "This .exe is not supported.";
-            NSF_D3D9_DEVICE_ADDRESS = CB::NFS_D3D9_DEVICE_ADDRESS;
+            NFS_D3D9_DEVICE_ADDRESS = CB::NFS_D3D9_DEVICE_ADDRESS;
             // NodeMatrixOffset = 0x40;
             // EViewArrayBase = CB::EViewArrayBase;
             // EViewArrayCount = CB::EViewArrayCount;
