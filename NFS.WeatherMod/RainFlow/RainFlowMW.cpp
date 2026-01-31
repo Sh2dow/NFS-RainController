@@ -42,6 +42,25 @@ namespace
         *reinterpret_cast<void**>(base + off) = v;
     }
 
+    static uint8_t* GetActiveView()
+    {
+        if (!MW::EViewArrayBase || !MW::EViewSize || !MW::EViewArrayCount)
+            return nullptr;
+        for (uintptr_t i = 0; i < MW::EViewArrayCount; ++i)
+        {
+            uintptr_t entry = MW::EViewArrayBase + i * MW::EViewSize;
+            if (!core::IsReadable(reinterpret_cast<void*>(entry), MW::EViewActiveFlagOffset + 1))
+                continue;
+            unsigned char active = *reinterpret_cast<unsigned char*>(entry + MW::EViewActiveFlagOffset);
+            if (!active)
+                continue;
+            uint8_t* view = *reinterpret_cast<uint8_t**>(entry);
+            if (view && core::IsReadable(view, 0x80))
+                return view;
+        }
+        return nullptr;
+    }
+
     // Global addresses inferred from IDA
     constexpr uintptr_t kTheGameFlowManager = MW::GAMEFLOWMGR_STATUS_ADDR; // A1 905E9200
     constexpr uintptr_t kWorldTimeElapsed = MW::kWorldTimeElapsed;   // A1 70599200
@@ -540,8 +559,8 @@ namespace RainFlowMW
         if (*reinterpret_cast<int*>(kTheGameFlowManager) != 6)
             return;
 
-        uint8_t* view = *reinterpret_cast<uint8_t**>(MW::EViewCurrentPtr);
-        if (!core::IsReadable(view, 0x80))
+        uint8_t* view = GetActiveView();
+        if (!view)
             return;
 
         void* viewPlat = *reinterpret_cast<void**>(view + 0x44);

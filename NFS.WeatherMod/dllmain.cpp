@@ -11,6 +11,7 @@
 #include "PrecipitationController.h"
 #include "RainConfigController.h"
 #include "NFSMW_PreFEngHook.h"
+#include "RainFlow/RainFlowMW.h"
 
 #include "injector/injector.hpp"
 #include <cstdio>
@@ -54,6 +55,7 @@ static void __fastcall HookedRainUpdateCallsite(void* ecx, void*);
 static void __fastcall HookedRainRenderCallsite(void* ecx, void*);
 static void HookedRenderCtxCallsite();
 static void AfterRenderCtxCallsite();
+static constexpr bool kUseIndependentRainFlow = true;
 
 static void RunNativeRainFlow(void* rain)
 {
@@ -477,11 +479,14 @@ static void __fastcall HookedRainTickCallsite(void* ecx, void*)
         OutputDebugStringA("[RainCallsite] HookedRainTickCallsite hit\n");
         logged = true;
     }
-    RunNativeRainFlow(rain);
+    if (!kUseIndependentRainFlow)
+        RunNativeRainFlow(rain);
 }
 
 static void __fastcall HookedRainUpdateCallsite(void* ecx, void*)
 {
+    if (kUseIndependentRainFlow)
+        return;
     static bool logged = false;
     void* rain = ecx;
     if (!IsLikelyRainInstance(rain))
@@ -499,6 +504,8 @@ static void __fastcall HookedRainUpdateCallsite(void* ecx, void*)
 
 static void __fastcall HookedRainRenderCallsite(void* ecx, void*)
 {
+    if (kUseIndependentRainFlow)
+        return;
     static bool logged = false;
     void* rain = ecx;
     if (!IsLikelyRainInstance(rain))
@@ -516,6 +523,8 @@ static void __fastcall HookedRainRenderCallsite(void* ecx, void*)
 
 static void AfterRenderCtxCallsite()
 {
+    if (kUseIndependentRainFlow)
+        return;
     static bool logged = false;
     if (!logged)
     {
@@ -533,6 +542,10 @@ static void AfterRenderCtxCallsite()
 
 static void __declspec(naked) HookedRenderCtxCallsite()
 {
+    if (kUseIndependentRainFlow)
+    {
+        __asm { ret }
+    }
     __asm
     {
         // Call original vtable function at [ecx]+4
@@ -553,6 +566,10 @@ static void __declspec(naked) HookedRenderCtxCallsite()
 
 static void __declspec(naked) HookedRenderCtxCallsite2()
 {
+    if (kUseIndependentRainFlow)
+    {
+        __asm { ret }
+    }
     __asm
     {
         // Original: call dword ptr [ecx+15Ch] with two args already on stack.
@@ -720,6 +737,8 @@ static DWORD WINAPI RainGuardWorker(void*)
             const bool enabled = PrecipitationController::Get()->IsActive();
             if (enabled)
             {
+                if (kUseIndependentRainFlow)
+                    RainFlowMW::Tick();
                 // Force rain/particle globals so the engine doesn't skip the block.
                 *reinterpret_cast<int*>(MW::PRECIPITATION_ENABLE_ADDR) = 1;
                 *reinterpret_cast<int*>(MW::PRECIPITATION_RENDER_ADDR) = 1;
@@ -737,6 +756,8 @@ static DWORD WINAPI RainGuardWorker(void*)
             }
             else
             {
+                if (kUseIndependentRainFlow)
+                    RainFlowMW::Disable();
                 *reinterpret_cast<int*>(MW::PRECIPITATION_ENABLE_ADDR) = 0;
                 *reinterpret_cast<int*>(MW::PRECIPITATION_RENDER_ADDR) = 0;
                 *reinterpret_cast<int*>(MW::RainEnablePtr) = 0;
@@ -1048,43 +1069,46 @@ DWORD WINAPI MainThread(void*)
 
     if (detected_game == GameType::MW)
     {
-        // Hook the rain tick callsite inside sub_6DE300 (0x006DF545).
-        int callsite = EXE_ADDR(MW::RainTickAddr);
-        CPatch::RedirectCall(callsite, HookedRainTickCallsite);
-
-        unsigned char opcode = *reinterpret_cast<unsigned char*>(callsite);
-        char buf[160];
-        std::snprintf(buf, sizeof(buf),
-                      "[WeatherMod MainThread] rain callsite patched at 0x%08X opcode=0x%02X\n",
-                      callsite, opcode);
-        OutputDebugStringA(buf);
-
-        // Hook Rain::Update/Render callsites to run in the native context.
-        int updateCallsite = EXE_ADDR(MW::RainUpdateCallsiteAddr);
-        CPatch::RedirectCall(updateCallsite, HookedRainUpdateCallsite);
-        int renderCallsite = EXE_ADDR(MW::RainRenderCallsiteAddr);
-        CPatch::RedirectCall(renderCallsite, HookedRainRenderCallsite);
-        int renderCallsite2 = EXE_ADDR(MW::RainRenderCallsiteAddr2);
-        CPatch::RedirectCall(renderCallsite2, HookedRainRenderCallsite);
-        int renderCtxCallsite = EXE_ADDR(MW::RenderCtxCallsiteAddr);
-        CPatch::RedirectCall(renderCtxCallsite, HookedRenderCtxCallsite);
-        int renderCtxCallsite2 = EXE_ADDR(MW::RenderCtxCallsiteAddr2);
-        CPatch::RedirectCall(renderCtxCallsite2, HookedRenderCtxCallsite2);
+        if (!kUseIndependentRainFlow)
         {
-            unsigned char opcode2 = *reinterpret_cast<unsigned char*>(renderCtxCallsite);
-            char buf2[160];
-            std::snprintf(buf2, sizeof(buf2),
-                          "[WeatherMod MainThread] renderCtx callsite patched at 0x%08X opcode=0x%02X\n",
-                          renderCtxCallsite, opcode2);
-            OutputDebugStringA(buf2);
-        }
-        {
-            unsigned char opcode3 = *reinterpret_cast<unsigned char*>(renderCtxCallsite2);
-            char buf3[160];
-            std::snprintf(buf3, sizeof(buf3),
-                          "[WeatherMod MainThread] renderCtx2 callsite patched at 0x%08X opcode=0x%02X\n",
-                          renderCtxCallsite2, opcode3);
-            OutputDebugStringA(buf3);
+            // Hook the rain tick callsite inside sub_6DE300 (0x006DF545).
+            int callsite = EXE_ADDR(MW::RainTickAddr);
+            CPatch::RedirectCall(callsite, HookedRainTickCallsite);
+
+            unsigned char opcode = *reinterpret_cast<unsigned char*>(callsite);
+            char buf[160];
+            std::snprintf(buf, sizeof(buf),
+                          "[WeatherMod MainThread] rain callsite patched at 0x%08X opcode=0x%02X\n",
+                          callsite, opcode);
+            OutputDebugStringA(buf);
+
+            // Hook Rain::Update/Render callsites to run in the native context.
+            int updateCallsite = EXE_ADDR(MW::RainUpdateCallsiteAddr);
+            CPatch::RedirectCall(updateCallsite, HookedRainUpdateCallsite);
+            int renderCallsite = EXE_ADDR(MW::RainRenderCallsiteAddr);
+            CPatch::RedirectCall(renderCallsite, HookedRainRenderCallsite);
+            int renderCallsite2 = EXE_ADDR(MW::RainRenderCallsiteAddr2);
+            CPatch::RedirectCall(renderCallsite2, HookedRainRenderCallsite);
+            int renderCtxCallsite = EXE_ADDR(MW::RenderCtxCallsiteAddr);
+            CPatch::RedirectCall(renderCtxCallsite, HookedRenderCtxCallsite);
+            int renderCtxCallsite2 = EXE_ADDR(MW::RenderCtxCallsiteAddr2);
+            CPatch::RedirectCall(renderCtxCallsite2, HookedRenderCtxCallsite2);
+            {
+                unsigned char opcode2 = *reinterpret_cast<unsigned char*>(renderCtxCallsite);
+                char buf2[160];
+                std::snprintf(buf2, sizeof(buf2),
+                              "[WeatherMod MainThread] renderCtx callsite patched at 0x%08X opcode=0x%02X\n",
+                              renderCtxCallsite, opcode2);
+                OutputDebugStringA(buf2);
+            }
+            {
+                unsigned char opcode3 = *reinterpret_cast<unsigned char*>(renderCtxCallsite2);
+                char buf3[160];
+                std::snprintf(buf3, sizeof(buf3),
+                              "[WeatherMod MainThread] renderCtx2 callsite patched at 0x%08X opcode=0x%02X\n",
+                              renderCtxCallsite2, opcode3);
+                OutputDebugStringA(buf3);
+            }
         }
 
         CreateThread(nullptr, 0, RainGuardWorker, nullptr, 0, nullptr);
