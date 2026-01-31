@@ -6,4 +6,8 @@ namespace RainFlowMW
     void Tick();
     void Disable();
     void EnforceState(bool enable);
+    float GetSmoothedRain();
+    float GetSmoothedFog();
+    void EnforceState(bool enable);
+    
 }

@@ -1,19 +1,32 @@
+#include <windows.h>
+#include <cmath>
 #include "RainFlowMW.h"
-#include "../NFSMW_PreFEngHook.h"
+#include "../Game.h"
 #include "../Math.h"
 #include "../core.h"
 #include "../RainConfigController.h"
 #include "../PrecipitationController.h"
-#include <windows.h>
-#include <cmath>
 
-#include "../Game.h"
-
-namespace
+namespace RainFlowMW
 {
     inline uint8_t* Ptr(uintptr_t addr) { return reinterpret_cast<uint8_t*>(addr); }
     inline float* FPtr(uintptr_t addr) { return reinterpret_cast<float*>(addr); }
     inline int* IPtr(uintptr_t addr) { return reinterpret_cast<int*>(addr); }
+
+    static float s_lastRain = 0.0f;
+    static float s_lastFog = 0.0f;
+    static int s_inTunnel = 0;
+
+    float GetSmoothedRain()
+    {
+        return s_lastRain;
+    }
+
+    float GetSmoothedFog()
+    {
+        return s_lastFog;
+    }
+
     inline uint8_t* RainPtr()
     {
         return *reinterpret_cast<uint8_t**>(Game::RainInstancePtr);
@@ -23,25 +36,80 @@ namespace
     {
         return *reinterpret_cast<float*>(base + off);
     }
+
     inline void WriteF(uint8_t* base, uintptr_t off, float v)
     {
         *reinterpret_cast<float*>(base + off) = v;
     }
+
     inline int ReadI(uint8_t* base, uintptr_t off)
     {
         return *reinterpret_cast<int*>(base + off);
     }
+
     inline void WriteI(uint8_t* base, uintptr_t off, int v)
     {
         *reinterpret_cast<int*>(base + off) = v;
     }
+
     inline void* ReadP(uint8_t* base, uintptr_t off)
     {
         return *reinterpret_cast<void**>(base + off);
     }
+
     inline void WriteP(uint8_t* base, uintptr_t off, void* v)
     {
         *reinterpret_cast<void**>(base + off) = v;
+    }
+
+
+    static void Render3D(uint8_t* rain)
+    {
+        using Render3D_t = void(__thiscall*)(void*);
+        auto render3d = reinterpret_cast<Render3D_t>(Game::RainRender3D);
+        render3d(rain);
+    }
+
+    static void RenderRain(uint8_t* rain)
+    {
+        using Render_t = void(__thiscall*)(void*);
+        auto render = reinterpret_cast<Render_t>(Game::RainRender);
+        render(rain);
+    }
+
+    static void UpdateRain(uint8_t* rain)
+    {
+        using Update_t = void(__thiscall*)(void*);
+        auto update = reinterpret_cast<Update_t>(Game::RainUpdate);
+        update(rain);
+    }
+
+    static void SetRainIntensity(uint8_t* rain, float intensity)
+    {
+        using SetIntensity_t = void(__thiscall*)(void*, float);
+        auto setIntensity = reinterpret_cast<SetIntensity_t>(Game::RainSetIntensityAddr);
+        setIntensity(rain, intensity);
+    }
+
+    static uint8_t IsPaused()
+    {
+        using IsPaused_t = uint8_t(__thiscall*)(void*);
+        auto isPaused = reinterpret_cast<IsPaused_t>(Game::PausedAddr);
+        return isPaused(reinterpret_cast<void*>(Game::GAMEFLOWMGR_STATUS_ADDR));
+    }
+
+    static int GetViewMode()
+    {
+        using GetViewMode_t = int(__cdecl*)();
+        auto fn = reinterpret_cast<GetViewMode_t>(Game::CurrentViewMode);
+        return fn();
+    }
+
+    static uint8_t AmIinATunnelSlow(uint8_t* view, int mode)
+    {
+        using Fn_t = uint8_t(__cdecl*)(void*, int);
+        auto fn = reinterpret_cast<Fn_t>(Game::AmIinATunnelSlowAddr);
+        return fn(view, mode);
     }
 
     static uint8_t* GetActiveView()
@@ -94,6 +162,7 @@ namespace
     {
         return norm(v);
     }
+
     static Vec3 Normalize2(const Vec3& v)
     {
         float l = std::sqrt(v.x * v.x + v.y * v.y);
@@ -113,6 +182,7 @@ namespace
         float rad = (static_cast<float>(a) * (2.0f * 3.14159265f)) / 65536.0f;
         return sinf(rad);
     }
+
     static float bCos(unsigned short a)
     {
         float rad = (static_cast<float>(a) * (2.0f * 3.14159265f)) / 65536.0f;
@@ -258,6 +328,8 @@ namespace
     static void Sub73CDB0(uint8_t* out, uint8_t* view)
     {
         float dt = *FPtr(Game::kWorldTimeElapsed);
+        if (dt <= 0.0f || dt > 0.1f)
+            dt = 0.016f;
         float* cam = *reinterpret_cast<float**>(view + 0x40);
         if (!core::IsReadable(cam, sizeof(float) * 132))
         {
@@ -276,6 +348,14 @@ namespace
         if (*reinterpret_cast<int*>(viewData + 0x234))
         {
             *reinterpret_cast<int*>(out) = 0;
+            std::memset(out + 0x0C, 0, 20 * 7 * sizeof(float));
+            return;
+        }
+
+        if (AmIinATunnelSlow(view, GetViewMode()))
+        {
+            *reinterpret_cast<int*>(out) = 0;
+            std::memset(out + 0x0C, 0, 20 * 7 * sizeof(float));
             return;
         }
 
@@ -285,9 +365,15 @@ namespace
         else
             count = ReadF(*reinterpret_cast<uint8_t**>(view + 0x68), 0x28C) == 0.0f ? 0 : 10;
 
+        if (s_inTunnel)
+            count = 0;
+
         *reinterpret_cast<int*>(out) = count;
         if (count <= 0)
+        {
+            std::memset(out + 0x0C, 0, 20 * 7 * sizeof(float));
             return;
+        }
 
         float* ptr = reinterpret_cast<float*>(out + 0x0C);
         for (int i = 0; i < count; ++i, ptr += 7)
@@ -350,10 +436,13 @@ namespace
 
         float a[2] = {x - w, y - h};
         float b[2] = {x + w, y + h};
-        reinterpret_cast<void(__cdecl*)(float*, float*, float*)>(Game::TunnelCameraRelative)(a, reinterpret_cast<float*>(rain + 0x3810),
-                                                                             reinterpret_cast<float*>(rain + 0x3808));
-        float v[2] = {*(float*)(rain + 0x3808) - *(float*)(rain + 0x3810),
-                      -(*(float*)(rain + 0x3814) - *(float*)(rain + 0x3818))};
+        reinterpret_cast<void(__cdecl*)(float*, float*, float*)>(Game::TunnelCameraRelative)(
+            a, reinterpret_cast<float*>(rain + 0x3810),
+            reinterpret_cast<float*>(rain + 0x3808));
+        float v[2] = {
+            *(float*)(rain + 0x3808) - *(float*)(rain + 0x3810),
+            -(*(float*)(rain + 0x3814) - *(float*)(rain + 0x3818))
+        };
         v[0] = v[0];
         v[1] = v[1];
         reinterpret_cast<float*(__cdecl*)(float*, float*)>(Game::Normalize2DAddr)(v, v);
@@ -398,7 +487,9 @@ namespace
             {
                 float z = *(float*)(data + 0x28);
                 float z2 = z + 0.5f;
-                reinterpret_cast<void(__cdecl*)(float, float, float, float, float, float, float, float, float, float, float, float)>(Game::TunnelBloom_SetParams)(
+                reinterpret_cast<void(__cdecl*)(float, float, float, float, float, float, float, float, float, float,
+                                                float,
+                                                float)>(Game::TunnelBloom_SetParams)(
                     *(float*)(rain + 0x3818), *(float*)(rain + 0x381C), z2,
                     *(float*)(rain + 0x3820), *(float*)(rain + 0x3824), z2,
                     *(float*)(rain + 0x3818), *(float*)(rain + 0x381C), z,
@@ -411,7 +502,8 @@ namespace
         {
             float z = *(float*)(data + 0x28);
             float z2 = z + 0.5f;
-            reinterpret_cast<void(__cdecl*)(float, float, float, float, float, float, float, float, float, float, float, float)>(Game::TunnelBloom_SetParams)(
+            reinterpret_cast<void(__cdecl*)(float, float, float, float, float, float, float, float, float, float, float,
+                                            float)>(Game::TunnelBloom_SetParams)(
                 *(float*)(rain + 0x3808), *(float*)(rain + 0x380C), z2,
                 *(float*)(rain + 0x3810), *(float*)(rain + 0x3814), z2,
                 *(float*)(rain + 0x3808), *(float*)(rain + 0x380C), z,
@@ -424,9 +516,11 @@ namespace
         float r = bRandom(ReadF(rain, 0x3870));
         float r2 = bRandom(1.0f);
         float r3 = bRandom(10.0f);
-        Vec3 dest = {ReadF(rain, 0x3840) - ReadF(rain, 0x3830),
-                     ReadF(rain, 0x3844) - ReadF(rain, 0x3834),
-                     ReadF(rain, 0x3848) - ReadF(rain, 0x3838)};
+        Vec3 dest = {
+            ReadF(rain, 0x3840) - ReadF(rain, 0x3830),
+            ReadF(rain, 0x3844) - ReadF(rain, 0x3834),
+            ReadF(rain, 0x3848) - ReadF(rain, 0x3838)
+        };
         dest = Normalize3(dest);
 
         float v5 = r3 * ReadF(rain, 0x250);
@@ -449,58 +543,6 @@ namespace
         p2[2] = p[2];
     }
 
-    static void Render3D(uint8_t* rain)
-    {
-        using Render3D_t = void(__thiscall*)(void*);
-        auto render3d = reinterpret_cast<Render3D_t>(Game::RainRender3D);
-        render3d(rain);
-    }
-
-    static void RenderRain(uint8_t* rain)
-    {
-        using Render_t = void(__thiscall*)(void*);
-        auto render = reinterpret_cast<Render_t>(Game::RainRender);
-        render(rain);
-    }
-
-    static void UpdateRain(uint8_t* rain)
-    {
-        using Update_t = void(__thiscall*)(void*);
-        auto update = reinterpret_cast<Update_t>(Game::RainUpdate);
-        update(rain);
-    }
-
-    static void SetRainIntensity(uint8_t* rain, float intensity)
-    {
-        using SetIntensity_t = void(__thiscall*)(void*, float);
-        auto setIntensity = reinterpret_cast<SetIntensity_t>(Game::RainSetIntensityAddr);
-        setIntensity(rain, intensity);
-    }
-
-    static uint8_t IsPaused()
-    {
-        using IsPaused_t = uint8_t(__thiscall*)(void*);
-        auto isPaused = reinterpret_cast<IsPaused_t>(Game::PausedAddr);
-        return isPaused(reinterpret_cast<void*>(Game::GAMEFLOWMGR_STATUS_ADDR));
-    }
-
-    static int GetViewMode()
-    {
-        using GetViewMode_t = int(__cdecl*)();
-        auto fn = reinterpret_cast<GetViewMode_t>(Game::CurrentViewMode);
-        return fn();
-    }
-
-    static uint8_t AmIinATunnelSlow(uint8_t* view, int mode)
-    {
-        using Fn_t = uint8_t(__cdecl*)(void*, int);
-        auto fn = reinterpret_cast<Fn_t>(Game::AmIinATunnelSlow);
-        return fn(view, mode);
-    }
-}
-
-namespace RainFlowMW
-{
     void EnforceState(bool enable)
     {
         *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = enable ? 1 : 0;

@@ -1,7 +1,6 @@
 #include "PrecipitationController.h"
 #include "RainConfigController.h"
 #include <algorithm>
-#include <cstring>
 #include <vector>
 #include <d3d9.h>
 #include <d3dx9.h>
@@ -10,9 +9,6 @@
 #include "Hooking.Patterns.h"
 #include "PerlinNoise.h"
 #include "Game.h"
-#include "NFSMW_PreFEngHook.h"
-
-using namespace ngg::common;
 
 static auto& g_precipitationConfig = RainConfigController::precipitationConfig;
 
@@ -2138,22 +2134,26 @@ void PrecipitationController::Update()
                 *particleEnable = 1;
         }
 
-        // Force native MW precipitation globals so Rain::Render path is active.
+        // Force precipitation globals so Rain::Render path is active.
         if (g_precipitationConfig.enable3DRain || g_precipitationConfig.enable3DSplatters)
         {
-            auto* precipEnable = reinterpret_cast<int*>(MW::PRECIPITATION_ENABLE_ADDR);
+            auto* precipEnable = reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR);
             if (core::IsReadable(precipEnable, sizeof(int)))
                 *precipEnable = 1;
 
-            auto* precipPercent = reinterpret_cast<float*>(MW::PRECIPITATION_PERCENT_ADDR);
-            auto* rainPct = reinterpret_cast<float*>(MW::PRECIP_RAINPERCENT_ADDR);
-            auto* fogPct = reinterpret_cast<float*>(MW::PRECIP_FOGPERCENT_ADDR);
+            auto* precipPercent = reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR);
+            auto* rainPct = reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR);
+            auto* fogPct = reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR);
             if (core::IsReadable(precipPercent, sizeof(float)))
                 *precipPercent = 1.0f;
-            if (core::IsReadable(rainPct, sizeof(float)))
-                *rainPct = g_precipitationConfig.rainIntensity;
-            if (core::IsReadable(fogPct, sizeof(float)))
-                *fogPct = g_precipitationConfig.fogIntensity;
+            // In independent flow, RainFlowMW drives these (with smoothing).
+            // if (!kUseIndependentRainFlow)
+            // {
+            //     if (core::IsReadable(rainPct, sizeof(float)))
+            //         *rainPct = g_precipitationConfig.rainIntensity;
+            //     if (core::IsReadable(fogPct, sizeof(float)))
+            //         *fogPct = g_precipitationConfig.fogIntensity;
+            // }
         }
 
         PrecipitationController::ResetViewMatrix();

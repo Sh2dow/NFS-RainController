@@ -203,6 +203,7 @@
         <ClCompile Include="..\includes\minhook\src\trampoline.c"/>
         <ClCompile Include="core.cpp" />
         <ClCompile Include="PrecipitationController.cpp" />
+        <ClCompile Include="PrecipitationController.cpp" />
         <ClCompile Include="RainConfigController.cpp" />
         <ClCompile Include="dllmain.cpp"/>
         <ClCompile Include="RainFlow\RainFlowMW.cpp" />

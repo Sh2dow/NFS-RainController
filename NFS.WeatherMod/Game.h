@@ -119,7 +119,7 @@ namespace Game
     inline uintptr_t TunnelBloom_SetParams = 0;
     
     inline uintptr_t PausedAddr = 0;
-    inline uintptr_t AmIinATunnelSlow = 0;
+    inline uintptr_t AmIinATunnelSlowAddr = 0;
     
     using RainTick_t = void(__thiscall*)(void*);
     inline RainTick_t g_originalRainTick = nullptr;
@@ -247,7 +247,7 @@ namespace Game
             g_originalInitViews = reinterpret_cast<InitViews_t>(InitViewsAddr);
             eCurrentViewMode = reinterpret_cast<InitViews_t>(CurrentViewMode);
             
-            AmIinATunnelSlow = MW::AmIinATunnelSlowAddr;
+            AmIinATunnelSlowAddr = MW::AmIinATunnelSlowAddr;
             PausedAddr = MW::PausedAddr;
             
             break;

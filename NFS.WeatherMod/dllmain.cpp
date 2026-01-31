@@ -23,9 +23,7 @@
 // ==========================================================
 GameType detected_game = GameType::Unknown;
 
-using namespace ngg::common;
-
-static std::vector<std::unique_ptr<ngg::common::Feature>> g_features;
+static std::vector<std::unique_ptr<Feature>> g_features;
 static bool triedInit = false;
 
 using CreateLookAt_t = void(__cdecl*)(Mat4* mat, Vec3* eye, Vec3* center, Vec3* up);
@@ -546,7 +544,7 @@ static void __declspec(naked) HookedRenderCtxCallsite()
         __asm { ret }
     }
     __asm
-    {
+        {
         // Call original vtable function at [ecx]+4
         pushad
         pushfd
@@ -560,7 +558,7 @@ static void __declspec(naked) HookedRenderCtxCallsite()
         popad
         call edx
         ret
-    }
+        }
 }
 
 static void __declspec(naked) HookedRenderCtxCallsite2()
@@ -570,7 +568,7 @@ static void __declspec(naked) HookedRenderCtxCallsite2()
         __asm { ret }
     }
     __asm
-    {
+        {
         // Original: call dword ptr [ecx+15Ch] with two args already on stack.
         pushad
         pushfd
@@ -580,7 +578,7 @@ static void __declspec(naked) HookedRenderCtxCallsite2()
         mov eax, [ecx+15Ch]
         call eax
         ret
-    }
+        }
 }
 
 static void __fastcall HookedRainTick(void* ecx, void* edx)
@@ -726,46 +724,39 @@ static DWORD WINAPI RainGuardWorker(void*)
     while (true)
     {
         if (detected_game != GameType::MW)
-            continue;
+            return 0;
 
         OnFrameUpdate();
         HandleRainToggle();
 
-        __try
+        const bool enabled = PrecipitationController::Get()->IsActive();
+        if (enabled)
         {
-            const bool enabled = PrecipitationController::Get()->IsActive();
-            if (enabled)
-            {
-                if (kUseIndependentRainFlow)
-                    RainFlowMW::Tick();
-                // Force rain/particle globals so the engine doesn't skip the block.
-                *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 1;
-                *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 1;
-                *reinterpret_cast<int*>(Game::RainEnablePtr) = 1;
-                *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 1;
+            if (kUseIndependentRainFlow)
+                RainFlowMW::Tick();
+            // Force rain/particle globals so the engine doesn't skip the block.
+            *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 1;
+            *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 1;
+            *reinterpret_cast<int*>(Game::RainEnablePtr) = 1;
+            *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 1;
 
-                // Ensure particle context pointer is valid for sub_6DE300 path.
-                void** particleCtx = reinterpret_cast<void**>(Game::particleCtxAddr);
-                void** renderCtx = reinterpret_cast<void**>(Game::renderCtxAddr);
-                if (core::IsReadable(particleCtx, sizeof(void*)) && *particleCtx)
-                {
-                    if (core::IsReadable(renderCtx, sizeof(void*)) && !*renderCtx)
-                        *renderCtx = *particleCtx;
-                }
-            }
-            else
+            // Ensure particle context pointer is valid for sub_6DE300 path.
+            void** particleCtx = reinterpret_cast<void**>(Game::particleCtxAddr);
+            void** renderCtx = reinterpret_cast<void**>(Game::renderCtxAddr);
+            if (core::IsReadable(particleCtx, sizeof(void*)) && *particleCtx)
             {
-                if (kUseIndependentRainFlow)
-                    RainFlowMW::Disable();
-                *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 0;
-                *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 0;
-                *reinterpret_cast<int*>(Game::RainEnablePtr) = 0;
-                *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 0;
+                if (core::IsReadable(renderCtx, sizeof(void*)) && !*renderCtx)
+                    *renderCtx = *particleCtx;
             }
         }
-        __except (EXCEPTION_EXECUTE_HANDLER)
+        else
         {
-            OutputDebugStringA("[RainGuard] Exception in guard worker\n");
+            if (kUseIndependentRainFlow)
+                RainFlowMW::Disable();
+            *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 0;
+            *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 0;
+            *reinterpret_cast<int*>(Game::RainEnablePtr) = 0;
+            *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 0;
         }
     }
     return 0;
@@ -779,6 +770,15 @@ static void __cdecl HookedDisplayFrame()
         return;
     if (!PrecipitationController::Get()->IsActive())
         return;
+    if (kUseIndependentRainFlow)
+    {
+        // Override late writes to precipitation globals to enforce smoothing.
+        float rain = RainFlowMW::GetSmoothedRain();
+        float fog = RainFlowMW::GetSmoothedFog();
+        *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR) = rain;
+        *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR) = rain;
+        *reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR) = fog;
+    }
     void* rain = *reinterpret_cast<void**>(Game::RainInstancePtr);
     if (!IsLikelyRainInstance(rain))
         return;
@@ -792,76 +792,9 @@ static void __cdecl HookedDisplayFrame()
         return;
     void* p284 = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(rain) + 0x284);
     void* p288 = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(rain) + 0x288);
-    if (!p284 || !p288 || !core::IsReadable(p284, sizeof(void*)) || !core::IsReadable(p288, 0x50))
+    if (!p284 || !p288 || !core::IsReadable(p288, 0x50))
         return;
     // Wrapper call disabled; crashes inside 0x73CDCA.
-}
-
-static void __cdecl HookedCreateLookAt(Mat4* mat, Vec3* eye, Vec3* center, Vec3* up)
-{
-    static bool logged = false;
-    if (g_originalCreateLookAt)
-        g_originalCreateLookAt(mat, eye, center, up);
-
-    if (mat)
-    {
-        D3DXMATRIX view{};
-        std::memcpy(&view, mat, sizeof(D3DXMATRIX));
-        PrecipitationController::UpdateViewMatrix(view);
-        if (!logged)
-        {
-            OutputDebugStringA("[RainDebug] HookedCreateLookAt fired\n");
-            logged = true;
-        }
-    }
-}
-
-static int __fastcall HookedBuildView(void* viewObj, void* edx, int a0, float a4, float a8, int aC, char a10)
-{
-    int result = g_originalBuildView ? g_originalBuildView(viewObj, edx, a0, a4, a8, aC, a10) : 0;
-    if (viewObj && core::IsReadable(viewObj, 0x80 + sizeof(D3DXMATRIX)))
-    {
-        D3DXMATRIX view{};
-        std::memcpy(&view, reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(viewObj) + 0x80),
-                    sizeof(D3DXMATRIX));
-        PrecipitationController::UpdateViewMatrix(view);
-    }
-    return result;
-}
-
-static int __cdecl HookedBuildRenderView(void* a0, int a4, int a8)
-{
-    if (a0 && core::IsReadable(a0, 8))
-    {
-        int viewIndex = *reinterpret_cast<int*>(reinterpret_cast<uintptr_t>(a0) + 4);
-        if (viewIndex >= 0 && viewIndex < static_cast<int>(Game::EViewArrayCount))
-        {
-            uintptr_t entry = Game::EViewArrayBase +
-                static_cast<uintptr_t>(viewIndex) * Game::EViewSize;
-            if (core::IsReadable(reinterpret_cast<void*>(entry), Game::EViewCameraOffset + sizeof(void*)))
-                PrecipitationController::UpdateActiveViewPtr(reinterpret_cast<void*>(entry));
-        }
-    }
-    return g_originalBuildRenderView ? g_originalBuildRenderView(a0, a4, a8) : 0;
-}
-
-static void __cdecl HookedBuildRenderMatrix(void* outMat, void* inMat)
-{
-    static bool logged = false;
-    if (g_originalBuildRenderMatrix)
-        g_originalBuildRenderMatrix(outMat, inMat);
-
-    if (outMat && core::IsReadable(outMat, sizeof(D3DXMATRIX)))
-    {
-        D3DXMATRIX view{};
-        std::memcpy(&view, outMat, sizeof(D3DXMATRIX));
-        PrecipitationController::UpdateViewMatrix(view);
-        if (!logged)
-        {
-            OutputDebugStringA("[RainDebug] HookedBuildRenderMatrix fired\n");
-            logged = true;
-        }
-    }
 }
 
 static bool InitMinHook()
@@ -1112,13 +1045,13 @@ DWORD WINAPI MainThread(void*)
 
         CreateThread(nullptr, 0, RainGuardWorker, nullptr, 0, nullptr);
 
-        if (InitMinHook())
-        {
-            MH_CreateHook(reinterpret_cast<void*>(Game::eDisplayFrameAddr),
-                          &HookedDisplayFrame,
-                          reinterpret_cast<void**>(&g_originalDisplayFrame));
-            MH_EnableHook(reinterpret_cast<void*>(Game::eDisplayFrameAddr));
-        }
+        // if (InitMinHook())
+        // {
+        //     MH_CreateHook(reinterpret_cast<void*>(Game::eDisplayFrameAddr),
+        //                   &HookedDisplayFrame,
+        //                   reinterpret_cast<void**>(&g_originalDisplayFrame));
+        //     MH_EnableHook(reinterpret_cast<void*>(Game::eDisplayFrameAddr));
+        // }
     }
 
     return 0;

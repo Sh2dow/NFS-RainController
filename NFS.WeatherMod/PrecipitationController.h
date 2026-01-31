@@ -4,7 +4,7 @@
 #include <d3d9.h>
 #include <d3dx9.h>
 
-class PrecipitationController : public ngg::common::Feature
+class PrecipitationController : public Feature
 {
 public:
     IDirect3DDevice9* m_device; // Add to class
