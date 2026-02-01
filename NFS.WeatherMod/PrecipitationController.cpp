@@ -71,6 +71,114 @@ namespace
         return static_cast<int>(minVal + (NextRandU32() % span));
     }
 
+    static void ApplyNativePresetGlobalsMW()
+    {
+        const auto& p = g_precipitationConfig.nativePreset;
+        static bool loggedPreset = false;
+        if (!loggedPreset)
+        {
+            char buf[512];
+            sprintf_s(buf,
+                "[WeatherMod] Preset=%s applyPreset=%d RainCrossing=%.3f FallSpeed=%.3f Gravity=%.3f RadiusY=%.3f Damp=%.3f\n",
+                g_precipitationConfig.presetName.c_str(),
+                g_precipitationConfig.applyPresetGlobals ? 1 : 0,
+                p.rainCrossing,
+                p.rainFallSpeed,
+                p.rainGravity,
+                p.rainRadiusY,
+                p.baseDampness);
+            OutputDebugStringA(buf);
+            loggedPreset = true;
+        }
+
+        float beforeCross = 0.0f;
+        float beforeFall = 0.0f;
+        float beforeGrav = 0.0f;
+        float beforeDamp = 0.0f;
+        if (Game::PRECIP_RAINY_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINY_ADDR), sizeof(float)))
+            beforeCross = *reinterpret_cast<float*>(Game::PRECIP_RAINY_ADDR);
+        if (Game::PRECIP_RAINZ_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZ_ADDR), sizeof(float)))
+            beforeFall = *reinterpret_cast<float*>(Game::PRECIP_RAINZ_ADDR);
+        if (Game::PRECIP_RAINZCONSTANT_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZCONSTANT_ADDR), sizeof(float)))
+            beforeGrav = *reinterpret_cast<float*>(Game::PRECIP_RAINZCONSTANT_ADDR);
+        if (Game::PRECIP_BASEDAMPNESS_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_BASEDAMPNESS_ADDR), sizeof(float)))
+            beforeDamp = *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR);
+
+        if (Game::PRECIP_RAINY_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_RAINY_ADDR) = p.rainCrossing;
+        if (Game::PRECIP_RAINZ_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_RAINZ_ADDR) = p.rainFallSpeed;
+        if (Game::PRECIP_RAINZCONSTANT_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_RAINZCONSTANT_ADDR) = p.rainGravity;
+        if (Game::PRECIP_RAINWINDEFF_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_RAINWINDEFF_ADDR) = p.rainWindEff;
+        if (Game::PRECIP_RAINRADIUSX_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_RAINRADIUSX_ADDR) = p.rainRadiusX;
+        if (Game::PRECIP_RAINRADIUSY_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_RAINRADIUSY_ADDR) = p.rainRadiusY;
+        if (Game::PRECIP_RAINRADIUSZ_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_RAINRADIUSZ_ADDR) = p.rainRadiusZ;
+        if (Game::PRECIP_BOUNDX_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_BOUNDX_ADDR) = p.boundX;
+        if (Game::PRECIP_BOUNDY_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_BOUNDY_ADDR) = p.boundY;
+        if (Game::PRECIP_BOUNDZ_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_BOUNDZ_ADDR) = p.boundZ;
+        if (Game::PRECIP_AHEADX_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_AHEADX_ADDR) = p.aheadX;
+        if (Game::PRECIP_AHEADY_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_AHEADY_ADDR) = p.aheadY;
+        if (Game::PRECIP_AHEADZ_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_AHEADZ_ADDR) = p.aheadZ;
+        if (Game::PRECIP_DRIVEFACTOR_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_DRIVEFACTOR_ADDR) = p.driveFactor;
+        if (Game::PRECIP_RAINRATEOFCHANGE_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_RAINRATEOFCHANGE_ADDR) = p.rainRateOfChange;
+        if (Game::PRECIP_CLOUDSRATEOFCHANGE_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_CLOUDSRATEOFCHANGE_ADDR) = p.cloudsRateOfChange;
+        if (Game::PRECIP_WINDANG_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_WINDANG_ADDR) = p.windAngle;
+        if (Game::PRECIP_SWAYMAX_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_SWAYMAX_ADDR) = p.swayMax;
+        if (Game::PRECIP_MAXWINDEFF_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_MAXWINDEFF_ADDR) = p.maxWindEff;
+        if (Game::PRECIP_PREVAILINGMULT_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_PREVAILINGMULT_ADDR) = p.prevailingMult;
+        if (Game::PRECIP_ONSCREEN_DRIPSPEED_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_ONSCREEN_DRIPSPEED_ADDR) = p.onScreenDripSpeed;
+        if (Game::PRECIP_ONSCREEN_SPEEDMOD_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_ONSCREEN_SPEEDMOD_ADDR) = p.onScreenSpeedMod;
+        if (Game::PRECIP_ONSCREEN_DROPSHAPESPEEDCHANGE_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_ONSCREEN_DROPSHAPESPEEDCHANGE_ADDR) = p.onScreenDropShapeSpeedChange;
+        if (Game::PRECIP_BASEDAMPNESS_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR) = p.baseDampness;
+        if (Game::PRECIP_RAININTHEHEADLIGHTS_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_RAININTHEHEADLIGHTS_ADDR) = p.rainInHeadlights;
+
+        static int readbackCountdown = 3;
+        if (readbackCountdown > 0)
+        {
+            --readbackCountdown;
+            float afterCross = beforeCross;
+            float afterFall = beforeFall;
+            float afterGrav = beforeGrav;
+            float afterDamp = beforeDamp;
+            if (Game::PRECIP_RAINY_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINY_ADDR), sizeof(float)))
+                afterCross = *reinterpret_cast<float*>(Game::PRECIP_RAINY_ADDR);
+            if (Game::PRECIP_RAINZ_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZ_ADDR), sizeof(float)))
+                afterFall = *reinterpret_cast<float*>(Game::PRECIP_RAINZ_ADDR);
+            if (Game::PRECIP_RAINZCONSTANT_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZCONSTANT_ADDR), sizeof(float)))
+                afterGrav = *reinterpret_cast<float*>(Game::PRECIP_RAINZCONSTANT_ADDR);
+            if (Game::PRECIP_BASEDAMPNESS_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_BASEDAMPNESS_ADDR), sizeof(float)))
+                afterDamp = *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR);
+            char buf[256];
+            sprintf_s(buf,
+                "[WeatherMod] preset readback cross=%.3f->%.3f fall=%.3f->%.3f grav=%.3f->%.3f damp=%.3f->%.3f\n",
+                beforeCross, afterCross, beforeFall, afterFall, beforeGrav, afterGrav, beforeDamp, afterDamp);
+            OutputDebugStringA(buf);
+        }
+    }
+
     static bool EnsureDynamicVB(IDirect3DDevice9* device, DynamicVB& vb, UINT neededVerts)
     {
         if (!device || neededVerts == 0)
@@ -131,9 +239,9 @@ namespace
 }
 
 static D3DXMATRIX g_ViewMatrix{};
-static bool g_ViewValid = false;
 static D3DXMATRIX g_d3dViewMatrix{};
 static D3DXMATRIX g_d3dProjMatrix{};
+static bool g_ViewValid = false;
 static bool g_d3dViewValid = false;
 static bool g_d3dProjValid = false;
 static void* g_ActiveViewPtr = nullptr;
@@ -1183,6 +1291,16 @@ void PrecipitationController::enable()
     RainConfigController::Load();
     m_active = true;
 
+    if (!m_device && Game::NFS_D3D9_DEVICE_ADDRESS)
+    {
+        auto** devPtr = reinterpret_cast<IDirect3DDevice9**>(Game::NFS_D3D9_DEVICE_ADDRESS);
+        if (core::IsReadable(devPtr, sizeof(void*)) && *devPtr)
+        {
+            m_device = *devPtr;
+            OutputDebugStringA("[PrecipitationController::enable] m_device resolved from NFS_D3D9_DEVICE_ADDRESS\n");
+        }
+    }
+
     if (g_precipitationConfig.fpsOverride > 0.0f)
         core::fpsDeltaTime = 1.0f / g_precipitationConfig.fpsOverride;
     else
@@ -1455,9 +1573,11 @@ bool PrecipitationController::IsCreatedRainTexture()
 
 void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
 {
-    if (detected_game == GameType::MW)
+    static bool loggedRender3D = false;
+    if (!loggedRender3D)
     {
-        return;
+        OutputDebugStringA("[PrecipitationController::Render3DRainOverlay] entered\n");
+        loggedRender3D = true;
     }
     static bool renderEntryLogged = false;
     if (!renderEntryLogged)
@@ -1824,8 +1944,6 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
 
 void PrecipitationController::Render3DSplattersOverlay(const D3DVIEWPORT9& viewport)
 {
-    if (detected_game == GameType::MW)
-        return;
     static bool splatEntryLogged = false;
     if (!splatEntryLogged)
     {
@@ -2098,6 +2216,32 @@ void PrecipitationController::Render2DRainOverlay(const D3DVIEWPORT9& viewport)
 
 void PrecipitationController::Update()
 {
+    static bool loggedUpdate = false;
+    if (!loggedUpdate)
+    {
+        char buf[256];
+        sprintf_s(buf,
+            "[PrecipitationController::Update] active=%d device=%p applyPresetRendering=%d\n",
+            m_active ? 1 : 0,
+            m_device,
+            g_precipitationConfig.applyPresetRendering ? 1 : 0);
+        OutputDebugStringA(buf);
+        loggedUpdate = true;
+    }
+
+    if (!m_device && Game::NFS_D3D9_DEVICE_ADDRESS)
+    {
+        auto** devPtr = reinterpret_cast<IDirect3DDevice9**>(Game::NFS_D3D9_DEVICE_ADDRESS);
+        if (core::IsReadable(devPtr, sizeof(void*)) && *devPtr)
+        {
+            m_device = *devPtr;
+            OutputDebugStringA("[PrecipitationController::Update] m_device resolved from NFS_D3D9_DEVICE_ADDRESS\n");
+        }
+        else
+        {
+            OutputDebugStringA("[PrecipitationController::Update] m_device still null after resolve\n");
+        }
+    }
     if (!m_active)
     {
         static bool loggedInactive = false;
@@ -2124,6 +2268,9 @@ void PrecipitationController::Update()
 
     if (detected_game == GameType::MW)
     {
+        if (g_precipitationConfig.applyPresetGlobals)
+            ApplyNativePresetGlobalsMW();
+
         if (g_precipitationConfig.enable3DRain || g_precipitationConfig.enable3DSplatters)
         {
             auto* rainEnable = reinterpret_cast<int*>(Game::RainEnablePtr);
@@ -2333,7 +2480,6 @@ void PrecipitationController::Update()
                 }
             }
         }
-
     }
 
     if (camPos == D3DXVECTOR3(0, 0, 0))
@@ -2368,8 +2514,10 @@ void PrecipitationController::Update()
         return;
 
     // MW native rain runs inside the game's render path; avoid polluting device state here.
+    // When preset rendering is enabled (e.g., snow), we allow the custom renderer for MW.
     if (detected_game == GameType::MW &&
-        (g_precipitationConfig.enable3DRain || g_precipitationConfig.enable3DSplatters))
+        (g_precipitationConfig.enable3DRain || g_precipitationConfig.enable3DSplatters) &&
+        !g_precipitationConfig.applyPresetRendering)
         return;
 
     // Setup shared render state

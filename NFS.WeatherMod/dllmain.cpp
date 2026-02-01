@@ -25,6 +25,7 @@ GameType detected_game = GameType::Unknown;
 
 static std::vector<std::unique_ptr<Feature>> g_features;
 static bool triedInit = false;
+static volatile LONG g_renderCustomPrecip = 0;
 
 using CreateLookAt_t = void(__cdecl*)(Mat4* mat, Vec3* eye, Vec3* center, Vec3* up);
 static CreateLookAt_t g_originalCreateLookAt = nullptr;
@@ -59,6 +60,7 @@ static void HookedRenderCtxCallsite();
 static void AfterRenderCtxCallsite();
 static constexpr bool kUseIndependentRainFlow = true;
 static constexpr bool kUseIndependentSkyFlow = true;
+static volatile bool g_rainRequested = false;
 static void __cdecl HookedStuffSkyLayerBlendCallsite(void* view, float blend, int layer);
 static void __cdecl HookedStuffSkyLayer(void* view, int layer, float blend);
 static void __cdecl HookedStuffSkyLayerCallsite(void* view, int layer, float blend);
@@ -84,6 +86,16 @@ static void __cdecl HookedDisplayFrame()
 {
     if (g_originalDisplayFrame)
         g_originalDisplayFrame();
+    if (InterlockedCompareExchange(&g_renderCustomPrecip, 0, 0) != 0)
+    {
+        static bool loggedRender = false;
+        if (!loggedRender)
+        {
+            OutputDebugStringA("[WeatherMod] HookedDisplayFrame: rendering custom precip\n");
+            loggedRender = true;
+        }
+        PrecipitationController::Get()->Update();
+    }
     ForceDryStateIfDisabled();
 }
 
@@ -328,30 +340,7 @@ static void RunNativeRainFlow(void* rain)
     if (core::IsReadable(fogPercent, sizeof(float)))
         *fogPercent = fogPct;
 
-    // Native rain tuning globals (from IDA)
-    auto* generalRainAmount = reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR);
-    auto* rainCrossing = reinterpret_cast<float*>(Game::PRECIP_RAINY_ADDR);
-    auto* rainFallSpeed = reinterpret_cast<float*>(Game::PRECIP_RAINZ_ADDR);
-    auto* rainGravity = reinterpret_cast<float*>(Game::PRECIP_RAINZCONSTANT_ADDR);
-    auto* fallingRainSize = reinterpret_cast<float*>(Game::PRECIP_RAINRADIUSX_ADDR);
-    auto* rainIntensity = reinterpret_cast<float*>(Game::PRECIP_RAINRADIUSY_ADDR);
-    auto* roadReflection = reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR);
-
-    if (core::IsReadable(generalRainAmount, sizeof(float)))
-        *generalRainAmount = rainPct;
-    if (core::IsReadable(rainIntensity, sizeof(float)))
-        *rainIntensity = rainPct;
-    if (core::IsReadable(roadReflection, sizeof(float)))
-        *roadReflection = rainPct;
-    // Keep these at defaults unless you wire config later.
-    if (core::IsReadable(rainCrossing, sizeof(float)))
-        *rainCrossing = 0.02f;
-    if (core::IsReadable(rainFallSpeed, sizeof(float)))
-        *rainFallSpeed = 0.03f;
-    if (core::IsReadable(rainGravity, sizeof(float)))
-        *rainGravity = 0.35f;
-    if (core::IsReadable(fallingRainSize, sizeof(float)))
-        *fallingRainSize = 0.01f;
+    // Native tuning globals are handled by preset application; avoid clobbering here.
 
     // Ensure Rain instance intensity targets are non-zero.
     if (core::IsReadable(reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(rain) + 0x290), sizeof(float)))
@@ -836,7 +825,111 @@ static void HandleRainToggle()
         shouldEnable = true;
     }
 
+    g_rainRequested = shouldEnable;
     lastKeyState = keyPressed;
+}
+
+static void ApplyNativePresetGlobalsMW()
+{
+    const auto& p = RainConfigController::precipitationConfig.nativePreset;
+    static bool loggedPreset = false;
+    if (!loggedPreset)
+    {
+        char buf[256];
+        sprintf_s(buf,
+            "[WeatherMod] Preset=%s applyPreset=%d (RainGuardWorker)\n",
+            RainConfigController::precipitationConfig.presetName.c_str(),
+            RainConfigController::precipitationConfig.applyPresetGlobals ? 1 : 0);
+        OutputDebugStringA(buf);
+        loggedPreset = true;
+    }
+
+    float beforeCross = 0.0f;
+    float beforeFall = 0.0f;
+    float beforeGrav = 0.0f;
+    float beforeDamp = 0.0f;
+    if (Game::PRECIP_RAINY_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINY_ADDR), sizeof(float)))
+        beforeCross = *reinterpret_cast<float*>(Game::PRECIP_RAINY_ADDR);
+    if (Game::PRECIP_RAINZ_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZ_ADDR), sizeof(float)))
+        beforeFall = *reinterpret_cast<float*>(Game::PRECIP_RAINZ_ADDR);
+    if (Game::PRECIP_RAINZCONSTANT_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZCONSTANT_ADDR), sizeof(float)))
+        beforeGrav = *reinterpret_cast<float*>(Game::PRECIP_RAINZCONSTANT_ADDR);
+    if (Game::PRECIP_BASEDAMPNESS_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_BASEDAMPNESS_ADDR), sizeof(float)))
+        beforeDamp = *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR);
+
+    if (Game::PRECIP_RAINY_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_RAINY_ADDR) = p.rainCrossing;
+    if (Game::PRECIP_RAINZ_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_RAINZ_ADDR) = p.rainFallSpeed;
+    if (Game::PRECIP_RAINZCONSTANT_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_RAINZCONSTANT_ADDR) = p.rainGravity;
+    if (Game::PRECIP_RAINWINDEFF_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_RAINWINDEFF_ADDR) = p.rainWindEff;
+    if (Game::PRECIP_RAINRADIUSX_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_RAINRADIUSX_ADDR) = p.rainRadiusX;
+    if (Game::PRECIP_RAINRADIUSY_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_RAINRADIUSY_ADDR) = p.rainRadiusY;
+    if (Game::PRECIP_RAINRADIUSZ_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_RAINRADIUSZ_ADDR) = p.rainRadiusZ;
+    if (Game::PRECIP_BOUNDX_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_BOUNDX_ADDR) = p.boundX;
+    if (Game::PRECIP_BOUNDY_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_BOUNDY_ADDR) = p.boundY;
+    if (Game::PRECIP_BOUNDZ_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_BOUNDZ_ADDR) = p.boundZ;
+    if (Game::PRECIP_AHEADX_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_AHEADX_ADDR) = p.aheadX;
+    if (Game::PRECIP_AHEADY_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_AHEADY_ADDR) = p.aheadY;
+    if (Game::PRECIP_AHEADZ_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_AHEADZ_ADDR) = p.aheadZ;
+    if (Game::PRECIP_DRIVEFACTOR_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_DRIVEFACTOR_ADDR) = p.driveFactor;
+    if (Game::PRECIP_RAINRATEOFCHANGE_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_RAINRATEOFCHANGE_ADDR) = p.rainRateOfChange;
+    if (Game::PRECIP_CLOUDSRATEOFCHANGE_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_CLOUDSRATEOFCHANGE_ADDR) = p.cloudsRateOfChange;
+    if (Game::PRECIP_WINDANG_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_WINDANG_ADDR) = p.windAngle;
+    if (Game::PRECIP_SWAYMAX_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_SWAYMAX_ADDR) = p.swayMax;
+    if (Game::PRECIP_MAXWINDEFF_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_MAXWINDEFF_ADDR) = p.maxWindEff;
+    if (Game::PRECIP_PREVAILINGMULT_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_PREVAILINGMULT_ADDR) = p.prevailingMult;
+    if (Game::PRECIP_ONSCREEN_DRIPSPEED_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_ONSCREEN_DRIPSPEED_ADDR) = p.onScreenDripSpeed;
+    if (Game::PRECIP_ONSCREEN_SPEEDMOD_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_ONSCREEN_SPEEDMOD_ADDR) = p.onScreenSpeedMod;
+    if (Game::PRECIP_ONSCREEN_DROPSHAPESPEEDCHANGE_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_ONSCREEN_DROPSHAPESPEEDCHANGE_ADDR) = p.onScreenDropShapeSpeedChange;
+    if (Game::PRECIP_BASEDAMPNESS_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR) = p.baseDampness;
+    if (Game::PRECIP_RAININTHEHEADLIGHTS_ADDR)
+        *reinterpret_cast<float*>(Game::PRECIP_RAININTHEHEADLIGHTS_ADDR) = p.rainInHeadlights;
+
+    static int readbackCountdown = 3;
+    if (readbackCountdown > 0)
+    {
+        --readbackCountdown;
+        float afterCross = beforeCross;
+        float afterFall = beforeFall;
+        float afterGrav = beforeGrav;
+        float afterDamp = beforeDamp;
+        if (Game::PRECIP_RAINY_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINY_ADDR), sizeof(float)))
+            afterCross = *reinterpret_cast<float*>(Game::PRECIP_RAINY_ADDR);
+        if (Game::PRECIP_RAINZ_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZ_ADDR), sizeof(float)))
+            afterFall = *reinterpret_cast<float*>(Game::PRECIP_RAINZ_ADDR);
+        if (Game::PRECIP_RAINZCONSTANT_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZCONSTANT_ADDR), sizeof(float)))
+            afterGrav = *reinterpret_cast<float*>(Game::PRECIP_RAINZCONSTANT_ADDR);
+        if (Game::PRECIP_BASEDAMPNESS_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_BASEDAMPNESS_ADDR), sizeof(float)))
+            afterDamp = *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR);
+        char buf[256];
+        sprintf_s(buf,
+            "[WeatherMod] preset readback cross=%.3f->%.3f fall=%.3f->%.3f grav=%.3f->%.3f damp=%.3f->%.3f\n",
+            beforeCross, afterCross, beforeFall, afterFall, beforeGrav, afterGrav, beforeDamp, afterDamp);
+        OutputDebugStringA(buf);
+    }
 }
 
 // Helper: keep engine rain flags set so the native callsite runs.
@@ -848,30 +941,63 @@ static DWORD WINAPI RainGuardWorker(void*)
         OnFrameUpdate();
         HandleRainToggle();
 
+        if (g_rainRequested && !PrecipitationController::Get()->IsActive())
+            PrecipitationController::Get()->enable();
+
         const bool enabled = PrecipitationController::Get()->IsActive();
+        if (enabled && RainConfigController::precipitationConfig.applyPresetRendering)
+            PrecipitationController::Get()->enable();
         float targetRain = enabled ? RainConfigController::precipitationConfig.rainIntensity : 0.0f;
         float targetFog = enabled ? RainConfigController::precipitationConfig.fogIntensity : 0.0f;
         RainFlowMW::SetTargets(targetRain, targetFog);
         if (kUseIndependentRainFlow)
             RainFlowMW::Tick();
 
+        if (enabled && RainConfigController::precipitationConfig.applyPresetRendering)
+            InterlockedExchange(&g_renderCustomPrecip, 1);
+        else
+            InterlockedExchange(&g_renderCustomPrecip, 0);
+
         float smoothed = kUseIndependentRainFlow ? RainFlowMW::GetSmoothedRain() : 0.0f;
         const bool keepAlive = smoothed > 0.01f;
         if (enabled || keepAlive)
         {
+            *reinterpret_cast<int*>(Game::PRECIPITATION_DEBUG_ADDR) = 1;
             // *reinterpret_cast<int*>(Game::PRECIPITATION_DEBUG_ADDR) = 1;
+            if (enabled && RainConfigController::precipitationConfig.applyPresetGlobals)
+                ApplyNativePresetGlobalsMW();
             
-            decayFrames = 0;
-            // Force rain/particle globals so the engine doesn't skip the block.
-            *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 1;
-            *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 1;
-            *reinterpret_cast<int*>(Game::RainEnablePtr) = 1;
-            *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 1;
+            // decayFrames = 0;
+            // if (RainConfigController::precipitationConfig.applyPresetRendering)
+            // {
+            //     // Custom renderer path (e.g., snow) — disable native precipitation.
+            //     *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 0;
+            //     *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 0;
+            //     *reinterpret_cast<int*>(Game::RainEnablePtr) = 0;
+            //     *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 0;
+            // }
+            // else
+            // {
+            //     // Force rain/particle globals so the engine doesn't skip the native block.
+            //     *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 1;
+            //     *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 1;
+            //     *reinterpret_cast<int*>(Game::RainEnablePtr) = 1;
+            //     *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 1;
+            // }
 
         }
         else
         {
             *reinterpret_cast<int*>(Game::PRECIPITATION_DEBUG_ADDR) = 0;
+            // if (RainConfigController::precipitationConfig.applyPresetRendering)
+            // {
+            //     if (Game::PRECIP_RAINOVERRIDE_ADDR)
+            //         *reinterpret_cast<float*>(Game::PRECIP_RAINOVERRIDE_ADDR) = 0.0f;
+            //     if (Game::PRECIP_FOGPERCENT_ADDR)
+            //         *reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR) = 0.0f;
+            //     if (Game::FOG_CTRLOVERRIDE_ADDR)
+            //         *reinterpret_cast<int*>(Game::FOG_CTRLOVERRIDE_ADDR) = 0;
+            // }
              // Let a few frames pass at zero to avoid a hard snap on disable.
             // if (++decayFrames >= 30)
             // {

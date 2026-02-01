@@ -14,6 +14,7 @@ namespace RainConfigController
     inline struct PrecipitationData
     {
         std::string raindropTexturePath;
+        std::string presetName;
 
         float fpsOverride;
         
@@ -88,5 +89,57 @@ namespace RainConfigController
         int rainMatrixMode;
         int useLookAtMatrix;
         int preferHookedView;
+
+        bool applyPresetGlobals;
+        bool applyPresetRendering;
+
+        struct NativePreset
+        {
+            float rainCrossing;
+            float rainFallSpeed;
+            float rainGravity;
+            float rainWindEff;
+            float rainRadiusX;
+            float rainRadiusY;
+            float rainRadiusZ;
+            float boundX;
+            float boundY;
+            float boundZ;
+            float aheadX;
+            float aheadY;
+            float aheadZ;
+            float driveFactor;
+            float rainRateOfChange;
+            float cloudsRateOfChange;
+            float windAngle;
+            float swayMax;
+            float maxWindEff;
+            float prevailingMult;
+            float onScreenDripSpeed;
+            float onScreenSpeedMod;
+            float onScreenDropShapeSpeedChange;
+            float baseDampness;
+            float rainInHeadlights;
+        } nativePreset{};
+
+        struct RenderPreset
+        {
+            int enable2DRain;
+            int enable3DRain;
+            int enable3DSplatters;
+            int drop2DCount;
+            float dropSizeNear;
+            float dropSizeMid;
+            float dropSizeFar;
+            float speedNear;
+            float speedMid;
+            float speedFar;
+            float windSwayNear;
+            float windSwayMid;
+            float windSwayFar;
+            int dropCountNear;
+            int dropCountMid;
+            int dropCountFar;
+        } renderPreset{};
     } precipitationConfig{};
 }
