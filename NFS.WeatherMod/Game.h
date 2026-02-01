@@ -42,6 +42,8 @@ namespace Game
     inline uintptr_t kWindMod = 0;
     inline uintptr_t kCloudBase = 0;
     
+    
+    inline uintptr_t PRECIPITATION_DEBUG_ADDR = 0;
     inline uintptr_t PRECIPITATION_ENABLE_ADDR = 0;
     inline uintptr_t PRECIPITATION_RENDER_ADDR = 0;
     inline uintptr_t PRECIP_RAINPERCENT_ADDR = 0;
@@ -199,6 +201,7 @@ namespace Game
             CameraPositionOffset = MW::CameraPositionOffset;
             CameraMatrixV3Offset = MW::CameraMatrixV3Offset;
 
+            PRECIPITATION_DEBUG_ADDR = MW::PRECIPITATION_DEBUG_ADDR;
             PRECIP_RAINX_ADDR = MW::PRECIP_RAINX_ADDR;
             PRECIP_RAINY_ADDR = MW::PRECIP_RAINY_ADDR;
             PRECIP_RAINZ_ADDR = MW::PRECIP_RAINZ_ADDR;
@@ -342,6 +345,7 @@ namespace Game
             // CameraPositionOffset = CB::CameraPositionOffset;
             // CameraMatrixV3Offset =  CB::CameraMatrixV3Offset;
 
+            PRECIPITATION_DEBUG_ADDR = CB::PRECIPITATION_DEBUG_ADDR;
             FEMANAGER_INSTANCE_ADDR = CB::FEMANAGER_INSTANCE_ADDR;
             break;
         case GameType::PS:

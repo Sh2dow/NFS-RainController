@@ -64,6 +64,29 @@ static void __cdecl HookedStuffSkyLayer(void* view, int layer, float blend);
 static void __cdecl HookedStuffSkyLayerCallsite(void* view, int layer, float blend);
 static void __cdecl HookedReplaceSkyTextures(int layer);
 
+static void ForceDryStateIfDisabled()
+{
+    if (!PrecipitationController::Get()->IsActive())
+    {
+        float smoothed = RainFlowMW::GetSmoothedRain();
+        if (smoothed > 0.01f)
+            return;
+        if (Game::PRECIP_RAINOVERRIDE_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_RAINOVERRIDE_ADDR) = 0.0f;
+        if (Game::FOG_CTRLOVERRIDE_ADDR)
+            *reinterpret_cast<int*>(Game::FOG_CTRLOVERRIDE_ADDR) = 0;
+        if (Game::RoadReflectionStateAddr)
+            *reinterpret_cast<int*>(Game::RoadReflectionStateAddr) = 2;
+    }
+}
+
+static void __cdecl HookedDisplayFrame()
+{
+    if (g_originalDisplayFrame)
+        g_originalDisplayFrame();
+    ForceDryStateIfDisabled();
+}
+
 static void RunNativeRainFlow(void* rain)
 {
     if (kUseIndependentRainFlow)
@@ -819,6 +842,7 @@ static void HandleRainToggle()
 // Helper: keep engine rain flags set so the native callsite runs.
 static DWORD WINAPI RainGuardWorker(void*)
 {
+    int decayFrames = 0;
     while (true)
     {
         OnFrameUpdate();
@@ -831,11 +855,13 @@ static DWORD WINAPI RainGuardWorker(void*)
         if (kUseIndependentRainFlow)
             RainFlowMW::Tick();
 
-        // float smoothed = RainFlowMW::GetSmoothedRain();
-        // const bool keepAlive = smoothed > 0.01f;
-        // if (enabled || keepAlive)
-        if (enabled)
+        float smoothed = kUseIndependentRainFlow ? RainFlowMW::GetSmoothedRain() : 0.0f;
+        const bool keepAlive = smoothed > 0.01f;
+        if (enabled || keepAlive)
         {
+            // *reinterpret_cast<int*>(Game::PRECIPITATION_DEBUG_ADDR) = 1;
+            
+            decayFrames = 0;
             // Force rain/particle globals so the engine doesn't skip the block.
             *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 1;
             *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 1;
@@ -845,12 +871,41 @@ static DWORD WINAPI RainGuardWorker(void*)
         }
         else
         {
-            if (kUseIndependentRainFlow)
-                RainFlowMW::Disable();
-            *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 0;
-            *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 0;
-            *reinterpret_cast<int*>(Game::RainEnablePtr) = 0;
-            *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 0;
+            *reinterpret_cast<int*>(Game::PRECIPITATION_DEBUG_ADDR) = 0;
+             // Let a few frames pass at zero to avoid a hard snap on disable.
+            // if (++decayFrames >= 30)
+            // {
+            //     // Finalize shutdown after ramp reaches ~0.
+            //     if (kUseIndependentRainFlow)
+            //         RainFlowMW::Disable();
+            //     if (Game::PRECIP_RAINOVERRIDE_ADDR)
+            //         *reinterpret_cast<float*>(Game::PRECIP_RAINOVERRIDE_ADDR) = 0.0f;
+            //     if (Game::FOG_CTRLOVERRIDE_ADDR)
+            //         *reinterpret_cast<int*>(Game::FOG_CTRLOVERRIDE_ADDR) = 0;
+            //     if (Game::RoadReflectionStateAddr)
+            //         *reinterpret_cast<int*>(Game::RoadReflectionStateAddr) = 2;
+            //     if (core::IsReadable(reinterpret_cast<void*>(Game::RainInstancePtr), sizeof(void*)))
+            //     {
+            //         uint8_t* rain = *reinterpret_cast<uint8_t**>(Game::RainInstancePtr);
+            //         if (core::IsReadable(rain, 0x300))
+            //             *reinterpret_cast<int*>(rain + 0x280) = 0;
+            //     }
+            //     *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR) = 0.0f;
+            //     *reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR) = 0.0f;
+            //     *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR) = 0.0f;
+            //     *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 0;
+            //     *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 0;
+            //     *reinterpret_cast<int*>(Game::RainEnablePtr) = 0;
+            //     *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 0;
+            // }
+            // else
+            // {
+            //     // Keep flags alive while the last frames settle.
+            //     *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 1;
+            //     *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 1;
+            //     *reinterpret_cast<int*>(Game::RainEnablePtr) = 1;
+            //     *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 1;
+            // }
         }
         
         // Ensure particle context pointer is valid for sub_6DE300 path.
@@ -953,6 +1008,18 @@ DWORD WINAPI MainThread(void*)
         MH_STATUS status = MH_Initialize();
         if (status == MH_OK || status == MH_ERROR_ALREADY_INITIALIZED)
         {
+            if (Game::eDisplayFrameAddr)
+            {
+                auto stDisplay = MH_CreateHook(reinterpret_cast<void*>(Game::eDisplayFrameAddr),
+                                               &HookedDisplayFrame,
+                                               reinterpret_cast<void**>(&g_originalDisplayFrame));
+                auto enDisplay = MH_EnableHook(reinterpret_cast<void*>(Game::eDisplayFrameAddr));
+                if (stDisplay != MH_OK || enDisplay != MH_OK)
+                    OutputDebugStringA("[WeatherMod] DisplayFrame hook failed\n");
+                else
+                    OutputDebugStringA("[WeatherMod] DisplayFrame hook installed\n");
+            }
+
             // if (Game::StuffSkyLayerAddr)
             //              {
             //                  auto stSky = MH_CreateHook(reinterpret_cast<void*>(Game::StuffSkyLayerAddr),

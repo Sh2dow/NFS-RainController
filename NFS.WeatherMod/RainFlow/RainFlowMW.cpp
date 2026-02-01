@@ -14,6 +14,7 @@ namespace RainFlowMW
     static bool s_useGameSkyFlow = false;
     static float s_targetRain = 0.0f;
     static float s_targetFog = 0.0f;
+    static bool s_smoothInit = false;
 
     void SetUseGameSkyFlow(bool useGameSkyFlow)
     {
@@ -575,13 +576,15 @@ namespace RainFlowMW
             return;
 
         WriteF(rain, 0x28C, 0.0f);
-        WriteF(rain, 0x290, *core::FPtr(Game::kCloudBase));
+        WriteF(rain, 0x290, 0.0f);
         WriteF(rain, 0x3694, 0.0f);
         WriteF(rain, 0x3698, 0.0f);
         WriteF(rain, 0x369C, 0.0f);
         WriteF(rain, 0x36A0, 0.0f);
         WriteF(rain, 0x36A4, 0.0f);
         WriteI(rain, 0x280, 0);
+        s_lastRain = 0.0f;
+        s_lastFog = 0.0f;
     }
 
     void Tick()
@@ -590,9 +593,56 @@ namespace RainFlowMW
         if (!rain)
             return;
 
+        if (!s_smoothInit)
+        {
+            if (core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINPERCENT_ADDR), sizeof(float)))
+                s_lastRain = *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR);
+            if (core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_FOGPERCENT_ADDR), sizeof(float)))
+                s_lastFog = *reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR);
+            s_smoothInit = true;
+        }
+
         float rainPct = s_targetRain;
-        float curRain = *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR);
-        float newRain = curRain + (rainPct - curRain);
+        if (rainPct < 0.0f)
+            rainPct = 0.0f;
+        if (rainPct > 1.0f)
+            rainPct = 1.0f;
+        float fogPct = s_targetFog;
+        if (fogPct < 0.0f)
+            fogPct = 0.0f;
+
+        // Feed native flow driver (updates flt_9B0A48).
+        if (Game::g_originalGameSetChanceOfRain)
+            Game::g_originalGameSetChanceOfRain(rainPct);
+        // Update rain struct counters used by sub_73CCF0.
+        if (Game::g_originalRainSetIntensity)
+            Game::g_originalRainSetIntensity(rain, rainPct);
+
+        float dt = *core::FPtr(Game::kWorldTimeElapsed);
+        if (dt <= 0.0f)
+            dt = 0.001f;
+            
+        float curRain = s_lastRain;
+        float t = 0.0f;
+        float seconds = RainConfigController::precipitationConfig.transitionSeconds;
+        if (seconds > 0.0f)
+        {
+            t = dt / seconds;
+        }
+        else
+        {
+            float rate = *reinterpret_cast<float*>(Game::PRECIP_RAINRATEOFCHANGE_ADDR);
+            if (rate <= 0.0f)
+                rate = 0.2f;
+            t = dt * rate;
+        }
+        if (t > 0.2f)
+            t = 0.2f;
+        float newRain = curRain + (rainPct - curRain) * t;
+        s_lastRain = newRain;
+        s_lastFog = fogPct * newRain;
+        s_lastRain = newRain;
+        s_lastFog = fogPct * newRain;
 
         if (s_useGameSkyFlow)
         {
