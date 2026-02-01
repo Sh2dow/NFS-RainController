@@ -26,12 +26,6 @@ namespace Game
     // Global addresses inferred from IDA
     inline uintptr_t GAMEFLOWMGR_STATUS_ADDR = 0;
     inline uintptr_t kWorldTimeElapsed = 0;
-    inline uintptr_t kAlwaysRain = 0;
-    inline uintptr_t kRoadReflection = 0;
-    inline uintptr_t kWindAngle = 0;
-    inline uintptr_t kOnscreenDripSpeed = 0;
-    inline uintptr_t kOnscreenSpeedMod = 0;
-    inline uintptr_t kOnscreenDropShapeSpeedChange = 0;
     inline uintptr_t PRECIP_RAINRATEOFCHANGE_ADDR = 0;
     inline uintptr_t PRECIP_CLOUDSRATEOFCHANGE_ADDR = 0;
     inline uintptr_t kParamMapLayerRain = 0;
@@ -39,7 +33,6 @@ namespace Game
     inline uintptr_t kParamDataRain = 0;
     inline uintptr_t kParamDataClouds = 0;
     inline uintptr_t kOnlineFlag = 0;
-    inline uintptr_t kWindMod = 0;
     inline uintptr_t kCloudBase = 0;
     
     
@@ -283,12 +276,6 @@ namespace Game
             
             GAMEFLOWMGR_STATUS_ADDR = MW::GAMEFLOWMGR_STATUS_ADDR; // A1 905E9200
             kWorldTimeElapsed = MW::kWorldTimeElapsed;   // A1 70599200
-            kAlwaysRain = MW::PRECIPITATION_DEBUG_ADDR;
-            kRoadReflection = MW::PRECIP_BASEDAMPNESS_ADDR;      // Road dampness / base dampness
-            kWindAngle = MW::PRECIP_WINDANG_ADDR;
-            kOnscreenDripSpeed = MW::PRECIP_ONSCREEN_DRIPSPEED_ADDR;
-            kOnscreenSpeedMod = MW::PRECIP_ONSCREEN_SPEEDMOD_ADDR;
-            kOnscreenDropShapeSpeedChange = MW::PRECIP_ONSCREEN_DROPSHAPESPEEDCHANGE_ADDR;
             PRECIP_RAINRATEOFCHANGE_ADDR = MW::PRECIP_RAINRATEOFCHANGE_ADDR;   // 0x00904AC4
             PRECIP_CLOUDSRATEOFCHANGE_ADDR = MW::PRECIP_CLOUDSRATEOFCHANGE_ADDR; //0x00904AC8
             PRECIPITATION_ENABLE_ADDR = MW::PRECIPITATION_ENABLE_ADDR; //0x008F86E4
@@ -298,7 +285,6 @@ namespace Game
             kParamDataRain = MW::kParamDataRain;
             kParamDataClouds = MW::kParamDataClouds;
             kOnlineFlag = MW::kOnlineFlag;
-            kWindMod = MW::kWindMod;
             kCloudBase = MW::kCloudBase;
             
             PRECIP_RAINPERCENT_ADDR = MW::PRECIP_RAINPERCENT_ADDR;

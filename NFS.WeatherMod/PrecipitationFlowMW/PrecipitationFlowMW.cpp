@@ -236,7 +236,7 @@ namespace PrecipitationFlowMW
         uint8_t online = *reinterpret_cast<uint8_t*>(Game::kOnlineFlag);
         if (!online)
         {
-            float v = *core::FPtr(Game::kWindMod);
+            float v = *core::FPtr(Game::PRECIP_RAINOVERRIDE_ADDR);
             if (v > 0.0f)
                 return v;
             if (v < 0.0f)
@@ -348,7 +348,7 @@ namespace PrecipitationFlowMW
             return;
         }
         float speed = std::sqrt(cam[128] * cam[128] + cam[129] * cam[129] + cam[130] * cam[130]) *
-            *core::FPtr(Game::kOnscreenSpeedMod);
+            *core::FPtr(Game::PRECIP_ONSCREEN_SPEEDMOD_ADDR);
 
         uint8_t* viewData = *reinterpret_cast<uint8_t**>(view + 0x68);
         if (!viewData)
@@ -393,7 +393,7 @@ namespace PrecipitationFlowMW
                 ptr[0] -= dt;
             if (ptr[0] > 0.0f)
             {
-                float v = *core::FPtr(Game::kOnscreenDripSpeed) * ptr[3] * dt + ptr[-1];
+                float v = *core::FPtr(Game::PRECIP_ONSCREEN_DRIPSPEED_ADDR) * ptr[3] * dt + ptr[-1];
                 ptr[-1] = v;
                 if (v > 1.0f || ptr[-2] > 1.0f || ptr[-2] < 0.0f)
                 {
@@ -406,7 +406,7 @@ namespace PrecipitationFlowMW
                     ptr[-2] = d.x * speed + ptr[-2];
                     ptr[-1] = d.y * speed;
                 }
-                if (speed > *core::FPtr(Game::kOnscreenDropShapeSpeedChange))
+                if (speed > *core::FPtr(Game::PRECIP_ONSCREEN_DROPSHAPESPEEDCHANGE_ADDR))
                 {
                     int idx = *reinterpret_cast<int*>(&ptr[4]);
                     idx = (idx + 1) % 4;

@@ -127,7 +127,7 @@ static PrecipitationConfigController::PrecipitationData::NativePreset MakePreset
     p.onScreenDropShapeSpeedChange = 0.0025f;
     p.baseDampness = 1.0f;
     p.rainInHeadlights = 1.0f;
-    p.roadReflectionLevel = 1.0f;
+    p.roadReflectionLevel = 2.0f;
     return p;
 }
 

@@ -336,7 +336,6 @@ namespace MW
     constexpr uintptr_t kParamDataClouds = 0x009B0C54;
     constexpr uintptr_t GameSetChanceOfRainAddr = 0x006054A0;
     constexpr uintptr_t kOnlineFlag = 0x009B0FB9;
-    constexpr uintptr_t kWindMod = 0x009B0A48;
     constexpr uintptr_t kCloudBase = 0x009B0A3C;
     constexpr uintptr_t CurrentViewMode = 0x006BF530;
     constexpr uintptr_t DripFreeze = 0x009B0A58;
