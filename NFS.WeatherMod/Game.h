@@ -1,5 +1,4 @@
 #pragma once
-#include <cstdint>
 
 #include "NFSMW_PreFEngHook.h"
 #include "NFSC_PreFEngHook.h"
@@ -48,6 +47,43 @@ namespace Game
     inline uintptr_t PRECIP_RAINPERCENT_ADDR = 0;
     inline uintptr_t PRECIP_FOGPERCENT_ADDR = 0;
     inline uintptr_t PRECIPITATION_PERCENT_ADDR = 0;
+    inline uintptr_t PRECIP_RAINOVERRIDE_ADDR = 0;
+    inline uintptr_t WEATHER_SKY_BLEND_ADDR = 0;
+    inline uintptr_t StuffSkyLayerBlendAddr = 0;
+    inline uintptr_t StuffSkyLayerBlendCallsite1 = 0;
+    inline uintptr_t StuffSkyLayerAddr = 0;
+    inline uintptr_t StuffSkyLayerCallsite5 = 0;
+    inline uintptr_t StuffSkyLayerCallsite6 = 0;
+    inline uintptr_t FXWeatherUpdateAddr = 0;
+    inline uintptr_t g_pEAXSound_0_ADDR = 0;
+    inline uintptr_t WeatherSkyBlendVarAddr = 0;
+    inline uintptr_t ReplaceSkyTexturesAddr = 0;
+    inline uintptr_t ReplaceSkyTexturesCallsite = 0;
+    inline uintptr_t WeatherBlendAccumAddr = 0;
+    inline uintptr_t WeatherBlendAccumWrite1 = 0;
+    inline uintptr_t WeatherBlendAccumWrite2 = 0;
+    inline uintptr_t WeatherSkyBlendWrite = 0;
+    inline uintptr_t AttachReplacementTextureTableAddr = 0;
+    inline uintptr_t SkyReplacementTableAddr = 0;
+    inline uintptr_t SkyLayerComputeAddr = 0;
+    inline uintptr_t SkyLayerComputeCallsite = 0;
+    inline uintptr_t SkyRenderCtxPtrAddr = 0;
+    inline uintptr_t TimeOfDayUpdateAddr = 0;
+    inline uintptr_t FX_WEATHER_UPDATE_ADDR = 0;
+    inline uintptr_t BaseFogFalloff_ADDR = 0;
+    inline uintptr_t BaseFogFalloffX_ADDR = 0;
+    inline uintptr_t BaseFogFalloffY_ADDR = 0;
+    inline uintptr_t BaseWeatherFog_ADDR = 0;
+    inline uintptr_t BaseWeatherFogStart_ADDR = 0;
+    inline uintptr_t BaseWeatherFogColourR_ADDR = 0;
+    inline uintptr_t BaseWeatherFogColourG_ADDR = 0;
+    inline uintptr_t BaseWeatherFogColourB_ADDR = 0;
+    inline uintptr_t HorizFogFalloff_ADDR = 0;
+    inline uintptr_t HorizFogFalloffY_ADDR = 0;
+    inline uintptr_t HorizWeatherFog_ADDR = 0;
+    inline uintptr_t HorizWeatherFogStart_ADDR = 0;
+    inline uintptr_t FOG_CTRLOVERRIDE_ADDR = 0;
+    
     inline uintptr_t PRECIP_BASEDAMPNESS_ADDR = 0;
     inline uintptr_t PRECIP_DRIVEFACTOR_ADDR = 0;
     inline uintptr_t PRECIP_RAINX_ADDR = 0;
@@ -232,8 +268,44 @@ namespace Game
             PRECIP_RAINPERCENT_ADDR = MW::PRECIP_RAINPERCENT_ADDR;
             PRECIP_FOGPERCENT_ADDR = MW::PRECIP_FOGPERCENT_ADDR;
             PRECIPITATION_PERCENT_ADDR = MW::PRECIPITATION_PERCENT_ADDR;
+            PRECIP_RAINOVERRIDE_ADDR = MW::PRECIP_RAINOVERRIDE_ADDR;
+            WEATHER_SKY_BLEND_ADDR = MW::WEATHER_SKY_BLEND_ADDR;
+            StuffSkyLayerBlendAddr = MW::StuffSkyLayerBlendAddr;
+            StuffSkyLayerBlendCallsite1 = MW::StuffSkyLayerBlendCallsite1;
+            StuffSkyLayerAddr = MW::StuffSkyLayerAddr;
+            StuffSkyLayerCallsite5 = MW::StuffSkyLayerCallsite5;
+            StuffSkyLayerCallsite6 = MW::StuffSkyLayerCallsite6;
+            FXWeatherUpdateAddr = MW::FXWeatherUpdateAddr;
+            g_pEAXSound_0_ADDR = MW::g_pEAXSound_0_ADDR;
+            WeatherSkyBlendVarAddr = MW::WeatherSkyBlendVarAddr;
+            ReplaceSkyTexturesAddr = MW::ReplaceSkyTexturesAddr;
+            ReplaceSkyTexturesCallsite = MW::ReplaceSkyTexturesCallsite;
+            WeatherBlendAccumAddr = MW::WeatherBlendAccumAddr;
+            WeatherBlendAccumWrite1 = MW::WeatherBlendAccumWrite1;
+            WeatherBlendAccumWrite2 = MW::WeatherBlendAccumWrite2;
+            WeatherSkyBlendWrite = MW::WeatherSkyBlendWrite;
+            AttachReplacementTextureTableAddr = MW::AttachReplacementTextureTableAddr;
+            SkyReplacementTableAddr = MW::SkyReplacementTableAddr;
+            SkyLayerComputeAddr = MW::SkyLayerComputeAddr;
+            SkyLayerComputeCallsite = MW::SkyLayerComputeCallsite;
+            SkyRenderCtxPtrAddr = MW::SkyRenderCtxPtrAddr;
+            TimeOfDayUpdateAddr = MW::TimeOfDayUpdateAddr;
             PRECIP_BASEDAMPNESS_ADDR = MW::PRECIP_BASEDAMPNESS_ADDR;
             PRECIP_DRIVEFACTOR_ADDR = MW::PRECIP_DRIVEFACTOR_ADDR;
+            FX_WEATHER_UPDATE_ADDR = MW::FX_WEATHER_UPDATE_ADDR;
+            BaseFogFalloff_ADDR = MW::BaseFogFalloff_ADDR;
+            BaseFogFalloffX_ADDR = MW::BaseFogFalloffX_ADDR;
+            BaseFogFalloffY_ADDR = MW::BaseFogFalloffY_ADDR;
+            BaseWeatherFog_ADDR = MW::BaseWeatherFog_ADDR;
+            BaseWeatherFogStart_ADDR = MW::BaseWeatherFogStart_ADDR;
+            BaseWeatherFogColourR_ADDR = MW::BaseWeatherFogColourR_ADDR;
+            BaseWeatherFogColourG_ADDR = MW::BaseWeatherFogColourG_ADDR;
+            BaseWeatherFogColourB_ADDR = MW::BaseWeatherFogColourB_ADDR;
+            HorizFogFalloff_ADDR = MW::HorizFogFalloff_ADDR;
+            HorizFogFalloffY_ADDR = MW::HorizFogFalloffY_ADDR;
+            HorizWeatherFog_ADDR = MW::HorizWeatherFog_ADDR;
+            HorizWeatherFogStart_ADDR = MW::HorizWeatherFogStart_ADDR;
+            FOG_CTRLOVERRIDE_ADDR = MW::FOG_CTRLOVERRIDE_ADDR;
             
             RoadReflectionStateAddr = MW::RoadReflectionStateAddr;
             

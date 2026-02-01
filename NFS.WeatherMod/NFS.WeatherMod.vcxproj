@@ -161,6 +161,7 @@
     <!-- FILES -->
     <!-- ====================================================== -->
     <ItemGroup>
+        <ClInclude Include="core.h" />
         <ClInclude Include="PerlinNoise.h" />
         <ClInclude Include="PrecipitationController.h"/>
         <ClInclude Include="features.h" />
@@ -202,7 +203,6 @@
         <ClCompile Include="..\includes\minhook\src\hook.c"/>
         <ClCompile Include="..\includes\minhook\src\trampoline.c"/>
         <ClCompile Include="core.cpp" />
-        <ClCompile Include="PrecipitationController.cpp" />
         <ClCompile Include="PrecipitationController.cpp" />
         <ClCompile Include="RainConfigController.cpp" />
         <ClCompile Include="dllmain.cpp"/>

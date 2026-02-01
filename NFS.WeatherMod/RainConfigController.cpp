@@ -65,6 +65,7 @@ void RainConfigController::Load()
     precipitationConfig.enable3DSplatters = iniReader.ReadInteger(section, "Enable3DSplatters", 0);
     precipitationConfig.rainIntensity = iniReader.ReadFloat(section, "RainIntensity", 0.0f);
     precipitationConfig.fogIntensity = iniReader.ReadFloat(section, "FogIntensity", 0.0f);
+    precipitationConfig.transitionSeconds = iniReader.ReadFloat(section, "TransitionSeconds", 5.0f);
 
     precipitationConfig.baseSpeed = iniReader.ReadFloat(section, "BaseSpeed", 0.0f);
     precipitationConfig.speedScale = iniReader.ReadFloat(section, "SpeedScale", 0.0f);

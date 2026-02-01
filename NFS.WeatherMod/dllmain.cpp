@@ -36,26 +36,38 @@ using BuildRenderMatrix_t = void(__cdecl*)(void* outMat, void* inMat);
 static BuildRenderMatrix_t g_originalBuildRenderMatrix = nullptr;
 using DisplayFrame_t = void(__cdecl*)();
 static DisplayFrame_t g_originalDisplayFrame = nullptr;
-
-static IDirect3DDevice9* GetGameDevice()
-{
-    if (detected_game != GameType::MW)
-        return nullptr;
-
-    auto** devicePtr = reinterpret_cast<IDirect3DDevice9**>(Game::NFS_D3D9_DEVICE_ADDRESS);
-    if (!core::IsReadable(devicePtr, sizeof(void*)))
-        return nullptr;
-    return *devicePtr;
-}
+using StuffSkyLayerBlend_t = void(__cdecl*)(void* view, float blend, int layer);
+using StuffSkyLayer_t = void(__cdecl*)(void* view, int layer, float blend);
+static StuffSkyLayer_t g_originalStuffSkyLayer = nullptr;
+using ReplaceSkyTextures_t = void(__cdecl*)(int layer);
+static ReplaceSkyTextures_t g_originalReplaceSkyTextures = nullptr;
+static void __cdecl HookedReplaceSkyTexturesCallsite(int layer);
+using AttachReplacementTextureTable_t = int(__thiscall*)(void* model, void* table, int a2, int a3);
+static AttachReplacementTextureTable_t g_originalAttachReplacementTextureTable = nullptr;
+static int __fastcall HookedAttachReplacementTextureTable(void* ecx, void*, void* table, int a2, int a3);
+using SkyLayerCompute_t = void(__cdecl*)(void* view, int layer, float* out0, float* out1, float* out2, float* out3);
+static SkyLayerCompute_t g_originalSkyLayerCompute = nullptr;
+static void __cdecl HookedSkyLayerCompute(void* view, int layer, float* out0, float* out1, float* out2, float* out3);
+static void __cdecl HookedSkyLayerComputeCallsite(void* view, int layer, float* out0, float* out1, float* out2, float* out3);
+using TimeOfDayUpdate_t = void(__cdecl*)(void* tod, float val);
+static TimeOfDayUpdate_t g_originalTimeOfDayUpdate = nullptr;
+static void __cdecl HookedTimeOfDayUpdate(void* tod, float val);
 
 static void __fastcall HookedRainUpdateCallsite(void* ecx, void*);
 static void __fastcall HookedRainRenderCallsite(void* ecx, void*);
 static void HookedRenderCtxCallsite();
 static void AfterRenderCtxCallsite();
 static constexpr bool kUseIndependentRainFlow = true;
+static constexpr bool kUseIndependentSkyFlow = true;
+static void __cdecl HookedStuffSkyLayerBlendCallsite(void* view, float blend, int layer);
+static void __cdecl HookedStuffSkyLayer(void* view, int layer, float blend);
+static void __cdecl HookedStuffSkyLayerCallsite(void* view, int layer, float blend);
+static void __cdecl HookedReplaceSkyTextures(int layer);
 
 static void RunNativeRainFlow(void* rain)
 {
+    if (kUseIndependentRainFlow)
+        return;
     if (!rain || !core::IsReadable(rain, 0x400))
         return;
 
@@ -353,7 +365,6 @@ static void RunNativeRainFlow(void* rain)
     // Leave update/render to the native wrapper (called at safe time).
 }
 
-
 static bool IsLikelyRainInstance(void* rain)
 {
     if (!rain || !core::IsReadable(rain, 0x400))
@@ -532,6 +543,26 @@ static void AfterRenderCtxCallsite()
         return;
     if (!PrecipitationController::Get()->IsActive())
         return;
+    static float lastEndPct = -1.0f;
+    float endPct = *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR);
+    float smoothed = RainFlowMW::GetSmoothedRain();
+    float smoothedFog = RainFlowMW::GetSmoothedFog();
+    if (kUseIndependentSkyFlow && fabsf(endPct - smoothed) > 0.01f)
+    {
+        *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR) = smoothed;
+        *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR) = smoothed;
+        *reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR) = smoothedFog;
+        if (Game::PRECIP_RAINOVERRIDE_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_RAINOVERRIDE_ADDR) = smoothed;
+        endPct = smoothed;
+    }
+    if (fabsf(endPct - lastEndPct) > 0.01f)
+    {
+        char dbg[128];
+        std::snprintf(dbg, sizeof(dbg), "[RainFlowMW] endframe pct=%.3f\n", endPct);
+        OutputDebugStringA(dbg);
+        lastEndPct = endPct;
+    }
     void* rain = *reinterpret_cast<void**>(Game::RainInstancePtr);
     if (IsLikelyRainInstance(rain))
         RunNativeRainFlow(rain);
@@ -629,178 +660,6 @@ static void __fastcall HookedRainTick(void* ecx, void* edx)
         return;
     if (Game::g_originalRainTick)
         Game::g_originalRainTick(ecx);
-}
-
-static void __fastcall HookedRainRender(void* ecx, void* edx)
-{
-    (void)edx;
-    static bool logged = false;
-    if (RainConfigController::precipitationConfig.enable3DRain ||
-        RainConfigController::precipitationConfig.enable3DSplatters)
-    {
-        return;
-    }
-    if (!logged)
-    {
-        char buf[256];
-        int precipEnable = 0;
-        int precipRender = 0;
-        float precipPercent = 0.0f;
-        float rainPercent = 0.0f;
-        int gameFlow = 0;
-        int gameFlowStatus = 0;
-        if (core::IsReadable(reinterpret_cast<void*>(Game::PRECIPITATION_ENABLE_ADDR), sizeof(int)))
-            precipEnable = *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR);
-        if (core::IsReadable(reinterpret_cast<void*>(Game::PRECIPITATION_RENDER_ADDR), sizeof(int)))
-            precipRender = *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR);
-        if (core::IsReadable(reinterpret_cast<void*>(Game::PRECIPITATION_PERCENT_ADDR), sizeof(float)))
-            precipPercent = *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR);
-        if (core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINPERCENT_ADDR), sizeof(float)))
-            rainPercent = *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR);
-        if (core::IsReadable(reinterpret_cast<void*>(Game::GAMEFLOWMGR_ADDR), sizeof(int)))
-            gameFlow = *reinterpret_cast<int*>(Game::GAMEFLOWMGR_ADDR);
-        if (core::IsReadable(reinterpret_cast<void*>(Game::GAMEFLOWMGR_STATUS_ADDR), sizeof(int)))
-            gameFlowStatus = *reinterpret_cast<int*>(Game::GAMEFLOWMGR_STATUS_ADDR);
-        std::snprintf(buf, sizeof(buf),
-                      "[RainDebug] HookedRainRender called precipEnable=%d precipRender=%d precipPct=%.2f rainPct=%.2f gameFlow=%d gameFlowStatus=%d\n",
-                      precipEnable, precipRender, precipPercent, rainPercent, gameFlow, gameFlowStatus);
-        OutputDebugStringA(buf);
-
-        if (core::IsReadable(ecx, 0x290))
-        {
-            void* p284 = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(ecx) + 0x284);
-            void* p288 = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(ecx) + 0x288);
-            std::snprintf(buf, sizeof(buf),
-                          "[RainDebug] Rain instance ptr=0x%p p284=0x%p p288=0x%p\n",
-                          ecx, p284, p288);
-            OutputDebugStringA(buf);
-
-            if (!p284 && p288 && core::IsReadable(p288, 0x70))
-            {
-                void* viewPlat = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(p288) + 0x44);
-                if (viewPlat)
-                {
-                    *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(ecx) + 0x284) = viewPlat;
-                    OutputDebugStringA("[RainDebug] Patched Rain::mPtr284 = *(eView+0x44) (viewPlat)\n");
-                }
-            }
-        }
-        logged = true;
-    }
-    // Avoid crashing when render context is not set (dword_982C80 == 0).
-    auto* renderCtx = reinterpret_cast<void*>(Game::renderCtxAddr);
-    void* ctxVal = nullptr;
-    if (core::IsReadable(renderCtx, sizeof(void*)))
-        ctxVal = *reinterpret_cast<void**>(renderCtx);
-
-    // If render context is missing, try to seed it from particle system context.
-    if (!ctxVal)
-    {
-        auto* particleCtx = reinterpret_cast<void*>(Game::particleCtxAddr);
-        if (core::IsReadable(particleCtx, sizeof(void*)) && *reinterpret_cast<void**>(particleCtx))
-        {
-            *reinterpret_cast<void**>(renderCtx) = *reinterpret_cast<void**>(particleCtx);
-            ctxVal = *reinterpret_cast<void**>(renderCtx);
-        }
-    }
-
-    if (ctxVal && Game::g_originalRainRender)
-        Game::g_originalRainRender(ecx);
-}
-
-static void __fastcall HookedRainRender3D(void* ecx, void*)
-{
-    if (Game::g_originalRainRender3D)
-        Game::g_originalRainRender3D(ecx);
-}
-
-// Forward declarations for per-frame logic
-static void OnFrameUpdate();
-static void HandleRainToggle();
-
-// Helper: keep engine rain flags set so the native callsite runs.
-static DWORD WINAPI RainGuardWorker(void*)
-{
-    while (true)
-    {
-        if (detected_game != GameType::MW)
-            return 0;
-
-        OnFrameUpdate();
-        HandleRainToggle();
-
-        const bool enabled = PrecipitationController::Get()->IsActive();
-        if (enabled)
-        {
-            if (kUseIndependentRainFlow)
-                RainFlowMW::Tick();
-            // Force rain/particle globals so the engine doesn't skip the block.
-            *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 1;
-            *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 1;
-            *reinterpret_cast<int*>(Game::RainEnablePtr) = 1;
-            *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 1;
-
-            // Ensure particle context pointer is valid for sub_6DE300 path.
-            void** particleCtx = reinterpret_cast<void**>(Game::particleCtxAddr);
-            void** renderCtx = reinterpret_cast<void**>(Game::renderCtxAddr);
-            if (core::IsReadable(particleCtx, sizeof(void*)) && *particleCtx)
-            {
-                if (core::IsReadable(renderCtx, sizeof(void*)) && !*renderCtx)
-                    *renderCtx = *particleCtx;
-            }
-        }
-        else
-        {
-            if (kUseIndependentRainFlow)
-                RainFlowMW::Disable();
-            *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 0;
-            *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 0;
-            *reinterpret_cast<int*>(Game::RainEnablePtr) = 0;
-            *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 0;
-        }
-    }
-    return 0;
-}
-
-static void __cdecl HookedDisplayFrame()
-{
-    if (g_originalDisplayFrame)
-        g_originalDisplayFrame();
-    if (detected_game != GameType::MW)
-        return;
-    if (!PrecipitationController::Get()->IsActive())
-        return;
-    if (kUseIndependentRainFlow)
-    {
-        // Override late writes to precipitation globals to enforce smoothing.
-        float rain = RainFlowMW::GetSmoothedRain();
-        float fog = RainFlowMW::GetSmoothedFog();
-        *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR) = rain;
-        *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR) = rain;
-        *reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR) = fog;
-    }
-    void* rain = *reinterpret_cast<void**>(Game::RainInstancePtr);
-    if (!IsLikelyRainInstance(rain))
-        return;
-    if (!core::IsReadable(reinterpret_cast<void*>(Game::renderCtxAddr), sizeof(void*)))
-        return;
-    void* ctxVal = *reinterpret_cast<void**>(Game::renderCtxAddr);
-    if (!core::IsReadable(ctxVal, sizeof(void*)))
-        return;
-    // Reject common garbage pointer patterns (float 1.0f as pointer).
-    if (ctxVal == reinterpret_cast<void*>(0x3F800000))
-        return;
-    void* p284 = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(rain) + 0x284);
-    void* p288 = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(rain) + 0x288);
-    if (!p284 || !p288 || !core::IsReadable(p288, 0x50))
-        return;
-    // Wrapper call disabled; crashes inside 0x73CDCA.
-}
-
-static bool InitMinHook()
-{
-    MH_STATUS status = MH_Initialize();
-    return status == MH_OK || status == MH_ERROR_ALREADY_INITIALIZED;
 }
 
 static void SetupFeatures()
@@ -919,17 +778,14 @@ static void HandleRainToggle()
 
     if (shouldEnable && !rainEnabled)
     {
-        if (detected_game == GameType::MW)
+        if (!PrecipitationController::Get()->IsActive())
         {
-            if (!PrecipitationController::Get()->IsActive())
-            {
-                PrecipitationController::Get()->enable();
-                OutputDebugStringA("[RainToggle] Rain enabled\n");
-            }
-            rainEnabled = PrecipitationController::Get()->IsActive();
-            lastKeyState = keyPressed;
-            return;
+            PrecipitationController::Get()->enable();
+            OutputDebugStringA("[RainToggle] Rain enabled\n");
         }
+        rainEnabled = PrecipitationController::Get()->IsActive();
+        lastKeyState = keyPressed;
+        return;
 
         bool canEnable = false;
         D3DXVECTOR3 cam = PrecipitationController::Get()->GetCameraPositionSafe();
@@ -958,6 +814,54 @@ static void HandleRainToggle()
     }
 
     lastKeyState = keyPressed;
+}
+
+// Helper: keep engine rain flags set so the native callsite runs.
+static DWORD WINAPI RainGuardWorker(void*)
+{
+    while (true)
+    {
+        OnFrameUpdate();
+        HandleRainToggle();
+
+        const bool enabled = PrecipitationController::Get()->IsActive();
+        float targetRain = enabled ? RainConfigController::precipitationConfig.rainIntensity : 0.0f;
+        float targetFog = enabled ? RainConfigController::precipitationConfig.fogIntensity : 0.0f;
+        RainFlowMW::SetTargets(targetRain, targetFog);
+        if (kUseIndependentRainFlow)
+            RainFlowMW::Tick();
+
+        // float smoothed = RainFlowMW::GetSmoothedRain();
+        // const bool keepAlive = smoothed > 0.01f;
+        // if (enabled || keepAlive)
+        if (enabled)
+        {
+            // Force rain/particle globals so the engine doesn't skip the block.
+            *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 1;
+            *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 1;
+            *reinterpret_cast<int*>(Game::RainEnablePtr) = 1;
+            *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 1;
+
+        }
+        else
+        {
+            if (kUseIndependentRainFlow)
+                RainFlowMW::Disable();
+            *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 0;
+            *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = 0;
+            *reinterpret_cast<int*>(Game::RainEnablePtr) = 0;
+            *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 0;
+        }
+        
+        // Ensure particle context pointer is valid for sub_6DE300 path.
+        // void** particleCtx = reinterpret_cast<void**>(Game::particleCtxAddr);
+        // void** renderCtx = reinterpret_cast<void**>(Game::renderCtxAddr);
+        // if (core::IsReadable(particleCtx, sizeof(void*)) && *particleCtx)
+        // {
+        //     if (core::IsReadable(renderCtx, sizeof(void*)) && !*renderCtx)
+        //         *renderCtx = *particleCtx;
+        // }
+    }
 }
 
 DWORD WINAPI MainThread(void*)
@@ -1001,6 +905,7 @@ DWORD WINAPI MainThread(void*)
 
     if (detected_game == GameType::MW)
     {
+        RainFlowMW::SetUseGameSkyFlow(kUseIndependentSkyFlow);
         if (!kUseIndependentRainFlow)
         {
             // Hook the rain tick callsite inside sub_6DE300 (0x006DF545).
@@ -1045,13 +950,73 @@ DWORD WINAPI MainThread(void*)
 
         CreateThread(nullptr, 0, RainGuardWorker, nullptr, 0, nullptr);
 
-        // if (InitMinHook())
-        // {
-        //     MH_CreateHook(reinterpret_cast<void*>(Game::eDisplayFrameAddr),
-        //                   &HookedDisplayFrame,
-        //                   reinterpret_cast<void**>(&g_originalDisplayFrame));
-        //     MH_EnableHook(reinterpret_cast<void*>(Game::eDisplayFrameAddr));
-        // }
+        MH_STATUS status = MH_Initialize();
+        if (status == MH_OK || status == MH_ERROR_ALREADY_INITIALIZED)
+        {
+            // if (Game::StuffSkyLayerAddr)
+            //              {
+            //                  auto stSky = MH_CreateHook(reinterpret_cast<void*>(Game::StuffSkyLayerAddr),
+            //                                             &HookedStuffSkyLayer,
+            //                                             reinterpret_cast<void**>(&g_originalStuffSkyLayer));
+            //                  auto enSky = MH_EnableHook(reinterpret_cast<void*>(Game::StuffSkyLayerAddr));
+            //                  if (stSky != MH_OK || enSky != MH_OK)
+            //                      OutputDebugStringA("[WeatherMod] StuffSkyLayer hook failed\n");
+            //              }
+            //  
+            //              if (Game::ReplaceSkyTexturesAddr)
+            //              {
+            //                  auto stSkyTex = MH_CreateHook(reinterpret_cast<void*>(Game::ReplaceSkyTexturesAddr),
+            //                                                &HookedReplaceSkyTextures,
+            //                                                reinterpret_cast<void**>(&g_originalReplaceSkyTextures));
+            //                  auto enSkyTex = MH_EnableHook(reinterpret_cast<void*>(Game::ReplaceSkyTexturesAddr));
+            //                  if (stSkyTex != MH_OK || enSkyTex != MH_OK)
+            //                      OutputDebugStringA("[WeatherMod] ReplaceSkyTextures hook failed\n");
+            //                  else
+            //                      OutputDebugStringA("[WeatherMod] ReplaceSkyTextures hook installed\n");
+            //              }
+            //  
+            //              if (Game::AttachReplacementTextureTableAddr)
+            //              {
+            //                  auto stAttach = MH_CreateHook(reinterpret_cast<void*>(Game::AttachReplacementTextureTableAddr),
+            //                                                &HookedAttachReplacementTextureTable,
+            //                                                reinterpret_cast<void**>(&g_originalAttachReplacementTextureTable));
+            //                  auto enAttach = MH_EnableHook(reinterpret_cast<void*>(Game::AttachReplacementTextureTableAddr));
+            //                  if (stAttach != MH_OK || enAttach != MH_OK)
+            //                      OutputDebugStringA("[WeatherMod] AttachReplacementTextureTable hook failed\n");
+            //                  else
+            //                      OutputDebugStringA("[WeatherMod] AttachReplacementTextureTable hook installed\n");
+            //              }
+            //  
+            //              if (Game::SkyLayerComputeAddr)
+            //              {
+            //                  auto stSkyComp = MH_CreateHook(reinterpret_cast<void*>(Game::SkyLayerComputeAddr),
+            //                                                 &HookedSkyLayerCompute,
+            //                                                 reinterpret_cast<void**>(&g_originalSkyLayerCompute));
+            //                  auto enSkyComp = MH_EnableHook(reinterpret_cast<void*>(Game::SkyLayerComputeAddr));
+            //                  if (stSkyComp != MH_OK || enSkyComp != MH_OK)
+            //                      OutputDebugStringA("[WeatherMod] SkyLayerCompute hook failed\n");
+            //                  else
+            //                      OutputDebugStringA("[WeatherMod] SkyLayerCompute hook installed\n");
+            //              }
+            //  
+            //              if (Game::TimeOfDayUpdateAddr)
+            //              {
+            //                  auto stTOD = MH_CreateHook(reinterpret_cast<void*>(Game::TimeOfDayUpdateAddr),
+            //                                             &HookedTimeOfDayUpdate,
+            //                                             reinterpret_cast<void**>(&g_originalTimeOfDayUpdate));
+            //                  auto enTOD = MH_EnableHook(reinterpret_cast<void*>(Game::TimeOfDayUpdateAddr));
+            //                  if (stTOD != MH_OK || enTOD != MH_OK)
+            //                      OutputDebugStringA("[WeatherMod] TimeOfDayUpdate hook failed\n");
+            //                  else
+            //                      OutputDebugStringA("[WeatherMod] TimeOfDayUpdate hook installed\n");
+            //              }
+
+            // FX_Weather hook disabled (crash observed).
+        }
+        else
+        {
+            OutputDebugStringA("[WeatherMod] MinHook init failed for DisplayFrame\n");
+        }
     }
 
     return 0;

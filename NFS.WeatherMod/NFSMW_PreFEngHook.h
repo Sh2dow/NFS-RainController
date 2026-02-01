@@ -95,6 +95,28 @@ namespace MW
     constexpr uintptr_t PRECIP_DRIVEFACTOR_ADDR = 0x00904ACC;
     constexpr uintptr_t PRECIP_RAINPERCENT_ADDR = 0x00904AD8;
     constexpr uintptr_t PRECIP_FOGPERCENT_ADDR = 0x009B0A40;
+    constexpr uintptr_t PRECIP_RAINOVERRIDE_ADDR = 0x009B0A48; // flt_9B0A48
+    constexpr uintptr_t WEATHER_SKY_BLEND_ADDR = 0x008F92E4; // used as float in sky layer blend (StuffSkyLayer)
+    constexpr uintptr_t StuffSkyLayerBlendAddr = 0x006DE210; // sub_6DE210 (calls StuffSkyLayer with blend)
+    constexpr uintptr_t StuffSkyLayerBlendCallsite1 = 0x006DED1C;
+    constexpr uintptr_t StuffSkyLayerAddr = 0x006DB310;
+    constexpr uintptr_t StuffSkyLayerCallsite5 = 0x006DE4A9;
+    constexpr uintptr_t StuffSkyLayerCallsite6 = 0x006DE741;
+    constexpr uintptr_t FXWeatherUpdateAddr = 0x004DD070;
+    constexpr uintptr_t g_pEAXSound_0_ADDR = 0x00911FA8;
+    constexpr uintptr_t WeatherSkyBlendVarAddr = 0x008F92E0; // dword_8F92E0 used before StuffSkyLayer
+    constexpr uintptr_t ReplaceSkyTexturesAddr = 0x006C0D50;
+    constexpr uintptr_t ReplaceSkyTexturesCallsite = 0x006DB4BF;
+    constexpr uintptr_t WeatherBlendAccumAddr = 0x00982BA8; // flt_982BA8
+    constexpr uintptr_t WeatherBlendAccumWrite1 = 0x006DE360; // fadd flt_982BA8
+    constexpr uintptr_t WeatherBlendAccumWrite2 = 0x006DE391; // fsubr flt_982BA8
+    constexpr uintptr_t WeatherSkyBlendWrite = 0x006DE48B; // mov dword_8FADE0, ecx
+    constexpr uintptr_t AttachReplacementTextureTableAddr = 0x004FB6E0; // eModel::AttachReplacementTextureTable
+    constexpr uintptr_t SkyReplacementTableAddr = 0x00901798; // dword_901798 (sky replacement table)
+    constexpr uintptr_t SkyLayerComputeAddr = 0x006C0DC0; // sub_6C0DC0 (sky layer params)
+    constexpr uintptr_t SkyLayerComputeCallsite = 0x006DB4DA;
+    constexpr uintptr_t SkyRenderCtxPtrAddr = 0x0093DEC4; // dword_93DEC4
+    constexpr uintptr_t TimeOfDayUpdateAddr = 0x00679580; // sub_769580
     constexpr uintptr_t PRECIP_RAININTHEHEADLIGHTS_ADDR = 0x008F2924;
     constexpr uintptr_t PRECIP_WINDANG_ADDR = 0x009B0A50;
     constexpr uintptr_t PRECIP_SWAYMAX_ADDR = 0x00904AE8;
@@ -108,6 +130,20 @@ namespace MW
     constexpr uintptr_t PRECIP_CLOUDSRATEOFCHANGE_ADDR = 0x00904AC8;
     constexpr uintptr_t PRECIP_CAMERAMOD_ADDR = 0x00904AE0;
     constexpr uintptr_t FOG_CTRLOVERRIDE_ADDR = 0x009B0A70;
+    constexpr uintptr_t FX_WEATHER_UPDATE_ADDR = 0x004DD070;
+
+    constexpr uintptr_t BaseFogFalloff_ADDR = 0x00903190;
+    constexpr uintptr_t BaseFogFalloffX_ADDR = 0x00903194;
+    constexpr uintptr_t BaseFogFalloffY_ADDR = 0x00903198;
+    constexpr uintptr_t BaseWeatherFog_ADDR = 0x0090319C;
+    constexpr uintptr_t BaseWeatherFogStart_ADDR = 0x009031A0;
+    constexpr uintptr_t BaseWeatherFogColourR_ADDR = 0x009031A4;
+    constexpr uintptr_t BaseWeatherFogColourG_ADDR = 0x009031A8;
+    constexpr uintptr_t BaseWeatherFogColourB_ADDR = 0x009031AC;
+    constexpr uintptr_t HorizFogFalloff_ADDR = 0x009031B0;
+    constexpr uintptr_t HorizFogFalloffY_ADDR = 0x009031B4;
+    constexpr uintptr_t HorizWeatherFog_ADDR = 0x009031B8;
+    constexpr uintptr_t HorizWeatherFogStart_ADDR = 0x009031BC;
     constexpr uintptr_t RoadReflectionStateAddr = 0x008FAE6C; // dword_8FAE6C
 
     // MW view/camera chain

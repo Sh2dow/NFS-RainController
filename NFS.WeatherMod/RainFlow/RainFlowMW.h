@@ -9,5 +9,7 @@ namespace RainFlowMW
     float GetSmoothedRain();
     float GetSmoothedFog();
     void EnforceState(bool enable);
+    void SetUseGameSkyFlow(bool useGameSkyFlow);
+    void SetTargets(float rain, float fog);
     
 }

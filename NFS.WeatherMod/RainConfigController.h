@@ -26,6 +26,7 @@ namespace RainConfigController
 
         float rainIntensity;
         float fogIntensity;
+        float transitionSeconds;
 
         // 2D overlay config
         int drop2DCount;

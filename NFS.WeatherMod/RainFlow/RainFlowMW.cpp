@@ -9,12 +9,22 @@
 
 namespace RainFlowMW
 {
-    inline uint8_t* Ptr(uintptr_t addr) { return reinterpret_cast<uint8_t*>(addr); }
-    inline float* FPtr(uintptr_t addr) { return reinterpret_cast<float*>(addr); }
-    inline int* IPtr(uintptr_t addr) { return reinterpret_cast<int*>(addr); }
-
     static float s_lastRain = 0.0f;
     static float s_lastFog = 0.0f;
+    static bool s_useGameSkyFlow = false;
+    static float s_targetRain = 0.0f;
+    static float s_targetFog = 0.0f;
+
+    void SetUseGameSkyFlow(bool useGameSkyFlow)
+    {
+        s_useGameSkyFlow = useGameSkyFlow;
+    }
+
+    void SetTargets(float rain, float fog)
+    {
+        s_targetRain = rain;
+        s_targetFog = fog;
+    }
     static int s_inTunnel = 0;
 
     float GetSmoothedRain()
@@ -225,7 +235,7 @@ namespace RainFlowMW
         uint8_t online = *reinterpret_cast<uint8_t*>(Game::kOnlineFlag);
         if (!online)
         {
-            float v = *FPtr(Game::kWindMod);
+            float v = *core::FPtr(Game::kWindMod);
             if (v > 0.0f)
                 return v;
             if (v < 0.0f)
@@ -327,7 +337,7 @@ namespace RainFlowMW
 
     static void Sub73CDB0(uint8_t* out, uint8_t* view)
     {
-        float dt = *FPtr(Game::kWorldTimeElapsed);
+        float dt = *core::FPtr(Game::kWorldTimeElapsed);
         if (dt <= 0.0f || dt > 0.1f)
             dt = 0.016f;
         float* cam = *reinterpret_cast<float**>(view + 0x40);
@@ -337,7 +347,7 @@ namespace RainFlowMW
             return;
         }
         float speed = std::sqrt(cam[128] * cam[128] + cam[129] * cam[129] + cam[130] * cam[130]) *
-            *FPtr(Game::kOnscreenSpeedMod);
+            *core::FPtr(Game::kOnscreenSpeedMod);
 
         uint8_t* viewData = *reinterpret_cast<uint8_t**>(view + 0x68);
         if (!viewData)
@@ -382,7 +392,7 @@ namespace RainFlowMW
                 ptr[0] -= dt;
             if (ptr[0] > 0.0f)
             {
-                float v = *FPtr(Game::kOnscreenDripSpeed) * ptr[3] * dt + ptr[-1];
+                float v = *core::FPtr(Game::kOnscreenDripSpeed) * ptr[3] * dt + ptr[-1];
                 ptr[-1] = v;
                 if (v > 1.0f || ptr[-2] > 1.0f || ptr[-2] < 0.0f)
                 {
@@ -395,7 +405,7 @@ namespace RainFlowMW
                     ptr[-2] = d.x * speed + ptr[-2];
                     ptr[-1] = d.y * speed;
                 }
-                if (speed > *FPtr(Game::kOnscreenDropShapeSpeedChange))
+                if (speed > *core::FPtr(Game::kOnscreenDropShapeSpeedChange))
                 {
                     int idx = *reinterpret_cast<int*>(&ptr[4]);
                     idx = (idx + 1) % 4;
@@ -557,13 +567,15 @@ namespace RainFlowMW
         *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR) = 0.0f;
         *reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR) = 0.0f;
         *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR) = 0.0f;
+        // if (Game::FOG_CTRLOVERRIDE_ADDR)
+        //     *reinterpret_cast<int*>(Game::FOG_CTRLOVERRIDE_ADDR) = 0;
 
         uint8_t* rain = RainPtr();
         if (!rain || !core::IsReadable(rain, 0x4000))
             return;
 
         WriteF(rain, 0x28C, 0.0f);
-        WriteF(rain, 0x290, *FPtr(Game::kCloudBase));
+        WriteF(rain, 0x290, *core::FPtr(Game::kCloudBase));
         WriteF(rain, 0x3694, 0.0f);
         WriteF(rain, 0x3698, 0.0f);
         WriteF(rain, 0x369C, 0.0f);
@@ -596,24 +608,346 @@ namespace RainFlowMW
         //     WriteP(rain, 0x284, nullptr);
         // }
 
-        // EnforceState(true);
+        EnforceState(true);
 
-        float rainPct = RainConfigController::precipitationConfig.rainIntensity;
-        if (rainPct <= 0.0f)
+        float rainPct = s_targetRain;
+        if (rainPct < 0.0f)
+            rainPct = 0.0f;
+        if (rainPct > 1.0f)
             rainPct = 1.0f;
-        float fogPct = RainConfigController::precipitationConfig.fogIntensity;
+        float fogPct = s_targetFog;
         if (fogPct < 0.0f)
             fogPct = 0.0f;
 
-        *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR) = rainPct;
-        *reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR) = fogPct;
-        *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR) = rainPct;
-        *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR) = rainPct;
-        *reinterpret_cast<float*>(Game::PRECIP_DRIVEFACTOR_ADDR) = rainPct;
+        // Feed native flow driver (updates flt_9B0A48).
+        if (Game::g_originalGameSetChanceOfRain)
+            Game::g_originalGameSetChanceOfRain(rainPct);
+        // Update rain struct counters used by sub_73CCF0.
+        if (Game::g_originalRainSetIntensity)
+            Game::g_originalRainSetIntensity(rain, rainPct);
 
-        // Stabilize rate-of-change to avoid flicker.
-        *reinterpret_cast<float*>(Game::PRECIP_RAINRATEOFCHANGE_ADDR) = 1.0f;
-        *reinterpret_cast<float*>(Game::PRECIP_CLOUDSRATEOFCHANGE_ADDR) = 10.0f;
+        float dt = *core::FPtr(Game::kWorldTimeElapsed);
+        if (dt <= 0.0f)
+            dt = 0.001f;
+
+        float curRain = *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR);
+        float t = 0.0f;
+        float seconds = RainConfigController::precipitationConfig.transitionSeconds;
+        if (seconds > 0.0f)
+        {
+            t = dt / seconds;
+        }
+        else
+        {
+            float rate = *reinterpret_cast<float*>(Game::PRECIP_RAINRATEOFCHANGE_ADDR);
+            if (rate <= 0.0f)
+                rate = 0.2f;
+            t = dt * rate;
+        }
+        if (t > 0.2f)
+            t = 0.2f;
+        float newRain = curRain + (rainPct - curRain) * t;
+        s_lastRain = newRain;
+        s_lastFog = fogPct * newRain;
+
+        if (s_useGameSkyFlow)
+        {
+            // Feed target to game-controlled sky transition.
+            *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR) = rainPct;
+            *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR) = rainPct;
+            if (Game::PRECIP_RAINOVERRIDE_ADDR)
+                *reinterpret_cast<float*>(Game::PRECIP_RAINOVERRIDE_ADDR) = rainPct;
+            return;
+        }
+
+        *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR) = s_lastRain;
+        *reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR) = s_lastFog;
+        *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR) = s_lastRain;
+        *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR) = s_lastRain;
+        *reinterpret_cast<float*>(Game::PRECIP_DRIVEFACTOR_ADDR) = s_lastRain;
+        if (Game::g_originalRainSetOverrideIntensity)
+            Game::g_originalRainSetOverrideIntensity(s_lastRain);
+        if (Game::PRECIP_RAINOVERRIDE_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_RAINOVERRIDE_ADDR) = s_lastRain;
+        if (Game::WEATHER_SKY_BLEND_ADDR)
+            *reinterpret_cast<float*>(Game::WEATHER_SKY_BLEND_ADDR) = s_lastRain;
+        if (Game::WeatherSkyBlendVarAddr)
+            *reinterpret_cast<float*>(Game::WeatherSkyBlendVarAddr) = s_lastRain;
+        if (Game::WeatherBlendAccumAddr)
+            *reinterpret_cast<float*>(Game::WeatherBlendAccumAddr) = s_lastRain;
+        if (Game::FOG_CTRLOVERRIDE_ADDR)
+            *reinterpret_cast<int*>(Game::FOG_CTRLOVERRIDE_ADDR) = 1;
+
+        // Drive base/horizon fog globals for smooth sky transition.
+        static bool fogInit = false;
+        static float baseFogFalloff = 0.0f;
+        static float baseFogFalloffX = 0.0f;
+        static float baseFogFalloffY = 0.0f;
+        static float baseWeatherFog = 0.0f;
+        static float baseWeatherFogStart = 0.0f;
+        static float horizFogFalloff = 0.0f;
+        static float horizFogFalloffY = 0.0f;
+        static float horizWeatherFog = 0.0f;
+        static float horizWeatherFogStart = 0.0f;
+        if (!fogInit)
+        {
+            if (Game::BaseFogFalloff_ADDR)
+                baseFogFalloff = *reinterpret_cast<float*>(Game::BaseFogFalloff_ADDR);
+            if (Game::BaseFogFalloffX_ADDR)
+                baseFogFalloffX = *reinterpret_cast<float*>(Game::BaseFogFalloffX_ADDR);
+            if (Game::BaseFogFalloffY_ADDR)
+                baseFogFalloffY = *reinterpret_cast<float*>(Game::BaseFogFalloffY_ADDR);
+            if (Game::BaseWeatherFog_ADDR)
+                baseWeatherFog = *reinterpret_cast<float*>(Game::BaseWeatherFog_ADDR);
+            if (Game::BaseWeatherFogStart_ADDR)
+                baseWeatherFogStart = *reinterpret_cast<float*>(Game::BaseWeatherFogStart_ADDR);
+            if (Game::HorizFogFalloff_ADDR)
+                horizFogFalloff = *reinterpret_cast<float*>(Game::HorizFogFalloff_ADDR);
+            if (Game::HorizFogFalloffY_ADDR)
+                horizFogFalloffY = *reinterpret_cast<float*>(Game::HorizFogFalloffY_ADDR);
+            if (Game::HorizWeatherFog_ADDR)
+                horizWeatherFog = *reinterpret_cast<float*>(Game::HorizWeatherFog_ADDR);
+            if (Game::HorizWeatherFogStart_ADDR)
+                horizWeatherFogStart = *reinterpret_cast<float*>(Game::HorizWeatherFogStart_ADDR);
+            fogInit = true;
+        }
+
+        float fogT = s_lastRain;
+        float fogStart = baseWeatherFogStart * (1.0f - 0.4f * fogT);
+        float fogDense = baseWeatherFog * (1.0f + 0.5f * fogT);
+        float falloff = baseFogFalloff * (1.0f + 0.3f * fogT);
+        float falloffX = baseFogFalloffX * (1.0f + 0.3f * fogT);
+        float falloffY = baseFogFalloffY * (1.0f + 0.3f * fogT);
+
+        float hFogStart = horizWeatherFogStart * (1.0f - 0.4f * fogT);
+        float hFogDense = horizWeatherFog * (1.0f + 0.5f * fogT);
+        float hFalloff = horizFogFalloff * (1.0f + 0.3f * fogT);
+        float hFalloffY = horizFogFalloffY * (1.0f + 0.3f * fogT);
+
+        if (Game::BaseWeatherFogStart_ADDR)
+            *reinterpret_cast<float*>(Game::BaseWeatherFogStart_ADDR) = fogStart;
+        if (Game::BaseWeatherFog_ADDR)
+            *reinterpret_cast<float*>(Game::BaseWeatherFog_ADDR) = fogDense;
+        if (Game::BaseFogFalloff_ADDR)
+            *reinterpret_cast<float*>(Game::BaseFogFalloff_ADDR) = falloff;
+        if (Game::BaseFogFalloffX_ADDR)
+            *reinterpret_cast<float*>(Game::BaseFogFalloffX_ADDR) = falloffX;
+        if (Game::BaseFogFalloffY_ADDR)
+            *reinterpret_cast<float*>(Game::BaseFogFalloffY_ADDR) = falloffY;
+        if (Game::HorizWeatherFogStart_ADDR)
+            *reinterpret_cast<float*>(Game::HorizWeatherFogStart_ADDR) = hFogStart;
+        if (Game::HorizWeatherFog_ADDR)
+            *reinterpret_cast<float*>(Game::HorizWeatherFog_ADDR) = hFogDense;
+        if (Game::HorizFogFalloff_ADDR)
+            *reinterpret_cast<float*>(Game::HorizFogFalloff_ADDR) = hFalloff;
+        if (Game::HorizFogFalloffY_ADDR)
+            *reinterpret_cast<float*>(Game::HorizFogFalloffY_ADDR) = hFalloffY;
+
+        // Mirror native update step that consumes flt_904AD8.
+        auto sub73CCF0 = reinterpret_cast<void(__thiscall*)(void*, int, float)>(0x0073CCF0);
+        sub73CCF0(rain, 0, newRain);
+        // Sync dependent rain params from globals (native sub_74AB20).
+        auto sub74AB20 = reinterpret_cast<void(__thiscall*)(void*)>(0x0074AB20);
+        sub74AB20(rain);
+
+        *reinterpret_cast<int*>(Game::RoadReflectionStateAddr) = 3;
+
+        // float* cam = *reinterpret_cast<float**>(view + 0x40);
+
+        if (IsPaused())
+        {
+            Game::g_originalRainRender(rain);
+            return;
+        }
+
+        WriteF(rain, 0x28C, newRain);
+        WriteF(rain, 0x290, newRain);
+    }
+    
+    void Tick_ext()
+    {
+        uint8_t* rain = RainPtr();
+        if (!rain)
+            return;
+
+        static float lastLogNew = -1.0f;
+        static float lastLogPct = -1.0f;
+
+        // if (*reinterpret_cast<int*>(Game::GAMEFLOWMGR_STATUS_ADDR) != 6)
+        //     return;
+
+        // uint8_t* view = GetActiveView();
+        // if (!view)
+        //     return;
+
+        // void* viewPlat = *reinterpret_cast<void**>(view + 0x44);
+        // if (viewPlat && viewPlat != reinterpret_cast<void*>(view + 0x44))
+        // {
+        //     WriteP(rain, 0x284, viewPlat);
+        //     WriteP(rain, 0x288, view);
+        // }
+        // else
+        // {
+        //     WriteP(rain, 0x284, nullptr);
+        // }
+
+        // EnforceState(true);
+
+        float rainPct = s_targetRain;
+        if (rainPct < 0.0f)
+            rainPct = 0.0f;
+        if (rainPct > 1.0f)
+            rainPct = 1.0f;
+        float fogPct = s_targetFog;
+        if (fogPct < 0.0f)
+            fogPct = 0.0f;
+
+        // Feed native flow driver (updates flt_9B0A48).
+        if (Game::g_originalGameSetChanceOfRain)
+            Game::g_originalGameSetChanceOfRain(rainPct);
+        // Update rain struct counters used by sub_73CCF0.
+        if (Game::g_originalRainSetIntensity)
+            Game::g_originalRainSetIntensity(rain, rainPct);
+
+        float dt = *core::FPtr(Game::kWorldTimeElapsed);
+        if (dt <= 0.0f)
+            dt = 0.001f;
+
+        float curRain = *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR);
+        float t = 0.0f;
+        float seconds = RainConfigController::precipitationConfig.transitionSeconds;
+        if (seconds > 0.0f)
+        {
+            t = dt / seconds;
+        }
+        else
+        {
+            float rate = *reinterpret_cast<float*>(Game::PRECIP_RAINRATEOFCHANGE_ADDR);
+            if (rate <= 0.0f)
+                rate = 0.2f;
+            t = dt * rate;
+        }
+        if (t > 0.2f)
+            t = 0.2f;
+        float newRain = curRain + (rainPct - curRain) * t;
+        float pctNow = *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR);
+        float precipPct = *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR);
+        float overridePct = *reinterpret_cast<float*>(Game::PRECIP_RAINOVERRIDE_ADDR);
+        if (fabsf(newRain - lastLogNew) > 0.01f ||
+            fabsf(pctNow - lastLogPct) > 0.01f)
+        {
+            char dbg[256];
+            std::snprintf(dbg, sizeof(dbg),
+                          "[RainFlowMW] cur=%.3f tgt=%.3f new=%.3f pct=%.3f precip=%.3f ov=%.3f\n",
+                          curRain, rainPct, newRain, pctNow, precipPct, overridePct);
+            OutputDebugStringA(dbg);
+            lastLogNew = newRain;
+            lastLogPct = pctNow;
+        }
+
+        s_lastRain = newRain;
+        s_lastFog = fogPct * newRain;
+
+        if (s_useGameSkyFlow)
+        {
+            // Feed target to game-controlled sky transition.
+            *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR) = rainPct;
+            *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR) = rainPct;
+            if (Game::PRECIP_RAINOVERRIDE_ADDR)
+                *reinterpret_cast<float*>(Game::PRECIP_RAINOVERRIDE_ADDR) = rainPct;
+            return;
+        }
+
+        *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR) = s_lastRain;
+        *reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR) = s_lastFog;
+        *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR) = s_lastRain;
+        *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR) = s_lastRain;
+        *reinterpret_cast<float*>(Game::PRECIP_DRIVEFACTOR_ADDR) = s_lastRain;
+        if (Game::g_originalRainSetOverrideIntensity)
+            Game::g_originalRainSetOverrideIntensity(s_lastRain);
+        if (Game::PRECIP_RAINOVERRIDE_ADDR)
+            *reinterpret_cast<float*>(Game::PRECIP_RAINOVERRIDE_ADDR) = s_lastRain;
+        if (Game::WEATHER_SKY_BLEND_ADDR)
+            *reinterpret_cast<float*>(Game::WEATHER_SKY_BLEND_ADDR) = s_lastRain;
+        if (Game::WeatherSkyBlendVarAddr)
+            *reinterpret_cast<float*>(Game::WeatherSkyBlendVarAddr) = s_lastRain;
+        if (Game::WeatherBlendAccumAddr)
+            *reinterpret_cast<float*>(Game::WeatherBlendAccumAddr) = s_lastRain;
+        if (Game::FOG_CTRLOVERRIDE_ADDR)
+            *reinterpret_cast<int*>(Game::FOG_CTRLOVERRIDE_ADDR) = 1;
+
+        // Drive base/horizon fog globals for smooth sky transition.
+        static bool fogInit = false;
+        static float baseFogFalloff = 0.0f;
+        static float baseFogFalloffX = 0.0f;
+        static float baseFogFalloffY = 0.0f;
+        static float baseWeatherFog = 0.0f;
+        static float baseWeatherFogStart = 0.0f;
+        static float horizFogFalloff = 0.0f;
+        static float horizFogFalloffY = 0.0f;
+        static float horizWeatherFog = 0.0f;
+        static float horizWeatherFogStart = 0.0f;
+        if (!fogInit)
+        {
+            if (Game::BaseFogFalloff_ADDR)
+                baseFogFalloff = *reinterpret_cast<float*>(Game::BaseFogFalloff_ADDR);
+            if (Game::BaseFogFalloffX_ADDR)
+                baseFogFalloffX = *reinterpret_cast<float*>(Game::BaseFogFalloffX_ADDR);
+            if (Game::BaseFogFalloffY_ADDR)
+                baseFogFalloffY = *reinterpret_cast<float*>(Game::BaseFogFalloffY_ADDR);
+            if (Game::BaseWeatherFog_ADDR)
+                baseWeatherFog = *reinterpret_cast<float*>(Game::BaseWeatherFog_ADDR);
+            if (Game::BaseWeatherFogStart_ADDR)
+                baseWeatherFogStart = *reinterpret_cast<float*>(Game::BaseWeatherFogStart_ADDR);
+            if (Game::HorizFogFalloff_ADDR)
+                horizFogFalloff = *reinterpret_cast<float*>(Game::HorizFogFalloff_ADDR);
+            if (Game::HorizFogFalloffY_ADDR)
+                horizFogFalloffY = *reinterpret_cast<float*>(Game::HorizFogFalloffY_ADDR);
+            if (Game::HorizWeatherFog_ADDR)
+                horizWeatherFog = *reinterpret_cast<float*>(Game::HorizWeatherFog_ADDR);
+            if (Game::HorizWeatherFogStart_ADDR)
+                horizWeatherFogStart = *reinterpret_cast<float*>(Game::HorizWeatherFogStart_ADDR);
+            fogInit = true;
+        }
+
+        float fogT = s_lastRain;
+        float fogStart = baseWeatherFogStart * (1.0f - 0.4f * fogT);
+        float fogDense = baseWeatherFog * (1.0f + 0.5f * fogT);
+        float falloff = baseFogFalloff * (1.0f + 0.3f * fogT);
+        float falloffX = baseFogFalloffX * (1.0f + 0.3f * fogT);
+        float falloffY = baseFogFalloffY * (1.0f + 0.3f * fogT);
+
+        float hFogStart = horizWeatherFogStart * (1.0f - 0.4f * fogT);
+        float hFogDense = horizWeatherFog * (1.0f + 0.5f * fogT);
+        float hFalloff = horizFogFalloff * (1.0f + 0.3f * fogT);
+        float hFalloffY = horizFogFalloffY * (1.0f + 0.3f * fogT);
+
+        if (Game::BaseWeatherFogStart_ADDR)
+            *reinterpret_cast<float*>(Game::BaseWeatherFogStart_ADDR) = fogStart;
+        if (Game::BaseWeatherFog_ADDR)
+            *reinterpret_cast<float*>(Game::BaseWeatherFog_ADDR) = fogDense;
+        if (Game::BaseFogFalloff_ADDR)
+            *reinterpret_cast<float*>(Game::BaseFogFalloff_ADDR) = falloff;
+        if (Game::BaseFogFalloffX_ADDR)
+            *reinterpret_cast<float*>(Game::BaseFogFalloffX_ADDR) = falloffX;
+        if (Game::BaseFogFalloffY_ADDR)
+            *reinterpret_cast<float*>(Game::BaseFogFalloffY_ADDR) = falloffY;
+        if (Game::HorizWeatherFogStart_ADDR)
+            *reinterpret_cast<float*>(Game::HorizWeatherFogStart_ADDR) = hFogStart;
+        if (Game::HorizWeatherFog_ADDR)
+            *reinterpret_cast<float*>(Game::HorizWeatherFog_ADDR) = hFogDense;
+        if (Game::HorizFogFalloff_ADDR)
+            *reinterpret_cast<float*>(Game::HorizFogFalloff_ADDR) = hFalloff;
+        if (Game::HorizFogFalloffY_ADDR)
+            *reinterpret_cast<float*>(Game::HorizFogFalloffY_ADDR) = hFalloffY;
+
+        // Mirror native update step that consumes flt_904AD8.
+        auto sub73CCF0 = reinterpret_cast<void(__thiscall*)(void*, int, float)>(0x0073CCF0);
+        sub73CCF0(rain, 0, newRain);
+        // Sync dependent rain params from globals (native sub_74AB20).
+        auto sub74AB20 = reinterpret_cast<void(__thiscall*)(void*)>(0x0074AB20);
+        sub74AB20(rain);
+
         *reinterpret_cast<int*>(Game::RoadReflectionStateAddr) = 3;
 
         // float* cam = *reinterpret_cast<float**>(view + 0x40);
@@ -626,9 +960,9 @@ namespace RainFlowMW
 
         // Sub73CDB0(rain, view);
 
-        // Lock intensities to avoid dampness flicker.
-        WriteF(rain, 0x28C, rainPct);
-        WriteF(rain, 0x290, rainPct);
+        // Lock intensities to the smoothed value.
+        WriteF(rain, 0x28C, newRain);
+        WriteF(rain, 0x290, newRain);
         // WriteF(rain, 0x36A0, rainPct); // road dampness
         // WriteF(rain, 0x36A4, 1.0f);
         // Clear tunnel/overpass flags that can toggle reflections.
