@@ -4,7 +4,7 @@
 
 #include "CPatch.h"
 
-namespace RainConfigController
+namespace PrecipitationConfigController
 {
     inline int toggleKey = VK_F3; // Default to F3
 
@@ -120,6 +120,7 @@ namespace RainConfigController
             float onScreenDropShapeSpeedChange;
             float baseDampness;
             float rainInHeadlights;
+            float roadReflectionLevel;
         } nativePreset{};
 
         struct RenderPreset

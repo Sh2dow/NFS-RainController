@@ -163,6 +163,7 @@
     <ItemGroup>
         <ClInclude Include="core.h" />
         <ClInclude Include="PerlinNoise.h" />
+        <ClInclude Include="PrecipitationConfigController.h" />
         <ClInclude Include="PrecipitationController.h"/>
         <ClInclude Include="features.h" />
         <ClInclude Include="GameAddresses.h"/>
@@ -172,7 +173,6 @@
         <ClInclude Include="NFSC_PreFEngHook.h"/>
         <ClInclude Include="NFSPS_PreFEngHook.h"/>
         <ClInclude Include="NFSUC_PreFEngHook.h"/>
-        <ClInclude Include="RainConfigController.h"/>
 
         <ClInclude Include="..\includes\CPatch.h"/>
         <ClInclude Include="..\includes\hooking\Hooking.Patterns.h"/>
@@ -187,7 +187,7 @@
         <ClInclude Include="..\includes\minhook\src\trampoline.h"/>
         <ClInclude Include="Math.h" />
         <ClInclude Include="Game.h"/>
-        <ClInclude Include="RainFlow\RainFlowMW.h" />
+        <ClInclude Include="PrecipitationFlowMW\PrecipitationFlowMW.h" />
     </ItemGroup>
 
     <ItemGroup>
@@ -203,10 +203,10 @@
         <ClCompile Include="..\includes\minhook\src\hook.c"/>
         <ClCompile Include="..\includes\minhook\src\trampoline.c"/>
         <ClCompile Include="core.cpp" />
+        <ClCompile Include="PrecipitationConfigController.cpp" />
         <ClCompile Include="PrecipitationController.cpp" />
-        <ClCompile Include="RainConfigController.cpp" />
         <ClCompile Include="dllmain.cpp"/>
-        <ClCompile Include="RainFlow\RainFlowMW.cpp" />
+        <ClCompile Include="PrecipitationFlowMW\PrecipitationFlowMW.cpp" />
     </ItemGroup>
 
     <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets"/>

@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-namespace RainFlowMW
+namespace PrecipitationFlowMW
 {
     void Tick();
     void Disable();

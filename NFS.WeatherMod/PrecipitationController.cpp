@@ -1,5 +1,5 @@
 #include "PrecipitationController.h"
-#include "RainConfigController.h"
+#include "PrecipitationConfigController.h"
 #include <algorithm>
 #include <vector>
 #include <d3d9.h>
@@ -10,7 +10,7 @@
 #include "PerlinNoise.h"
 #include "Game.h"
 
-static auto& g_precipitationConfig = RainConfigController::precipitationConfig;
+static auto& g_precipitationConfig = PrecipitationConfigController::precipitationConfig;
 
 namespace
 {
@@ -1288,7 +1288,7 @@ void PrecipitationController::enable()
         return;
 
     RainDebugOut("[PrecipitationController::enable] enabling\n");
-    RainConfigController::Load();
+    PrecipitationConfigController::Load();
     m_active = true;
 
     if (!m_device && Game::NFS_D3D9_DEVICE_ADDRESS)
@@ -1399,7 +1399,7 @@ void PrecipitationController::enable()
 void PrecipitationController::disable()
 {
     RainDebugOut("[PrecipitationController::disable] disabling\n");
-    g_precipitationConfig = RainConfigController::PrecipitationData();
+    g_precipitationConfig = PrecipitationConfigController::PrecipitationData();
     // resets all members to their default values
 
     m_active = false;
@@ -2293,7 +2293,7 @@ void PrecipitationController::Update()
             auto* fogPct = reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR);
             if (core::IsReadable(precipPercent, sizeof(float)))
                 *precipPercent = 1.0f;
-            // In independent flow, RainFlowMW drives these (with smoothing).
+            // In independent flow, PrecipitationFlowMW drives these (with smoothing).
             // if (!kUseIndependentRainFlow)
             // {
             //     if (core::IsReadable(rainPct, sizeof(float)))

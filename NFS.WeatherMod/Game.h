@@ -112,6 +112,7 @@ namespace Game
     inline uintptr_t PRECIP_ONSCREEN_DROPSHAPESPEEDCHANGE_ADDR = 0;
     
     inline uintptr_t RoadReflectionStateAddr = 0;
+    inline uintptr_t RoadReflectionEnablePtr = 0;
     inline uintptr_t NFS_D3D9_DEVICE_ADDRESS = 0;
     inline uintptr_t NodeMatrixOffset = 0;
     
@@ -341,8 +342,8 @@ namespace Game
             HorizWeatherFog_ADDR = MW::HorizWeatherFog_ADDR;
             HorizWeatherFogStart_ADDR = MW::HorizWeatherFogStart_ADDR;
             FOG_CTRLOVERRIDE_ADDR = MW::FOG_CTRLOVERRIDE_ADDR;
-            
             RoadReflectionStateAddr = MW::RoadReflectionStateAddr;
+            RoadReflectionEnablePtr = MW::RoadReflectionEnablePtr;
             
             g_originalRainTick   = reinterpret_cast<RainTick_t>(RainTick);
             g_originalRainUpdate = reinterpret_cast<RainUpdate_t>(RainUpdate);

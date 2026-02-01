@@ -1,14 +1,14 @@
 #include "stdafx.h"
-#include "RainConfigController.h"
+#include "PrecipitationConfigController.h"
 #include <windows.h>
 #include <filesystem>
 #include <fstream>
 #include <string>
 #include "IniReader.h"
 
-static RainConfigController::PrecipitationData::NativePreset MakePreset(const std::string& name)
+static PrecipitationConfigController::PrecipitationData::NativePreset MakePreset(const std::string& name)
 {
-    using Preset = RainConfigController::PrecipitationData::NativePreset;
+    using Preset = PrecipitationConfigController::PrecipitationData::NativePreset;
     Preset p{};
     if (name == "SnowLight")
     {
@@ -37,6 +37,7 @@ static RainConfigController::PrecipitationData::NativePreset MakePreset(const st
         p.onScreenDropShapeSpeedChange = 0.0f;
         p.baseDampness = 0.2f;
         p.rainInHeadlights = 0.25f;
+        p.roadReflectionLevel = 2.0f;
         return p;
     }
     if (name == "SnowHeavy")
@@ -66,6 +67,7 @@ static RainConfigController::PrecipitationData::NativePreset MakePreset(const st
         p.onScreenDropShapeSpeedChange = 0.0f;
         p.baseDampness = 0.35f;
         p.rainInHeadlights = 0.35f;
+        p.roadReflectionLevel = 2.0f;
         return p;
     }
     if (name == "Blizzard")
@@ -95,6 +97,7 @@ static RainConfigController::PrecipitationData::NativePreset MakePreset(const st
         p.onScreenDropShapeSpeedChange = 0.0f;
         p.baseDampness = 0.45f;
         p.rainInHeadlights = 0.45f;
+        p.roadReflectionLevel = 2.0f;
         return p;
     }
 
@@ -124,12 +127,13 @@ static RainConfigController::PrecipitationData::NativePreset MakePreset(const st
     p.onScreenDropShapeSpeedChange = 0.0025f;
     p.baseDampness = 1.0f;
     p.rainInHeadlights = 1.0f;
+    p.roadReflectionLevel = 1.0f;
     return p;
 }
 
-static RainConfigController::PrecipitationData::RenderPreset MakeRenderPreset(const std::string& name)
+static PrecipitationConfigController::PrecipitationData::RenderPreset MakeRenderPreset(const std::string& name)
 {
-    using RenderPreset = RainConfigController::PrecipitationData::RenderPreset;
+    using RenderPreset = PrecipitationConfigController::PrecipitationData::RenderPreset;
     RenderPreset p{};
     // Defaults: keep current config (set to -1 to indicate "no override").
     p.enable2DRain = -1;
@@ -212,7 +216,7 @@ static RainConfigController::PrecipitationData::RenderPreset MakeRenderPreset(co
 
 static void ReadRenderPresetOverrides(CIniReader& iniReader,
                                       const std::string& section,
-                                      RainConfigController::PrecipitationData::RenderPreset& p)
+                                      PrecipitationConfigController::PrecipitationData::RenderPreset& p)
 {
     p.enable2DRain = iniReader.ReadInteger(section, "Enable2DRain", p.enable2DRain);
     p.enable3DRain = iniReader.ReadInteger(section, "Enable3DRain", p.enable3DRain);
@@ -234,7 +238,7 @@ static void ReadRenderPresetOverrides(CIniReader& iniReader,
 
 static void ReadPresetOverrides(CIniReader& iniReader,
                                 const std::string& section,
-                                RainConfigController::PrecipitationData::NativePreset& p)
+                                PrecipitationConfigController::PrecipitationData::NativePreset& p)
 {
     p.rainCrossing = iniReader.ReadFloat(section, "RainCrossing", p.rainCrossing);
     p.rainFallSpeed = iniReader.ReadFloat(section, "RainFallSpeed", p.rainFallSpeed);
@@ -261,9 +265,10 @@ static void ReadPresetOverrides(CIniReader& iniReader,
     p.onScreenDropShapeSpeedChange = iniReader.ReadFloat(section, "OnScreenDropShapeSpeedChange", p.onScreenDropShapeSpeedChange);
     p.baseDampness = iniReader.ReadFloat(section, "BaseDampness", p.baseDampness);
     p.rainInHeadlights = iniReader.ReadFloat(section, "RainInHeadlights", p.rainInHeadlights);
+    p.roadReflectionLevel = iniReader.ReadFloat(section, "RoadReflectionLevel", p.roadReflectionLevel);
 }
 
-void RainConfigController::LoadOnStartup()
+void PrecipitationConfigController::LoadOnStartup()
 {
     char buffer[MAX_PATH];
     GetModuleFileNameA(nullptr, buffer, MAX_PATH);
@@ -289,7 +294,7 @@ void RainConfigController::LoadOnStartup()
     toggleKey = iniReader.ReadInteger(section, "ToggleKey", VK_F3);
 }
 
-void RainConfigController::Load()
+void PrecipitationConfigController::Load()
 {
 
     char buffer[MAX_PATH];

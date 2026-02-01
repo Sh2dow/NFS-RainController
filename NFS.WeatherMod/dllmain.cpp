@@ -9,9 +9,9 @@
 #include "features.h"
 #include "core.h"
 #include "PrecipitationController.h"
-#include "RainConfigController.h"
+#include "PrecipitationConfigController.h"
 #include "NFSMW_PreFEngHook.h"
-#include "RainFlow/RainFlowMW.h"
+#include "PrecipitationFlowMW/PrecipitationFlowMW.h"
 
 #include "injector/injector.hpp"
 #include <cstdio>
@@ -49,7 +49,8 @@ static int __fastcall HookedAttachReplacementTextureTable(void* ecx, void*, void
 using SkyLayerCompute_t = void(__cdecl*)(void* view, int layer, float* out0, float* out1, float* out2, float* out3);
 static SkyLayerCompute_t g_originalSkyLayerCompute = nullptr;
 static void __cdecl HookedSkyLayerCompute(void* view, int layer, float* out0, float* out1, float* out2, float* out3);
-static void __cdecl HookedSkyLayerComputeCallsite(void* view, int layer, float* out0, float* out1, float* out2, float* out3);
+static void __cdecl HookedSkyLayerComputeCallsite(void* view, int layer, float* out0, float* out1, float* out2,
+                                                  float* out3);
 using TimeOfDayUpdate_t = void(__cdecl*)(void* tod, float val);
 static TimeOfDayUpdate_t g_originalTimeOfDayUpdate = nullptr;
 static void __cdecl HookedTimeOfDayUpdate(void* tod, float val);
@@ -70,7 +71,7 @@ static void ForceDryStateIfDisabled()
 {
     if (!PrecipitationController::Get()->IsActive())
     {
-        float smoothed = RainFlowMW::GetSmoothedRain();
+        float smoothed = PrecipitationFlowMW::GetSmoothedRain();
         if (smoothed > 0.01f)
             return;
         if (Game::PRECIP_RAINOVERRIDE_ADDR)
@@ -297,10 +298,10 @@ static void RunNativeRainFlow(void* rain)
         *precipRender = 1;
 
     static bool loggedOnce = false;
-    float rainPct = RainConfigController::precipitationConfig.rainIntensity;
+    float rainPct = PrecipitationConfigController::precipitationConfig.rainIntensity;
     if (rainPct < 0.0f)
         rainPct = 0.0f;
-    float fogPct = RainConfigController::precipitationConfig.fogIntensity;
+    float fogPct = PrecipitationConfigController::precipitationConfig.fogIntensity;
     if (fogPct < 0.0f)
         fogPct = 0.0f;
     if (!loggedOnce)
@@ -309,8 +310,8 @@ static void RunNativeRainFlow(void* rain)
         std::snprintf(dbg, sizeof(dbg),
                       "[WeatherMod] cfg rain=%.3f fog=%.3f enable3DRain=%d enable3DSplatters=%d\n",
                       rainPct, fogPct,
-                      RainConfigController::precipitationConfig.enable3DRain ? 1 : 0,
-                      RainConfigController::precipitationConfig.enable3DSplatters ? 1 : 0);
+                      PrecipitationConfigController::precipitationConfig.enable3DRain ? 1 : 0,
+                      PrecipitationConfigController::precipitationConfig.enable3DSplatters ? 1 : 0);
         OutputDebugStringA(dbg);
         loggedOnce = true;
     }
@@ -451,10 +452,10 @@ static void __fastcall HookedRainTickCallsite(void* ecx, void*)
                 if (core::IsReadable(precipRender, sizeof(int)))
                     *precipRender = 1;
 
-                float rainPct = RainConfigController::precipitationConfig.rainIntensity;
+                float rainPct = PrecipitationConfigController::precipitationConfig.rainIntensity;
                 if (rainPct < 0.0f)
                     rainPct = 0.0f;
-                float fogPct = RainConfigController::precipitationConfig.fogIntensity;
+                float fogPct = PrecipitationConfigController::precipitationConfig.fogIntensity;
                 if (fogPct < 0.0f)
                     fogPct = 0.0f;
 
@@ -557,8 +558,8 @@ static void AfterRenderCtxCallsite()
         return;
     static float lastEndPct = -1.0f;
     float endPct = *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR);
-    float smoothed = RainFlowMW::GetSmoothedRain();
-    float smoothedFog = RainFlowMW::GetSmoothedFog();
+    float smoothed = PrecipitationFlowMW::GetSmoothedRain();
+    float smoothedFog = PrecipitationFlowMW::GetSmoothedFog();
     if (kUseIndependentSkyFlow && fabsf(endPct - smoothed) > 0.01f)
     {
         *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR) = smoothed;
@@ -571,7 +572,7 @@ static void AfterRenderCtxCallsite()
     if (fabsf(endPct - lastEndPct) > 0.01f)
     {
         char dbg[128];
-        std::snprintf(dbg, sizeof(dbg), "[RainFlowMW] endframe pct=%.3f\n", endPct);
+        std::snprintf(dbg, sizeof(dbg), "[WeatherMod] endframe pct=%.3f\n", endPct);
         OutputDebugStringA(dbg);
         lastEndPct = endPct;
     }
@@ -628,15 +629,15 @@ static void __fastcall HookedRainTick(void* ecx, void* edx)
 {
     (void)edx;
     static bool logged = false;
-    if (RainConfigController::precipitationConfig.enable3DRain ||
-        RainConfigController::precipitationConfig.enable3DSplatters)
+    if (PrecipitationConfigController::precipitationConfig.enable3DRain ||
+        PrecipitationConfigController::precipitationConfig.enable3DSplatters)
     {
         return;
     }
     if (detected_game == GameType::MW)
     {
-        if (RainConfigController::precipitationConfig.enable3DRain ||
-            RainConfigController::precipitationConfig.enable3DSplatters)
+        if (PrecipitationConfigController::precipitationConfig.enable3DRain ||
+            PrecipitationConfigController::precipitationConfig.enable3DSplatters)
         {
             auto* rainEnable = reinterpret_cast<int*>(Game::RainEnablePtr);
             auto* particleEnable = reinterpret_cast<int*>(Game::ParticleSystemEnablePtr);
@@ -674,6 +675,292 @@ static void __fastcall HookedRainTick(void* ecx, void* edx)
         Game::g_originalRainTick(ecx);
 }
 
+static void __fastcall HookedRainRender(void* ecx, void* edx)
+{
+    (void)edx;
+    static bool logged = false;
+    if (PrecipitationConfigController::precipitationConfig.enable3DRain ||
+        PrecipitationConfigController::precipitationConfig.enable3DSplatters)
+    {
+        return;
+    }
+    if (!logged)
+    {
+        char buf[256];
+        int precipEnable = 0;
+        int precipRender = 0;
+        float precipPercent = 0.0f;
+        float rainPercent = 0.0f;
+        int gameFlow = 0;
+        int gameFlowStatus = 0;
+        if (core::IsReadable(reinterpret_cast<void*>(Game::PRECIPITATION_ENABLE_ADDR), sizeof(int)))
+            precipEnable = *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR);
+        if (core::IsReadable(reinterpret_cast<void*>(Game::PRECIPITATION_RENDER_ADDR), sizeof(int)))
+            precipRender = *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR);
+        if (core::IsReadable(reinterpret_cast<void*>(Game::PRECIPITATION_PERCENT_ADDR), sizeof(float)))
+            precipPercent = *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR);
+        if (core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINPERCENT_ADDR), sizeof(float)))
+            rainPercent = *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR);
+        if (core::IsReadable(reinterpret_cast<void*>(Game::GAMEFLOWMGR_ADDR), sizeof(int)))
+            gameFlow = *reinterpret_cast<int*>(Game::GAMEFLOWMGR_ADDR);
+        if (core::IsReadable(reinterpret_cast<void*>(Game::GAMEFLOWMGR_STATUS_ADDR), sizeof(int)))
+            gameFlowStatus = *reinterpret_cast<int*>(Game::GAMEFLOWMGR_STATUS_ADDR);
+        std::snprintf(buf, sizeof(buf),
+                      "[RainDebug] HookedRainRender called precipEnable=%d precipRender=%d precipPct=%.2f rainPct=%.2f gameFlow=%d gameFlowStatus=%d\n",
+                      precipEnable, precipRender, precipPercent, rainPercent, gameFlow, gameFlowStatus);
+        OutputDebugStringA(buf);
+
+        if (core::IsReadable(ecx, 0x290))
+        {
+            void* p284 = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(ecx) + 0x284);
+            void* p288 = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(ecx) + 0x288);
+            std::snprintf(buf, sizeof(buf),
+                          "[RainDebug] Rain instance ptr=0x%p p284=0x%p p288=0x%p\n",
+                          ecx, p284, p288);
+            OutputDebugStringA(buf);
+
+            if (!p284 && p288 && core::IsReadable(p288, 0x70))
+            {
+                void* viewPlat = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(p288) + 0x44);
+                if (viewPlat)
+                {
+                    *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(ecx) + 0x284) = viewPlat;
+                    OutputDebugStringA("[RainDebug] Patched Rain::mPtr284 = *(eView+0x44) (viewPlat)\n");
+                }
+            }
+        }
+        logged = true;
+    }
+    // Avoid crashing when render context is not set (dword_982C80 == 0).
+    auto* renderCtx = reinterpret_cast<void*>(Game::renderCtxAddr);
+    void* ctxVal = nullptr;
+    if (core::IsReadable(renderCtx, sizeof(void*)))
+        ctxVal = *reinterpret_cast<void**>(renderCtx);
+
+    // If render context is missing, try to seed it from particle system context.
+    if (!ctxVal)
+    {
+        auto* particleCtx = reinterpret_cast<void*>(Game::particleCtxAddr);
+        if (core::IsReadable(particleCtx, sizeof(void*)) && *reinterpret_cast<void**>(particleCtx))
+        {
+            *reinterpret_cast<void**>(renderCtx) = *reinterpret_cast<void**>(particleCtx);
+            ctxVal = *reinterpret_cast<void**>(renderCtx);
+        }
+    }
+
+    if (ctxVal && Game::g_originalRainRender)
+        Game::g_originalRainRender(ecx);
+}
+
+static void __fastcall HookedRainRender3D(void* ecx, void*)
+{
+    if (Game::g_originalRainRender3D)
+        Game::g_originalRainRender3D(ecx);
+}
+
+static void __cdecl HookedStuffSkyLayerBlendCallsite(void* view, float blend, int layer)
+{
+    if (kUseIndependentRainFlow)
+    {
+        float pct = PrecipitationFlowMW::GetSmoothedRain();
+        if (pct < 0.0f)
+            pct = 0.0f;
+        if (pct > 1.0f)
+            pct = 1.0f;
+        blend = pct;
+    }
+
+    auto fn = reinterpret_cast<StuffSkyLayerBlend_t>(Game::StuffSkyLayerBlendAddr);
+    if (fn)
+        fn(view, blend, layer);
+}
+
+static void __cdecl HookedStuffSkyLayer(void* view, int layer, float blend)
+{
+    static float lastLogged = -1.0f;
+    if (kUseIndependentRainFlow)
+    {
+        float pct = PrecipitationFlowMW::GetSmoothedRain();
+        if (pct < 0.0f)
+            pct = 0.0f;
+        if (pct > 1.0f)
+            pct = 1.0f;
+        blend = pct;
+    }
+
+    if (fabsf(blend - lastLogged) > 0.05f)
+    {
+        char buf[160];
+        std::snprintf(buf, sizeof(buf),
+                      "[WeatherMod] StuffSkyLayer hit layer=%d blend=%.3f\n",
+                      layer, blend);
+        OutputDebugStringA(buf);
+        lastLogged = blend;
+    }
+
+    if (g_originalStuffSkyLayer)
+        g_originalStuffSkyLayer(view, layer, blend);
+}
+
+static void __cdecl HookedStuffSkyLayerCallsite(void* view, int layer, float blend)
+{
+    if (kUseIndependentRainFlow)
+        blend = PrecipitationFlowMW::GetSmoothedRain();
+    auto fn = reinterpret_cast<StuffSkyLayer_t>(Game::StuffSkyLayerAddr);
+    if (fn)
+        fn(view, layer, blend);
+}
+
+static void __cdecl HookedReplaceSkyTextures(int layer)
+{
+    static bool logged = false;
+    if (kUseIndependentRainFlow)
+    {
+        static bool lastRainy = false;
+        float pct = PrecipitationFlowMW::GetSmoothedRain();
+        bool targetRainy = pct >= 0.5f;
+
+        // Delay texture swap until transition is mostly complete.
+        if (targetRainy != lastRainy)
+        {
+            if ((targetRainy && pct < 0.95f) || (!targetRainy && pct > 0.05f))
+                return;
+            lastRainy = targetRainy;
+        }
+    }
+
+    if (!logged)
+    {
+        char buf[160];
+        std::snprintf(buf, sizeof(buf),
+                      "[WeatherMod] ReplaceSkyTextures hit layer=%d pct=%.3f\n",
+                      layer, PrecipitationFlowMW::GetSmoothedRain());
+        OutputDebugStringA(buf);
+        logged = true;
+    }
+
+    if (g_originalReplaceSkyTextures)
+        g_originalReplaceSkyTextures(layer);
+}
+
+static void __cdecl HookedReplaceSkyTexturesCallsite(int layer)
+{
+    HookedReplaceSkyTextures(layer);
+}
+
+static int __fastcall HookedAttachReplacementTextureTable(void* ecx, void*, void* table, int a2, int a3)
+{
+    if (kUseIndependentRainFlow)
+    {
+        bool isSkyTable = false;
+        if (core::IsReadable(table, 0x80))
+        {
+            // Hash first 0x80 bytes to fingerprint tables.
+            uint32_t hash = 2166136261u;
+            auto* bytes = reinterpret_cast<unsigned char*>(table);
+            for (size_t i = 0; i < 0x80; ++i)
+                hash = (hash ^ bytes[i]) * 16777619u;
+            isSkyTable = (hash == 0x72246BF1u);
+        }
+
+        if (!isSkyTable)
+        {
+            if (g_originalAttachReplacementTextureTable)
+                return g_originalAttachReplacementTextureTable(ecx, table, a2, a3);
+            return 0;
+        }
+
+        float pct = PrecipitationFlowMW::GetSmoothedRain();
+        bool targetRainy = pct >= 0.5f;
+        static bool lastRainy = false;
+        if (targetRainy != lastRainy)
+        {
+            if ((targetRainy && pct < 0.95f) || (!targetRainy && pct > 0.05f))
+                return 0; // skip swap during transition
+            lastRainy = targetRainy;
+        }
+    }
+
+    if (g_originalAttachReplacementTextureTable)
+        return g_originalAttachReplacementTextureTable(ecx, table, a2, a3);
+    return 0;
+}
+
+static void __cdecl HookedSkyLayerCompute(void* view, int layer, float* out0, float* out1, float* out2, float* out3)
+{
+    if (!g_originalSkyLayerCompute)
+        return;
+
+    if (!kUseIndependentRainFlow)
+    {
+        g_originalSkyLayerCompute(view, layer, out0, out1, out2, out3);
+        return;
+    }
+
+    float savedAccum = 0.0f;
+    float savedSky = 0.0f;
+    if (Game::WeatherBlendAccumAddr)
+        savedAccum = *reinterpret_cast<float*>(Game::WeatherBlendAccumAddr);
+    if (Game::WeatherSkyBlendVarAddr)
+        savedSky = *reinterpret_cast<float*>(Game::WeatherSkyBlendVarAddr);
+
+    float clear0 = 0.0f, clear1 = 0.0f, clear2 = 0.0f, clear3 = 0.0f;
+    float rain0 = 0.0f, rain1 = 0.0f, rain2 = 0.0f, rain3 = 0.0f;
+
+    if (Game::WeatherBlendAccumAddr)
+        *reinterpret_cast<float*>(Game::WeatherBlendAccumAddr) = 0.0f;
+    if (Game::WeatherSkyBlendVarAddr)
+        *reinterpret_cast<float*>(Game::WeatherSkyBlendVarAddr) = 0.0f;
+    g_originalSkyLayerCompute(view, layer, &clear0, &clear1, &clear2, &clear3);
+
+    if (Game::WeatherBlendAccumAddr)
+        *reinterpret_cast<float*>(Game::WeatherBlendAccumAddr) = 1.0f;
+    if (Game::WeatherSkyBlendVarAddr)
+        *reinterpret_cast<float*>(Game::WeatherSkyBlendVarAddr) = 1.0f;
+    g_originalSkyLayerCompute(view, layer, &rain0, &rain1, &rain2, &rain3);
+
+    if (Game::WeatherBlendAccumAddr)
+        *reinterpret_cast<float*>(Game::WeatherBlendAccumAddr) = savedAccum;
+    if (Game::WeatherSkyBlendVarAddr)
+        *reinterpret_cast<float*>(Game::WeatherSkyBlendVarAddr) = savedSky;
+
+    float t = PrecipitationFlowMW::GetSmoothedRain();
+    if (t < 0.0f)
+        t = 0.0f;
+    if (t > 1.0f)
+        t = 1.0f;
+
+    if (out0) *out0 = clear0 + (rain0 - clear0) * t;
+    if (out1) *out1 = clear1 + (rain1 - clear1) * t;
+    if (out2) *out2 = clear2 + (rain2 - clear2) * t;
+    if (out3) *out3 = clear3 + (rain3 - clear3) * t;
+
+    static bool logged = false;
+    if (!logged)
+    {
+        char buf[256];
+        std::snprintf(buf, sizeof(buf),
+                      "[WeatherMod] SkyLayerCompute layer=%d clear=%.3f/%.3f/%.3f/%.3f rain=%.3f/%.3f/%.3f/%.3f t=%.3f\n",
+                      layer, clear0, clear1, clear2, clear3, rain0, rain1, rain2, rain3, t);
+        OutputDebugStringA(buf);
+        logged = true;
+    }
+}
+
+static void __cdecl HookedTimeOfDayUpdate(void* tod, float val)
+{
+    if (kUseIndependentRainFlow && kUseIndependentSkyFlow)
+        val = PrecipitationFlowMW::GetSmoothedRain();
+    if (g_originalTimeOfDayUpdate)
+        g_originalTimeOfDayUpdate(tod, val);
+}
+
+static void __cdecl HookedSkyLayerComputeCallsite(void* view, int layer, float* out0, float* out1, float* out2,
+                                                  float* out3)
+{
+    HookedSkyLayerCompute(view, layer, out0, out1, out2, out3);
+}
+
 static void SetupFeatures()
 {
     g_features.emplace_back(std::make_unique<PrecipitationController>());
@@ -685,8 +972,8 @@ static void InitializeWeather()
         SetupFeatures();
 
     OutputDebugStringA("[InitializeWeather] Setting up hooks\n");
-    RainConfigController::LoadOnStartup();
-    RainConfigController::Load();
+    PrecipitationConfigController::LoadOnStartup();
+    PrecipitationConfigController::Load();
 
     for (const auto& feature : g_features)
     {
@@ -698,11 +985,11 @@ static void InitializeWeather()
         {
             auto* controller = PrecipitationController::Get();
 
-            if (RainConfigController::precipitationConfig.enableOnStartup)
+            if (PrecipitationConfigController::precipitationConfig.enableOnStartup)
             {
                 controller->DebugEVIEWListPtr();
 
-                if (!controller->m_rainTex && !RainConfigController::precipitationConfig.use_raindrop_dds)
+                if (!controller->m_rainTex && !PrecipitationConfigController::precipitationConfig.use_raindrop_dds)
                     controller->IsCreatedRainTexture();
 
                 OutputDebugStringA("[InitializeWeather] Precipitation configured for startup, waiting for camera...\n");
@@ -758,7 +1045,7 @@ static void HandleRainToggle()
     static bool alreadyWarned = false;
     static bool skipOneToggle = false;
 
-    bool keyPressed = (GetAsyncKeyState(RainConfigController::toggleKey) & 0x8000) != 0;
+    bool keyPressed = (GetAsyncKeyState(PrecipitationConfigController::toggleKey) & 0x8000) != 0;
 
     if (keyPressed && !lastKeyState)
     {
@@ -820,7 +1107,7 @@ static void HandleRainToggle()
         }
     }
 
-    if (!shouldEnable && !rainEnabled && RainConfigController::precipitationConfig.enableOnStartup)
+    if (!shouldEnable && !rainEnabled && PrecipitationConfigController::precipitationConfig.enableOnStartup)
     {
         shouldEnable = true;
     }
@@ -831,15 +1118,15 @@ static void HandleRainToggle()
 
 static void ApplyNativePresetGlobalsMW()
 {
-    const auto& p = RainConfigController::precipitationConfig.nativePreset;
+    const auto& p = PrecipitationConfigController::precipitationConfig.nativePreset;
     static bool loggedPreset = false;
     if (!loggedPreset)
     {
         char buf[256];
         sprintf_s(buf,
-            "[WeatherMod] Preset=%s applyPreset=%d (RainGuardWorker)\n",
-            RainConfigController::precipitationConfig.presetName.c_str(),
-            RainConfigController::precipitationConfig.applyPresetGlobals ? 1 : 0);
+                  "[WeatherMod] Preset=%s applyPreset=%d (RainGuardWorker)\n",
+                  PrecipitationConfigController::precipitationConfig.presetName.c_str(),
+                  PrecipitationConfigController::precipitationConfig.applyPresetGlobals ? 1 : 0);
         OutputDebugStringA(buf);
         loggedPreset = true;
     }
@@ -852,9 +1139,11 @@ static void ApplyNativePresetGlobalsMW()
         beforeCross = *reinterpret_cast<float*>(Game::PRECIP_RAINY_ADDR);
     if (Game::PRECIP_RAINZ_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZ_ADDR), sizeof(float)))
         beforeFall = *reinterpret_cast<float*>(Game::PRECIP_RAINZ_ADDR);
-    if (Game::PRECIP_RAINZCONSTANT_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZCONSTANT_ADDR), sizeof(float)))
+    if (Game::PRECIP_RAINZCONSTANT_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZCONSTANT_ADDR),
+                                                            sizeof(float)))
         beforeGrav = *reinterpret_cast<float*>(Game::PRECIP_RAINZCONSTANT_ADDR);
-    if (Game::PRECIP_BASEDAMPNESS_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_BASEDAMPNESS_ADDR), sizeof(float)))
+    if (Game::PRECIP_BASEDAMPNESS_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_BASEDAMPNESS_ADDR),
+                                                           sizeof(float)))
         beforeDamp = *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR);
 
     if (Game::PRECIP_RAINY_ADDR)
@@ -907,6 +1196,8 @@ static void ApplyNativePresetGlobalsMW()
         *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR) = p.baseDampness;
     if (Game::PRECIP_RAININTHEHEADLIGHTS_ADDR)
         *reinterpret_cast<float*>(Game::PRECIP_RAININTHEHEADLIGHTS_ADDR) = p.rainInHeadlights;
+    if (Game::RoadReflectionEnablePtr)
+        *reinterpret_cast<float*>(Game::RoadReflectionEnablePtr) = p.roadReflectionLevel;
 
     static int readbackCountdown = 3;
     if (readbackCountdown > 0)
@@ -916,18 +1207,22 @@ static void ApplyNativePresetGlobalsMW()
         float afterFall = beforeFall;
         float afterGrav = beforeGrav;
         float afterDamp = beforeDamp;
-        if (Game::PRECIP_RAINY_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINY_ADDR), sizeof(float)))
+        if (Game::PRECIP_RAINY_ADDR &&
+            core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINY_ADDR), sizeof(float)))
             afterCross = *reinterpret_cast<float*>(Game::PRECIP_RAINY_ADDR);
-        if (Game::PRECIP_RAINZ_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZ_ADDR), sizeof(float)))
+        if (Game::PRECIP_RAINZ_ADDR &&
+            core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZ_ADDR), sizeof(float)))
             afterFall = *reinterpret_cast<float*>(Game::PRECIP_RAINZ_ADDR);
-        if (Game::PRECIP_RAINZCONSTANT_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZCONSTANT_ADDR), sizeof(float)))
+        if (Game::PRECIP_RAINZCONSTANT_ADDR && core::IsReadable(
+            reinterpret_cast<void*>(Game::PRECIP_RAINZCONSTANT_ADDR), sizeof(float)))
             afterGrav = *reinterpret_cast<float*>(Game::PRECIP_RAINZCONSTANT_ADDR);
-        if (Game::PRECIP_BASEDAMPNESS_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_BASEDAMPNESS_ADDR), sizeof(float)))
+        if (Game::PRECIP_BASEDAMPNESS_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_BASEDAMPNESS_ADDR),
+                                                               sizeof(float)))
             afterDamp = *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR);
         char buf[256];
         sprintf_s(buf,
-            "[WeatherMod] preset readback cross=%.3f->%.3f fall=%.3f->%.3f grav=%.3f->%.3f damp=%.3f->%.3f\n",
-            beforeCross, afterCross, beforeFall, afterFall, beforeGrav, afterGrav, beforeDamp, afterDamp);
+                  "[WeatherMod] preset readback cross=%.3f->%.3f fall=%.3f->%.3f grav=%.3f->%.3f damp=%.3f->%.3f\n",
+                  beforeCross, afterCross, beforeFall, afterFall, beforeGrav, afterGrav, beforeDamp, afterDamp);
         OutputDebugStringA(buf);
     }
 }
@@ -945,30 +1240,29 @@ static DWORD WINAPI RainGuardWorker(void*)
             PrecipitationController::Get()->enable();
 
         const bool enabled = PrecipitationController::Get()->IsActive();
-        if (enabled && RainConfigController::precipitationConfig.applyPresetRendering)
+        if (enabled && PrecipitationConfigController::precipitationConfig.applyPresetRendering)
             PrecipitationController::Get()->enable();
-        float targetRain = enabled ? RainConfigController::precipitationConfig.rainIntensity : 0.0f;
-        float targetFog = enabled ? RainConfigController::precipitationConfig.fogIntensity : 0.0f;
-        RainFlowMW::SetTargets(targetRain, targetFog);
+        float targetRain = enabled ? PrecipitationConfigController::precipitationConfig.rainIntensity : 0.0f;
+        float targetFog = enabled ? PrecipitationConfigController::precipitationConfig.fogIntensity : 0.0f;
+        PrecipitationFlowMW::SetTargets(targetRain, targetFog);
         if (kUseIndependentRainFlow)
-            RainFlowMW::Tick();
+            PrecipitationFlowMW::Tick();
 
-        if (enabled && RainConfigController::precipitationConfig.applyPresetRendering)
+        if (enabled && PrecipitationConfigController::precipitationConfig.applyPresetRendering)
             InterlockedExchange(&g_renderCustomPrecip, 1);
         else
             InterlockedExchange(&g_renderCustomPrecip, 0);
 
-        float smoothed = kUseIndependentRainFlow ? RainFlowMW::GetSmoothedRain() : 0.0f;
+        float smoothed = kUseIndependentRainFlow ? PrecipitationFlowMW::GetSmoothedRain() : 0.0f;
         const bool keepAlive = smoothed > 0.01f;
         if (enabled || keepAlive)
         {
-            *reinterpret_cast<int*>(Game::PRECIPITATION_DEBUG_ADDR) = 1;
             // *reinterpret_cast<int*>(Game::PRECIPITATION_DEBUG_ADDR) = 1;
-            if (enabled && RainConfigController::precipitationConfig.applyPresetGlobals)
+            if (enabled && PrecipitationConfigController::precipitationConfig.applyPresetGlobals)
                 ApplyNativePresetGlobalsMW();
-            
+
             // decayFrames = 0;
-            // if (RainConfigController::precipitationConfig.applyPresetRendering)
+            // if (PrecipitationConfigController::precipitationConfig.applyPresetRendering)
             // {
             //     // Custom renderer path (e.g., snow) — disable native precipitation.
             //     *reinterpret_cast<int*>(Game::PRECIPITATION_ENABLE_ADDR) = 0;
@@ -985,11 +1279,12 @@ static DWORD WINAPI RainGuardWorker(void*)
             //     *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 1;
             // }
 
+            *reinterpret_cast<int*>(Game::PRECIPITATION_DEBUG_ADDR) = 1;
         }
         else
         {
             *reinterpret_cast<int*>(Game::PRECIPITATION_DEBUG_ADDR) = 0;
-            // if (RainConfigController::precipitationConfig.applyPresetRendering)
+            // if (PrecipitationConfigController::precipitationConfig.applyPresetRendering)
             // {
             //     if (Game::PRECIP_RAINOVERRIDE_ADDR)
             //         *reinterpret_cast<float*>(Game::PRECIP_RAINOVERRIDE_ADDR) = 0.0f;
@@ -998,12 +1293,12 @@ static DWORD WINAPI RainGuardWorker(void*)
             //     if (Game::FOG_CTRLOVERRIDE_ADDR)
             //         *reinterpret_cast<int*>(Game::FOG_CTRLOVERRIDE_ADDR) = 0;
             // }
-             // Let a few frames pass at zero to avoid a hard snap on disable.
+            // Let a few frames pass at zero to avoid a hard snap on disable.
             // if (++decayFrames >= 30)
             // {
             //     // Finalize shutdown after ramp reaches ~0.
             //     if (kUseIndependentRainFlow)
-            //         RainFlowMW::Disable();
+            //         PrecipitationFlowMW::Disable();
             //     if (Game::PRECIP_RAINOVERRIDE_ADDR)
             //         *reinterpret_cast<float*>(Game::PRECIP_RAINOVERRIDE_ADDR) = 0.0f;
             //     if (Game::FOG_CTRLOVERRIDE_ADDR)
@@ -1033,7 +1328,7 @@ static DWORD WINAPI RainGuardWorker(void*)
             //     *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 1;
             // }
         }
-        
+
         // Ensure particle context pointer is valid for sub_6DE300 path.
         // void** particleCtx = reinterpret_cast<void**>(Game::particleCtxAddr);
         // void** renderCtx = reinterpret_cast<void**>(Game::renderCtxAddr);
@@ -1086,7 +1381,7 @@ DWORD WINAPI MainThread(void*)
 
     if (detected_game == GameType::MW)
     {
-        RainFlowMW::SetUseGameSkyFlow(kUseIndependentSkyFlow);
+        PrecipitationFlowMW::SetUseGameSkyFlow(kUseIndependentSkyFlow);
         if (!kUseIndependentRainFlow)
         {
             // Hook the rain tick callsite inside sub_6DE300 (0x006DF545).
@@ -1145,64 +1440,64 @@ DWORD WINAPI MainThread(void*)
                 else
                     OutputDebugStringA("[WeatherMod] DisplayFrame hook installed\n");
             }
-
+            
             // if (Game::StuffSkyLayerAddr)
-            //              {
-            //                  auto stSky = MH_CreateHook(reinterpret_cast<void*>(Game::StuffSkyLayerAddr),
-            //                                             &HookedStuffSkyLayer,
-            //                                             reinterpret_cast<void**>(&g_originalStuffSkyLayer));
-            //                  auto enSky = MH_EnableHook(reinterpret_cast<void*>(Game::StuffSkyLayerAddr));
-            //                  if (stSky != MH_OK || enSky != MH_OK)
-            //                      OutputDebugStringA("[WeatherMod] StuffSkyLayer hook failed\n");
-            //              }
-            //  
-            //              if (Game::ReplaceSkyTexturesAddr)
-            //              {
-            //                  auto stSkyTex = MH_CreateHook(reinterpret_cast<void*>(Game::ReplaceSkyTexturesAddr),
-            //                                                &HookedReplaceSkyTextures,
-            //                                                reinterpret_cast<void**>(&g_originalReplaceSkyTextures));
-            //                  auto enSkyTex = MH_EnableHook(reinterpret_cast<void*>(Game::ReplaceSkyTexturesAddr));
-            //                  if (stSkyTex != MH_OK || enSkyTex != MH_OK)
-            //                      OutputDebugStringA("[WeatherMod] ReplaceSkyTextures hook failed\n");
-            //                  else
-            //                      OutputDebugStringA("[WeatherMod] ReplaceSkyTextures hook installed\n");
-            //              }
-            //  
-            //              if (Game::AttachReplacementTextureTableAddr)
-            //              {
-            //                  auto stAttach = MH_CreateHook(reinterpret_cast<void*>(Game::AttachReplacementTextureTableAddr),
-            //                                                &HookedAttachReplacementTextureTable,
-            //                                                reinterpret_cast<void**>(&g_originalAttachReplacementTextureTable));
-            //                  auto enAttach = MH_EnableHook(reinterpret_cast<void*>(Game::AttachReplacementTextureTableAddr));
-            //                  if (stAttach != MH_OK || enAttach != MH_OK)
-            //                      OutputDebugStringA("[WeatherMod] AttachReplacementTextureTable hook failed\n");
-            //                  else
-            //                      OutputDebugStringA("[WeatherMod] AttachReplacementTextureTable hook installed\n");
-            //              }
-            //  
-            //              if (Game::SkyLayerComputeAddr)
-            //              {
-            //                  auto stSkyComp = MH_CreateHook(reinterpret_cast<void*>(Game::SkyLayerComputeAddr),
-            //                                                 &HookedSkyLayerCompute,
-            //                                                 reinterpret_cast<void**>(&g_originalSkyLayerCompute));
-            //                  auto enSkyComp = MH_EnableHook(reinterpret_cast<void*>(Game::SkyLayerComputeAddr));
-            //                  if (stSkyComp != MH_OK || enSkyComp != MH_OK)
-            //                      OutputDebugStringA("[WeatherMod] SkyLayerCompute hook failed\n");
-            //                  else
-            //                      OutputDebugStringA("[WeatherMod] SkyLayerCompute hook installed\n");
-            //              }
-            //  
-            //              if (Game::TimeOfDayUpdateAddr)
-            //              {
-            //                  auto stTOD = MH_CreateHook(reinterpret_cast<void*>(Game::TimeOfDayUpdateAddr),
-            //                                             &HookedTimeOfDayUpdate,
-            //                                             reinterpret_cast<void**>(&g_originalTimeOfDayUpdate));
-            //                  auto enTOD = MH_EnableHook(reinterpret_cast<void*>(Game::TimeOfDayUpdateAddr));
-            //                  if (stTOD != MH_OK || enTOD != MH_OK)
-            //                      OutputDebugStringA("[WeatherMod] TimeOfDayUpdate hook failed\n");
-            //                  else
-            //                      OutputDebugStringA("[WeatherMod] TimeOfDayUpdate hook installed\n");
-            //              }
+            // {
+            //     auto stSky = MH_CreateHook(reinterpret_cast<void*>(Game::StuffSkyLayerAddr),
+            //                                &HookedStuffSkyLayer,
+            //                                reinterpret_cast<void**>(&g_originalStuffSkyLayer));
+            //     auto enSky = MH_EnableHook(reinterpret_cast<void*>(Game::StuffSkyLayerAddr));
+            //     if (stSky != MH_OK || enSky != MH_OK)
+            //         OutputDebugStringA("[WeatherMod] StuffSkyLayer hook failed\n");
+            // }
+            //
+            // if (Game::ReplaceSkyTexturesAddr)
+            // {
+            //     auto stSkyTex = MH_CreateHook(reinterpret_cast<void*>(Game::ReplaceSkyTexturesAddr),
+            //                                   &HookedReplaceSkyTextures,
+            //                                   reinterpret_cast<void**>(&g_originalReplaceSkyTextures));
+            //     auto enSkyTex = MH_EnableHook(reinterpret_cast<void*>(Game::ReplaceSkyTexturesAddr));
+            //     if (stSkyTex != MH_OK || enSkyTex != MH_OK)
+            //         OutputDebugStringA("[WeatherMod] ReplaceSkyTextures hook failed\n");
+            //     else
+            //         OutputDebugStringA("[WeatherMod] ReplaceSkyTextures hook installed\n");
+            // }
+            //
+            // if (Game::AttachReplacementTextureTableAddr)
+            // {
+            //     auto stAttach = MH_CreateHook(reinterpret_cast<void*>(Game::AttachReplacementTextureTableAddr),
+            //                                   &HookedAttachReplacementTextureTable,
+            //                                   reinterpret_cast<void**>(&g_originalAttachReplacementTextureTable));
+            //     auto enAttach = MH_EnableHook(reinterpret_cast<void*>(Game::AttachReplacementTextureTableAddr));
+            //     if (stAttach != MH_OK || enAttach != MH_OK)
+            //         OutputDebugStringA("[WeatherMod] AttachReplacementTextureTable hook failed\n");
+            //     else
+            //         OutputDebugStringA("[WeatherMod] AttachReplacementTextureTable hook installed\n");
+            // }
+            //
+            // if (Game::SkyLayerComputeAddr)
+            // {
+            //     auto stSkyComp = MH_CreateHook(reinterpret_cast<void*>(Game::SkyLayerComputeAddr),
+            //                                    &HookedSkyLayerCompute,
+            //                                    reinterpret_cast<void**>(&g_originalSkyLayerCompute));
+            //     auto enSkyComp = MH_EnableHook(reinterpret_cast<void*>(Game::SkyLayerComputeAddr));
+            //     if (stSkyComp != MH_OK || enSkyComp != MH_OK)
+            //         OutputDebugStringA("[WeatherMod] SkyLayerCompute hook failed\n");
+            //     else
+            //         OutputDebugStringA("[WeatherMod] SkyLayerCompute hook installed\n");
+            // }
+            //
+            // if (Game::TimeOfDayUpdateAddr)
+            // {
+            //     auto stTOD = MH_CreateHook(reinterpret_cast<void*>(Game::TimeOfDayUpdateAddr),
+            //                                &HookedTimeOfDayUpdate,
+            //                                reinterpret_cast<void**>(&g_originalTimeOfDayUpdate));
+            //     auto enTOD = MH_EnableHook(reinterpret_cast<void*>(Game::TimeOfDayUpdateAddr));
+            //     if (stTOD != MH_OK || enTOD != MH_OK)
+            //         OutputDebugStringA("[WeatherMod] TimeOfDayUpdate hook failed\n");
+            //     else
+            //         OutputDebugStringA("[WeatherMod] TimeOfDayUpdate hook installed\n");
+            // }
 
             // FX_Weather hook disabled (crash observed).
         }

@@ -1,13 +1,13 @@
 #include <windows.h>
 #include <cmath>
-#include "RainFlowMW.h"
+#include "PrecipitationFlowMW.h"
 #include "../Game.h"
 #include "../Math.h"
 #include "../core.h"
-#include "../RainConfigController.h"
+#include "../PrecipitationConfigController.h"
 #include "../PrecipitationController.h"
 
-namespace RainFlowMW
+namespace PrecipitationFlowMW
 {
     static float s_lastRain = 0.0f;
     static float s_lastFog = 0.0f;
@@ -624,7 +624,7 @@ namespace RainFlowMW
             
         float curRain = s_lastRain;
         float t = 0.0f;
-        float seconds = RainConfigController::precipitationConfig.transitionSeconds;
+        float seconds = PrecipitationConfigController::precipitationConfig.transitionSeconds;
         if (seconds > 0.0f)
         {
             t = dt / seconds;
