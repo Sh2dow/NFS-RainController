@@ -120,7 +120,7 @@ namespace PrecipitationConfigController
             float onScreenDropShapeSpeedChange;
             float baseDampness;
             float rainInHeadlights;
-            float roadReflectionLevel;
+            float roadReflectionEnable;
         } nativePreset{};
 
         struct RenderPreset

@@ -37,7 +37,7 @@ static PrecipitationConfigController::PrecipitationData::NativePreset MakePreset
         p.onScreenDropShapeSpeedChange = 0.0f;
         p.baseDampness = 0.2f;
         p.rainInHeadlights = 0.25f;
-        p.roadReflectionLevel = 2.0f;
+        p.roadReflectionEnable = 0.0f;
         return p;
     }
     if (name == "SnowHeavy")
@@ -67,7 +67,7 @@ static PrecipitationConfigController::PrecipitationData::NativePreset MakePreset
         p.onScreenDropShapeSpeedChange = 0.0f;
         p.baseDampness = 0.35f;
         p.rainInHeadlights = 0.35f;
-        p.roadReflectionLevel = 2.0f;
+        p.roadReflectionEnable = 0.0f;
         return p;
     }
     if (name == "Blizzard")
@@ -97,7 +97,7 @@ static PrecipitationConfigController::PrecipitationData::NativePreset MakePreset
         p.onScreenDropShapeSpeedChange = 0.0f;
         p.baseDampness = 0.45f;
         p.rainInHeadlights = 0.45f;
-        p.roadReflectionLevel = 2.0f;
+        p.roadReflectionEnable = 0.0f;
         return p;
     }
 
@@ -127,7 +127,7 @@ static PrecipitationConfigController::PrecipitationData::NativePreset MakePreset
     p.onScreenDropShapeSpeedChange = 0.0025f;
     p.baseDampness = 1.0f;
     p.rainInHeadlights = 1.0f;
-    p.roadReflectionLevel = 2.0f;
+    p.roadReflectionEnable = 1.0f;
     return p;
 }
 
@@ -265,7 +265,7 @@ static void ReadPresetOverrides(CIniReader& iniReader,
     p.onScreenDropShapeSpeedChange = iniReader.ReadFloat(section, "OnScreenDropShapeSpeedChange", p.onScreenDropShapeSpeedChange);
     p.baseDampness = iniReader.ReadFloat(section, "BaseDampness", p.baseDampness);
     p.rainInHeadlights = iniReader.ReadFloat(section, "RainInHeadlights", p.rainInHeadlights);
-    p.roadReflectionLevel = iniReader.ReadFloat(section, "RoadReflectionLevel", p.roadReflectionLevel);
+    p.roadReflectionEnable = iniReader.ReadFloat(section, "RoadReflectionEnable", p.roadReflectionEnable);
 }
 
 void PrecipitationConfigController::LoadOnStartup()

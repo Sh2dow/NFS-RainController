@@ -1197,7 +1197,7 @@ static void ApplyNativePresetGlobalsMW()
     if (Game::PRECIP_RAININTHEHEADLIGHTS_ADDR)
         *reinterpret_cast<float*>(Game::PRECIP_RAININTHEHEADLIGHTS_ADDR) = p.rainInHeadlights;
     if (Game::RoadReflectionEnablePtr)
-        *reinterpret_cast<float*>(Game::RoadReflectionEnablePtr) = p.roadReflectionLevel;
+        *reinterpret_cast<float*>(Game::RoadReflectionEnablePtr) = p.roadReflectionEnable;
 
     static int readbackCountdown = 3;
     if (readbackCountdown > 0)
