@@ -74,6 +74,51 @@ namespace
     static void ApplyNativePresetGlobalsMW()
     {
         const auto& p = g_precipitationConfig.nativePreset;
+        auto canWrite = [](uintptr_t addr, size_t size) -> bool
+        {
+            if (!addr)
+                return false;
+            MEMORY_BASIC_INFORMATION mbi{};
+            if (!VirtualQuery(reinterpret_cast<void*>(addr), &mbi, sizeof(mbi)))
+                return false;
+            if (mbi.State != MEM_COMMIT || (mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD)))
+                return false;
+            const DWORD prot = mbi.Protect & 0xFF;
+            const bool writable = (prot == PAGE_READWRITE) ||
+                                  (prot == PAGE_WRITECOPY) ||
+                                  (prot == PAGE_EXECUTE_READWRITE) ||
+                                  (prot == PAGE_EXECUTE_WRITECOPY);
+            if (!writable)
+                return false;
+            const uintptr_t end = addr + size;
+            const uintptr_t regionEnd = reinterpret_cast<uintptr_t>(mbi.BaseAddress) + mbi.RegionSize;
+            return end <= regionEnd;
+        };
+        auto readFloatSafe = [&](uintptr_t addr, float fallback) -> float
+        {
+            if (addr && core::IsReadable(reinterpret_cast<void*>(addr), sizeof(float)))
+                return *reinterpret_cast<float*>(addr);
+            return fallback;
+        };
+        auto writeFloatSafe = [&](uintptr_t addr, float value, const char* name)
+        {
+            if (!addr)
+                return;
+            if (!canWrite(addr, sizeof(float)))
+            {
+                static bool loggedBlocked = false;
+                if (!loggedBlocked)
+                {
+                    char b[256];
+                    sprintf_s(b, "[WeatherMod] blocked write %s at 0x%08X (not writable)\n", name, static_cast<unsigned>(addr));
+                    OutputDebugStringA(b);
+                    loggedBlocked = true;
+                }
+                return;
+            }
+            *reinterpret_cast<float*>(addr) = value;
+        };
+
         static bool loggedPreset = false;
         if (!loggedPreset)
         {
@@ -95,65 +140,40 @@ namespace
         float beforeFall = 0.0f;
         float beforeGrav = 0.0f;
         float beforeDamp = 0.0f;
-        if (Game::PRECIP_RAINY_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINY_ADDR), sizeof(float)))
-            beforeCross = *reinterpret_cast<float*>(Game::PRECIP_RAINY_ADDR);
-        if (Game::PRECIP_RAINZ_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZ_ADDR), sizeof(float)))
-            beforeFall = *reinterpret_cast<float*>(Game::PRECIP_RAINZ_ADDR);
-        if (Game::PRECIP_RAINZCONSTANT_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_RAINZCONSTANT_ADDR), sizeof(float)))
-            beforeGrav = *reinterpret_cast<float*>(Game::PRECIP_RAINZCONSTANT_ADDR);
-        if (Game::PRECIP_BASEDAMPNESS_ADDR && core::IsReadable(reinterpret_cast<void*>(Game::PRECIP_BASEDAMPNESS_ADDR), sizeof(float)))
-            beforeDamp = *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR);
+        
+        beforeCross = readFloatSafe(Game::PRECIP_RAINY_ADDR, beforeCross);
+        beforeFall = readFloatSafe(Game::PRECIP_RAINZ_ADDR, beforeFall);
+        beforeGrav = readFloatSafe(Game::PRECIP_RAINZCONSTANT_ADDR, beforeGrav);
+        beforeDamp = readFloatSafe(Game::PRECIP_BASEDAMPNESS_ADDR, beforeDamp);
 
-        if (Game::PRECIP_RAINY_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_RAINY_ADDR) = p.rainCrossing;
-        if (Game::PRECIP_RAINZ_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_RAINZ_ADDR) = p.rainFallSpeed;
-        if (Game::PRECIP_RAINZCONSTANT_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_RAINZCONSTANT_ADDR) = p.rainGravity;
-        if (Game::PRECIP_RAINWINDEFF_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_RAINWINDEFF_ADDR) = p.rainWindEff;
-        if (Game::PRECIP_RAINRADIUSX_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_RAINRADIUSX_ADDR) = p.rainRadiusX;
-        if (Game::PRECIP_RAINRADIUSY_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_RAINRADIUSY_ADDR) = p.rainRadiusY;
-        if (Game::PRECIP_RAINRADIUSZ_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_RAINRADIUSZ_ADDR) = p.rainRadiusZ;
-        if (Game::PRECIP_BOUNDX_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_BOUNDX_ADDR) = p.boundX;
-        if (Game::PRECIP_BOUNDY_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_BOUNDY_ADDR) = p.boundY;
-        if (Game::PRECIP_BOUNDZ_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_BOUNDZ_ADDR) = p.boundZ;
-        if (Game::PRECIP_AHEADX_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_AHEADX_ADDR) = p.aheadX;
-        if (Game::PRECIP_AHEADY_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_AHEADY_ADDR) = p.aheadY;
-        if (Game::PRECIP_AHEADZ_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_AHEADZ_ADDR) = p.aheadZ;
-        if (Game::PRECIP_DRIVEFACTOR_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_DRIVEFACTOR_ADDR) = p.driveFactor;
-        if (Game::PRECIP_RAINRATEOFCHANGE_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_RAINRATEOFCHANGE_ADDR) = p.rainRateOfChange;
-        if (Game::PRECIP_CLOUDSRATEOFCHANGE_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_CLOUDSRATEOFCHANGE_ADDR) = p.cloudsRateOfChange;
-        if (Game::PRECIP_WINDANG_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_WINDANG_ADDR) = p.windAngle;
-        if (Game::PRECIP_SWAYMAX_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_SWAYMAX_ADDR) = p.swayMax;
-        if (Game::PRECIP_MAXWINDEFF_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_MAXWINDEFF_ADDR) = p.maxWindEff;
-        if (Game::PRECIP_PREVAILINGMULT_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_PREVAILINGMULT_ADDR) = p.prevailingMult;
-        if (Game::PRECIP_ONSCREEN_DRIPSPEED_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_ONSCREEN_DRIPSPEED_ADDR) = p.onScreenDripSpeed;
-        if (Game::PRECIP_ONSCREEN_SPEEDMOD_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_ONSCREEN_SPEEDMOD_ADDR) = p.onScreenSpeedMod;
-        if (Game::PRECIP_ONSCREEN_DROPSHAPESPEEDCHANGE_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_ONSCREEN_DROPSHAPESPEEDCHANGE_ADDR) = p.onScreenDropShapeSpeedChange;
-        if (Game::PRECIP_BASEDAMPNESS_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_BASEDAMPNESS_ADDR) = p.baseDampness;
-        if (Game::PRECIP_RAININTHEHEADLIGHTS_ADDR)
-            *reinterpret_cast<float*>(Game::PRECIP_RAININTHEHEADLIGHTS_ADDR) = p.rainInHeadlights;
+        writeFloatSafe(Game::PRECIP_RAINY_ADDR, p.rainCrossing, "PRECIP_RAINY_ADDR");
+        writeFloatSafe(Game::PRECIP_RAINZ_ADDR, p.rainFallSpeed, "PRECIP_RAINZ_ADDR");
+        writeFloatSafe(Game::PRECIP_RAINZCONSTANT_ADDR, p.rainGravity, "PRECIP_RAINZCONSTANT_ADDR");
+        writeFloatSafe(Game::PRECIP_RAINWINDEFF_ADDR, p.rainWindEff, "PRECIP_RAINWINDEFF_ADDR");
+        writeFloatSafe(Game::PRECIP_RAINRADIUSX_ADDR, p.rainRadiusX, "PRECIP_RAINRADIUSX_ADDR");
+        writeFloatSafe(Game::PRECIP_RAINRADIUSY_ADDR, p.rainRadiusY, "PRECIP_RAINRADIUSY_ADDR");
+        writeFloatSafe(Game::PRECIP_RAINRADIUSZ_ADDR, p.rainRadiusZ, "PRECIP_RAINRADIUSZ_ADDR");
+        writeFloatSafe(Game::PRECIP_BOUNDX_ADDR, p.boundX, "PRECIP_BOUNDX_ADDR");
+        writeFloatSafe(Game::PRECIP_BOUNDY_ADDR, p.boundY, "PRECIP_BOUNDY_ADDR");
+        writeFloatSafe(Game::PRECIP_BOUNDZ_ADDR, p.boundZ, "PRECIP_BOUNDZ_ADDR");
+        writeFloatSafe(Game::PRECIP_AHEADX_ADDR, p.aheadX, "PRECIP_AHEADX_ADDR");
+        writeFloatSafe(Game::PRECIP_AHEADY_ADDR, p.aheadY, "PRECIP_AHEADY_ADDR");
+        writeFloatSafe(Game::PRECIP_AHEADZ_ADDR, p.aheadZ, "PRECIP_AHEADZ_ADDR");
+        writeFloatSafe(Game::PRECIP_DRIVEFACTOR_ADDR, p.driveFactor, "PRECIP_DRIVEFACTOR_ADDR");
+        writeFloatSafe(Game::PRECIP_RAINRATEOFCHANGE_ADDR, p.rainRateOfChange, "PRECIP_RAINRATEOFCHANGE_ADDR");
+        writeFloatSafe(Game::PRECIP_CLOUDSRATEOFCHANGE_ADDR, p.cloudsRateOfChange, "PRECIP_CLOUDSRATEOFCHANGE_ADDR");
+        writeFloatSafe(Game::PRECIP_WINDANG_ADDR, p.windAngle, "PRECIP_WINDANG_ADDR");
+        writeFloatSafe(Game::PRECIP_SWAYMAX_ADDR, p.swayMax, "PRECIP_SWAYMAX_ADDR");
+        writeFloatSafe(Game::PRECIP_MAXWINDEFF_ADDR, p.maxWindEff, "PRECIP_MAXWINDEFF_ADDR");
+        writeFloatSafe(Game::PRECIP_PREVAILINGMULT_ADDR, p.prevailingMult, "PRECIP_PREVAILINGMULT_ADDR");
+        writeFloatSafe(Game::PRECIP_ONSCREEN_DRIPSPEED_ADDR, p.onScreenDripSpeed, "PRECIP_ONSCREEN_DRIPSPEED_ADDR");
+        writeFloatSafe(Game::PRECIP_ONSCREEN_SPEEDMOD_ADDR, p.onScreenSpeedMod, "PRECIP_ONSCREEN_SPEEDMOD_ADDR");
+        writeFloatSafe(Game::PRECIP_ONSCREEN_DROPSHAPESPEEDCHANGE_ADDR,
+                       p.onScreenDropShapeSpeedChange,
+                       "PRECIP_ONSCREEN_DROPSHAPESPEEDCHANGE_ADDR");
+        writeFloatSafe(Game::PRECIP_BASEDAMPNESS_ADDR, p.baseDampness, "PRECIP_BASEDAMPNESS_ADDR");
+        writeFloatSafe(Game::PRECIP_RAININTHEHEADLIGHTS_ADDR, p.rainInHeadlights, "PRECIP_RAININTHEHEADLIGHTS_ADDR");
+
 
         static int readbackCountdown = 3;
         if (readbackCountdown > 0)
@@ -1776,6 +1796,8 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
 
     auto RenderGroup = [&](float minY, float maxY, bool enableBlend, int alpha)
     {
+        if (g_precipitationConfig.forceOpaqueSnow)
+            enableBlend = false;
         m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, enableBlend);
 
         D3DXMATRIX viewUse = matView;
@@ -1827,7 +1849,12 @@ void PrecipitationController::Render3DRainOverlay(const D3DVIEWPORT9& viewport)
         }
         float size = drop.length * 4.0f;
         float half = size * 0.5f;
-        DWORD color = D3DCOLOR_ARGB(alpha, 255, 255, 255);
+        int boostedAlpha = static_cast<int>(alpha * g_precipitationConfig.alphaBoost3D);
+        if (boostedAlpha > 255) boostedAlpha = 255;
+        if (boostedAlpha < 0) boostedAlpha = 0;
+        if (g_precipitationConfig.forceOpaqueSnow)
+            boostedAlpha = 255;
+        DWORD color = D3DCOLOR_ARGB(static_cast<BYTE>(boostedAlpha), 255, 255, 255);
 
         float cosA = cosf(drop.angle);
         float sinA = sinf(drop.angle);

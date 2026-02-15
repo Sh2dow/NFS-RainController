@@ -77,11 +77,11 @@ namespace MW
     constexpr uintptr_t PRECIPITATION_ENABLE_ADDR = 0x008F86E4;
     constexpr uintptr_t PRECIPITATION_DEBUG_ADDR = 0x009B0A30;
     constexpr uintptr_t PRECIPITATION_RENDER_ADDR = 0x00904AD0;
-    constexpr uintptr_t PRECIPITATION_PERCENT_ADDR = 0x00904A14;
+    constexpr uintptr_t PRECIPITATION_PERCENT_ADDR = 0x00904A14;    // RainAmount
     constexpr uintptr_t PRECIP_RAINX_ADDR = 0x00904A20;
-    constexpr uintptr_t PRECIP_RAINY_ADDR = 0x00904A24;
-    constexpr uintptr_t PRECIP_RAINZ_ADDR = 0x00904A28;
-    constexpr uintptr_t PRECIP_RAINZCONSTANT_ADDR = 0x00904A2C;
+    constexpr uintptr_t PRECIP_RAINY_ADDR = 0x00904A24; // RainXing
+    constexpr uintptr_t PRECIP_RAINZ_ADDR = 0x00904A28; // RainFallSpeed
+    constexpr uintptr_t PRECIP_RAINZCONSTANT_ADDR = 0x00904A2C; // RainGravity
     constexpr uintptr_t PRECIP_BOUNDX_ADDR = 0x00904A60;
     constexpr uintptr_t PRECIP_BOUNDY_ADDR = 0x00904A64;
     constexpr uintptr_t PRECIP_BOUNDZ_ADDR = 0x00904A68;
@@ -89,8 +89,8 @@ namespace MW
     constexpr uintptr_t PRECIP_AHEADY_ADDR = 0x009B0A34;
     constexpr uintptr_t PRECIP_AHEADZ_ADDR = 0x009B0A38;
     constexpr uintptr_t PRECIP_RAINWINDEFF_ADDR = 0x00904A80;
-    constexpr uintptr_t PRECIP_RAINRADIUSX_ADDR = 0x00904A90;
-    constexpr uintptr_t PRECIP_RAINRADIUSY_ADDR = 0x00904A94;
+    constexpr uintptr_t PRECIP_RAINRADIUSX_ADDR = 0x00904A90;   // FallingRainSize
+    constexpr uintptr_t PRECIP_RAINRADIUSY_ADDR = 0x00904A94;   // RainIntensity
     constexpr uintptr_t PRECIP_RAINRADIUSZ_ADDR = 0x00904A98;
     constexpr uintptr_t PRECIP_DRIVEFACTOR_ADDR = 0x00904ACC;
     constexpr uintptr_t PRECIP_RAINPERCENT_ADDR = 0x00904AD8;
@@ -131,7 +131,8 @@ namespace MW
     constexpr uintptr_t PRECIP_CAMERAMOD_ADDR = 0x00904AE0;
     constexpr uintptr_t FOG_CTRLOVERRIDE_ADDR = 0x009B0A70;
     constexpr uintptr_t FX_WEATHER_UPDATE_ADDR = 0x004DD070;
-
+    constexpr uintptr_t RoadReflectionFix = 0x00758293; // Road Reflection Fix??
+    
     constexpr uintptr_t BaseFogFalloff_ADDR = 0x00903190;
     constexpr uintptr_t BaseFogFalloffX_ADDR = 0x00903194;
     constexpr uintptr_t BaseFogFalloffY_ADDR = 0x00903198;

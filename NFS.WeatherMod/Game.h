@@ -108,6 +108,8 @@ namespace Game
     inline uintptr_t RoadReflectionEnablePtr = 0;
     inline uintptr_t NFS_D3D9_DEVICE_ADDRESS = 0;
     inline uintptr_t NodeMatrixOffset = 0;
+    inline uintptr_t RoadReflectionFix = 0;
+    
     
     inline uintptr_t EViewArrayBase = 0; // eViews[22]
     inline uintptr_t EViewArrayCount = 0;
@@ -330,6 +332,7 @@ namespace Game
             FOG_CTRLOVERRIDE_ADDR = MW::FOG_CTRLOVERRIDE_ADDR;
             RoadReflectionStateAddr = MW::RoadReflectionStateAddr;
             RoadReflectionEnablePtr = MW::RoadReflectionEnablePtr;
+            RoadReflectionFix = MW::RoadReflectionFix;
             
             g_originalRainTick   = reinterpret_cast<RainTick_t>(RainTick);
             g_originalRainUpdate = reinterpret_cast<RainUpdate_t>(RainUpdate);

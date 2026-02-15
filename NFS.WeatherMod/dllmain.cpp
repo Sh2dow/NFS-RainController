@@ -26,6 +26,9 @@ GameType detected_game = GameType::Unknown;
 static std::vector<std::unique_ptr<Feature>> g_features;
 static bool triedInit = false;
 static volatile LONG g_renderCustomPrecip = 0;
+static bool g_endSceneHooked = false;
+using EndScene_t = HRESULT(__stdcall*)(IDirect3DDevice9* device);
+static EndScene_t g_originalEndScene = nullptr;
 
 using CreateLookAt_t = void(__cdecl*)(Mat4* mat, Vec3* eye, Vec3* center, Vec3* up);
 static CreateLookAt_t g_originalCreateLookAt = nullptr;
@@ -87,17 +90,18 @@ static void __cdecl HookedDisplayFrame()
 {
     if (g_originalDisplayFrame)
         g_originalDisplayFrame();
+    ForceDryStateIfDisabled();
+}
+
+static HRESULT __stdcall HookedEndScene(IDirect3DDevice9* device)
+{
     if (InterlockedCompareExchange(&g_renderCustomPrecip, 0, 0) != 0)
     {
-        static bool loggedRender = false;
-        if (!loggedRender)
-        {
-            OutputDebugStringA("[WeatherMod] HookedDisplayFrame: rendering custom precip\n");
-            loggedRender = true;
-        }
-        PrecipitationController::Get()->Update();
+        auto* controller = PrecipitationController::Get();
+        controller->m_device = device;
+        controller->Update();
     }
-    ForceDryStateIfDisabled();
+    return g_originalEndScene ? g_originalEndScene(device) : D3D_OK;
 }
 
 static void RunNativeRainFlow(void* rain)
@@ -1255,11 +1259,12 @@ static DWORD WINAPI RainGuardWorker(void*)
 
         float smoothed = kUseIndependentRainFlow ? PrecipitationFlowMW::GetSmoothedRain() : 0.0f;
         const bool keepAlive = smoothed > 0.01f;
+        const bool isRainPreset = (PrecipitationConfigController::precipitationConfig.presetName == "Rain");
         if (enabled || keepAlive)
         {
             // *reinterpret_cast<int*>(Game::PRECIPITATION_DEBUG_ADDR) = 1;
-            if (enabled && PrecipitationConfigController::precipitationConfig.applyPresetGlobals)
-                ApplyNativePresetGlobalsMW();
+            // Preset globals are applied from PrecipitationController::Update (EndScene path).
+            // Avoid duplicate writes from worker thread.
 
             // decayFrames = 0;
             // if (PrecipitationConfigController::precipitationConfig.applyPresetRendering)
@@ -1279,11 +1284,26 @@ static DWORD WINAPI RainGuardWorker(void*)
             //     *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = 1;
             // }
 
+            if (isRainPreset)
+            {
+                injector::WriteMemory<float>(Game::PRECIP_BASEDAMPNESS_ADDR, true);
+                injector::WriteMemory<uint8_t>(Game::RoadReflectionFix, 0xEB, true);
+            }
+            // else
+            // {
+            //     injector::WriteMemory<float>(Game::PRECIP_BASEDAMPNESS_ADDR, false);
+            //     injector::WriteMemory<uint8_t>(Game::RoadReflectionFix, 0x74, true);
+            // }
+            // *reinterpret_cast<uint8_t*>(Game::PRECIPITATION_DEBUG_ADDR) = 0xEB;
             *reinterpret_cast<int*>(Game::PRECIPITATION_DEBUG_ADDR) = 1;
         }
         else
         {
+            injector::WriteMemory<float>(Game::PRECIP_BASEDAMPNESS_ADDR, false);
+            // Restore original opcode for `jz short loc_7582A2` at 0x758293.
+            injector::WriteMemory<uint8_t>(Game::RoadReflectionFix, 0x74, true);
             *reinterpret_cast<int*>(Game::PRECIPITATION_DEBUG_ADDR) = 0;
+
             // if (PrecipitationConfigController::precipitationConfig.applyPresetRendering)
             // {
             //     if (Game::PRECIP_RAINOVERRIDE_ADDR)
@@ -1337,6 +1357,31 @@ static DWORD WINAPI RainGuardWorker(void*)
         //     if (core::IsReadable(renderCtx, sizeof(void*)) && !*renderCtx)
         //         *renderCtx = *particleCtx;
         // }
+
+        if (!g_endSceneHooked && Game::NFS_D3D9_DEVICE_ADDRESS)
+        {
+            auto** devPtr = reinterpret_cast<IDirect3DDevice9**>(Game::NFS_D3D9_DEVICE_ADDRESS);
+            if (core::IsReadable(devPtr, sizeof(void*)) && *devPtr)
+            {
+                IDirect3DDevice9* dev = *devPtr;
+                void** vtbl = *reinterpret_cast<void***>(dev);
+                if (vtbl)
+                {
+                    void* target = vtbl[42]; // EndScene
+                    if (MH_CreateHook(target, &HookedEndScene, reinterpret_cast<void**>(&g_originalEndScene)) == MH_OK
+                        &&
+                        MH_EnableHook(target) == MH_OK)
+                    {
+                        g_endSceneHooked = true;
+                        OutputDebugStringA("[WeatherMod] EndScene hook installed\n");
+                    }
+                    else
+                    {
+                        OutputDebugStringA("[WeatherMod] EndScene hook failed\n");
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1440,7 +1485,7 @@ DWORD WINAPI MainThread(void*)
                 else
                     OutputDebugStringA("[WeatherMod] DisplayFrame hook installed\n");
             }
-            
+
             // if (Game::StuffSkyLayerAddr)
             // {
             //     auto stSky = MH_CreateHook(reinterpret_cast<void*>(Game::StuffSkyLayerAddr),

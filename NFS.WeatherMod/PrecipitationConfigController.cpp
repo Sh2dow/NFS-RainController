@@ -10,6 +10,37 @@ static PrecipitationConfigController::PrecipitationData::NativePreset MakePreset
 {
     using Preset = PrecipitationConfigController::PrecipitationData::NativePreset;
     Preset p{};
+    
+    if (name == "Rain")
+    {
+        // Default Rain preset (based on MW defaults).
+        p.rainCrossing = 0.02f;
+        p.rainFallSpeed = 0.03f;
+        p.rainGravity = 0.35f;
+        p.rainWindEff = 0.30f;
+        p.rainRadiusX = 0.01f;
+        p.rainRadiusY = 0.45f;
+        p.rainRadiusZ = 0.05f;
+        p.boundX = 20.0f;
+        p.boundY = 7.0f;
+        p.boundZ = 6.0f;
+        p.aheadX = 8.0f;
+        p.aheadY = 0.0f;
+        p.aheadZ = 0.0f;
+        p.driveFactor = -0.03f;
+        p.rainRateOfChange = 1.0f;
+        p.cloudsRateOfChange = 10.0f;
+        p.windAngle = 0.0f;
+        p.swayMax = 1.5f;
+        p.maxWindEff = 25.0f;
+        p.prevailingMult = 0.01f;
+        p.onScreenDripSpeed = 0.2f;
+        p.onScreenSpeedMod = 0.0001f;
+        p.onScreenDropShapeSpeedChange = 0.0025f;
+        p.baseDampness = 0.0f;
+        p.rainInHeadlights = 1.0f;
+        p.roadReflectionEnable = 1.0f;
+    }
     if (name == "SnowLight")
     {
         p.rainCrossing = 0.005f;
@@ -35,10 +66,9 @@ static PrecipitationConfigController::PrecipitationData::NativePreset MakePreset
         p.onScreenDripSpeed = 0.0f;
         p.onScreenSpeedMod = 0.0f;
         p.onScreenDropShapeSpeedChange = 0.0f;
-        p.baseDampness = 0.2f;
+        p.baseDampness = 0.0f;
         p.rainInHeadlights = 0.25f;
         p.roadReflectionEnable = 0.0f;
-        return p;
     }
     if (name == "SnowHeavy")
     {
@@ -65,10 +95,9 @@ static PrecipitationConfigController::PrecipitationData::NativePreset MakePreset
         p.onScreenDripSpeed = 0.0f;
         p.onScreenSpeedMod = 0.0f;
         p.onScreenDropShapeSpeedChange = 0.0f;
-        p.baseDampness = 0.35f;
+        p.baseDampness = 0.0f;
         p.rainInHeadlights = 0.35f;
         p.roadReflectionEnable = 0.0f;
-        return p;
     }
     if (name == "Blizzard")
     {
@@ -95,39 +124,11 @@ static PrecipitationConfigController::PrecipitationData::NativePreset MakePreset
         p.onScreenDripSpeed = 0.0f;
         p.onScreenSpeedMod = 0.0f;
         p.onScreenDropShapeSpeedChange = 0.0f;
-        p.baseDampness = 0.45f;
+        p.baseDampness = 0.0f;
         p.rainInHeadlights = 0.45f;
         p.roadReflectionEnable = 0.0f;
-        return p;
     }
 
-    // Default Rain preset (based on MW defaults).
-    p.rainCrossing = 0.02f;
-    p.rainFallSpeed = 0.03f;
-    p.rainGravity = 0.35f;
-    p.rainWindEff = 0.30f;
-    p.rainRadiusX = 0.01f;
-    p.rainRadiusY = 0.45f;
-    p.rainRadiusZ = 0.05f;
-    p.boundX = 20.0f;
-    p.boundY = 7.0f;
-    p.boundZ = 6.0f;
-    p.aheadX = 8.0f;
-    p.aheadY = 0.0f;
-    p.aheadZ = 0.0f;
-    p.driveFactor = -0.03f;
-    p.rainRateOfChange = 1.0f;
-    p.cloudsRateOfChange = 10.0f;
-    p.windAngle = 0.0f;
-    p.swayMax = 1.5f;
-    p.maxWindEff = 25.0f;
-    p.prevailingMult = 0.01f;
-    p.onScreenDripSpeed = 0.2f;
-    p.onScreenSpeedMod = 0.0001f;
-    p.onScreenDropShapeSpeedChange = 0.0025f;
-    p.baseDampness = 1.0f;
-    p.rainInHeadlights = 1.0f;
-    p.roadReflectionEnable = 1.0f;
     return p;
 }
 
@@ -170,7 +171,6 @@ static PrecipitationConfigController::PrecipitationData::RenderPreset MakeRender
         p.dropCountNear = 70;
         p.dropCountMid = 60;
         p.dropCountFar = 50;
-        return p;
     }
     if (name == "SnowHeavy")
     {
@@ -189,7 +189,6 @@ static PrecipitationConfigController::PrecipitationData::RenderPreset MakeRender
         p.dropCountNear = 120;
         p.dropCountMid = 100;
         p.dropCountFar = 80;
-        return p;
     }
     if (name == "Blizzard")
     {
@@ -208,7 +207,6 @@ static PrecipitationConfigController::PrecipitationData::RenderPreset MakeRender
         p.dropCountNear = 160;
         p.dropCountMid = 140;
         p.dropCountFar = 120;
-        return p;
     }
 
     return p;
@@ -368,10 +366,12 @@ void PrecipitationConfigController::Load()
     precipitationConfig.alphaBlend3DRainNear = iniReader.ReadInteger(section, "AlphaBlend3DRainNear", 0);
     precipitationConfig.alphaBlend3DRainMid = iniReader.ReadInteger(section, "AlphaBlend3DRainMid", 0);
     precipitationConfig.alphaBlend3DRainFar = iniReader.ReadInteger(section, "AlphaBlend3DRainFar", 0);
+    precipitationConfig.forceOpaqueSnow = iniReader.ReadInteger(section, "ForceOpaqueSnow", 0) != 0;
 
     precipitationConfig.alphaBlendNearValue = iniReader.ReadInteger(section, "AlphaBlendNearValue", 0);
     precipitationConfig.alphaBlendMidValue = iniReader.ReadInteger(section, "AlphaBlendMidValue", 0);
     precipitationConfig.alphaBlendFarValue = iniReader.ReadInteger(section, "AlphaBlendFarValue", 0);
+    precipitationConfig.alphaBoost3D = iniReader.ReadFloat(section, "AlphaBoost3D", 1.0f);
 
     precipitationConfig.alphaBlendSplatters = iniReader.ReadInteger(section, "AlphaBlendSplatters", 0);
 

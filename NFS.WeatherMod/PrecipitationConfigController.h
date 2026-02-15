@@ -72,11 +72,13 @@ namespace PrecipitationConfigController
         bool alphaBlend3DRainNear;
         bool alphaBlend3DRainMid;
         bool alphaBlend3DRainFar;
+        bool forceOpaqueSnow;
 
         // Alpha blending values
         int alphaBlendNearValue;
         int alphaBlendMidValue;
         int alphaBlendFarValue;
+        float alphaBoost3D;
 
         // 3D Splatters
         bool alphaBlendSplatters;

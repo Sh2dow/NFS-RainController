@@ -1,5 +1,4 @@
 #pragma once
-#include <cstdint>
 
 namespace PrecipitationFlowMW
 {
@@ -8,7 +7,6 @@ namespace PrecipitationFlowMW
     void EnforceState(bool enable);
     float GetSmoothedRain();
     float GetSmoothedFog();
-    void EnforceState(bool enable);
     void SetUseGameSkyFlow(bool useGameSkyFlow);
     void SetTargets(float rain, float fog);
     

@@ -14,7 +14,7 @@ namespace PrecipitationFlowMW
     static bool s_useGameSkyFlow = false;
     static float s_targetRain = 0.0f;
     static float s_targetFog = 0.0f;
-    static bool s_smoothInit = false;
+    static bool s_smoothInit = true;
 
     void SetUseGameSkyFlow(bool useGameSkyFlow)
     {
@@ -560,6 +560,9 @@ namespace PrecipitationFlowMW
         *reinterpret_cast<int*>(Game::PRECIPITATION_RENDER_ADDR) = enable ? 1 : 0;
         *reinterpret_cast<int*>(Game::RainEnablePtr) = enable ? 1 : 0;
         // *reinterpret_cast<int*>(Game::ParticleSystemEnablePtr) = enable ? 1 : 0;
+        
+        // injector::WriteMemory<uint8_t>(Game::RoadReflectionFix, 0xEB, true);
+        // injector::WriteMemory<float>(Game::PRECIP_BASEDAMPNESS_ADDR, true);
     }
 
     void Disable()
@@ -568,6 +571,8 @@ namespace PrecipitationFlowMW
         // *reinterpret_cast<float*>(Game::PRECIP_RAINPERCENT_ADDR) = 0.0f;
         *reinterpret_cast<float*>(Game::PRECIP_FOGPERCENT_ADDR) = 0.0f;
         *reinterpret_cast<float*>(Game::PRECIPITATION_PERCENT_ADDR) = 0.0f;
+        
+        
         // if (Game::FOG_CTRLOVERRIDE_ADDR)
         //     *reinterpret_cast<int*>(Game::FOG_CTRLOVERRIDE_ADDR) = 0;
 
